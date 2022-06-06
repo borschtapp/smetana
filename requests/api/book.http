@@ -1,0 +1,34 @@
+### Fetch all books
+GET {{host}}/books
+Accept: application/json
+
+### Get book by id
+GET {{host}}/books/1
+Accept: application/json
+
+### Create new book
+POST {{host}}/books
+Content-Type: application/json
+
+{
+  "title": "Hello world",
+  "author": "Someone"
+}
+
+### Update a book
+PUT {{host}}/books
+Content-Type: application/json
+
+{
+  "id": 1,
+  "title": "What a new title",
+  "author": "Nobody"
+}
+
+### Delete a book
+DELETE {{host}}/books
+Content-Type: application/json
+
+{
+  "id": 2
+}
