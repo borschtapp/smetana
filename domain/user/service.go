@@ -1,8 +1,8 @@
 package user
 
 import (
-	"borscht.app/smetana/pkg/model"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/model"
+	"borscht.app/smetana/utils"
 )
 
 type Service interface {

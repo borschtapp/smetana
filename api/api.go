@@ -5,9 +5,9 @@ import (
 
 	"borscht.app/smetana/api/handler"
 	"borscht.app/smetana/api/middleware"
-	"borscht.app/smetana/pkg/config"
-	"borscht.app/smetana/pkg/domain/book"
-	"borscht.app/smetana/pkg/domain/user"
+	"borscht.app/smetana/config"
+	"borscht.app/smetana/domain/book"
+	"borscht.app/smetana/domain/user"
 )
 
 func RegisterRoutes(router fiber.Router) {

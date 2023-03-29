@@ -6,8 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"borscht.app/smetana/api/presenter"
-	"borscht.app/smetana/pkg/domain/book"
-	"borscht.app/smetana/pkg/model"
+	"borscht.app/smetana/domain/book"
+	"borscht.app/smetana/model"
 )
 
 // GetBooks is handler/controller which lists all Books from the BookShop

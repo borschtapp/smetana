@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/pkg/model"
+	"borscht.app/smetana/model"
 )
 
 type Repository interface {

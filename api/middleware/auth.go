@@ -5,7 +5,7 @@ import (
 	jwtware "github.com/gofiber/jwt/v3"
 
 	"borscht.app/smetana/api/presenter"
-	"borscht.app/smetana/pkg/config"
+	"borscht.app/smetana/config"
 )
 
 // Protected func for specify routes group with JWT authentication.

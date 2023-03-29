@@ -10,7 +10,7 @@ import (
 	"github.com/vrischmann/envconfig"
 
 	"borscht.app/smetana/api"
-	"borscht.app/smetana/pkg/config"
+	"borscht.app/smetana/config"
 
 	_ "github.com/joho/godotenv/autoload" // load .env file automatically
 )

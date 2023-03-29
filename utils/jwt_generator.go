@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"borscht.app/smetana/pkg/config"
+	"borscht.app/smetana/config"
 )
 
 // Tokens struct to describe tokens object.

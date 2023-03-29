@@ -3,10 +3,10 @@ package book
 import (
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/pkg/model"
+	"borscht.app/smetana/model"
 )
 
-//Repository interface allows us to access the CRUD Operations in mongo here.
+// Repository interface allows us to access the CRUD Operations in mongo here.
 type Repository interface {
 	Find(ID uint) (*model.Book, error)
 	FetchAll() (*[]model.Book, error)
@@ -19,7 +19,7 @@ type repository struct {
 	db *gorm.DB
 }
 
-//NewRepo is the single instance repo that is being created.
+// NewRepo is the single instance repo that is being created.
 func NewRepo(db *gorm.DB) Repository {
 	return &repository{
 		db: db,

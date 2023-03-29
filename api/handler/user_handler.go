@@ -9,9 +9,9 @@ import (
 
 	"borscht.app/smetana/api/form"
 	"borscht.app/smetana/api/presenter"
-	"borscht.app/smetana/pkg/domain/user"
-	"borscht.app/smetana/pkg/model"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/domain/user"
+	"borscht.app/smetana/model"
+	"borscht.app/smetana/utils"
 )
 
 func CreateUser(service user.Service) fiber.Handler {

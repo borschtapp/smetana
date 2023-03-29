@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"borscht.app/smetana/auth"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -8,8 +9,8 @@ import (
 
 	"borscht.app/smetana/api/form"
 	"borscht.app/smetana/api/presenter"
-	"borscht.app/smetana/pkg/domain/user"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/domain/user"
+	"borscht.app/smetana/utils"
 )
 
 func Login(service user.Service) fiber.Handler {
