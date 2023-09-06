@@ -7,28 +7,28 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/vrischmann/envconfig"
+	"github.com/joho/godotenv"
 
-	"borscht.app/smetana/api"
-	"borscht.app/smetana/config"
-
-	_ "github.com/joho/godotenv/autoload" // load .env file automatically
+	"borscht.app/smetana/pkg/configs"
+	"borscht.app/smetana/pkg/database"
+	"borscht.app/smetana/pkg/routes"
+	"borscht.app/smetana/pkg/utils"
 )
 
 func main() {
-	if err := envconfig.Init(&config.Env); err != nil {
-		log.Fatal("Failed to load configuration $s", err)
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Failed to load dotenv $s", err)
 	}
 
-	if err := config.ConnectSqlLite(); err != nil {
+	if err := database.Connect(); err != nil {
 		log.Fatal("Database Connection Error $s", err)
 	}
 
-	if err := config.MigrateDB(); err != nil {
+	if err := database.Migrate(); err != nil {
 		log.Fatal("Database Migration Error $s", err)
 	}
 
-	app := fiber.New()
+	app := fiber.New(configs.FiberConfig())
 	app.Use(cors.New())
 	app.Use(recover.New())
 	app.Use(logger.New())
@@ -38,7 +38,7 @@ func main() {
 	})
 
 	apiGroup := app.Group("/api")
-	api.RegisterRoutes(apiGroup)
+	routes.RegisterRoutes(apiGroup)
 
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(utils.Listen(app))
 }
