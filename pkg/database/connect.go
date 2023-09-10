@@ -17,6 +17,8 @@ func Migrate() error {
 		&domain.User{},
 		&domain.UserToken{},
 		&domain.Recipe{},
+		&domain.RecipeImage{},
+		&domain.Publisher{},
 	)
 	return err
 }

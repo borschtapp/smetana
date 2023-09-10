@@ -9,7 +9,7 @@ import (
 
 func GetRecipes(c *fiber.Ctx) error {
 	var recipes []domain.Recipe
-	if err := database.DB.Find(&recipes).Error; err != nil {
+	if err := database.DB.Model(&domain.Recipe{}).Preload("Images").Find(&recipes).Error; err != nil {
 		return err
 	}
 	return c.JSON(recipes)

@@ -15,3 +15,12 @@ type Ingredient struct {
 	UpdatedAt time.Time
 	CreatedAt time.Time
 }
+
+type RecipeIngredient struct {
+	RecipeID     uint `gorm:"primaryKey"`
+	IngredientID uint `gorm:"primaryKey"`
+	Unit         string
+	UnitModel    Unit `gorm:"foreignKey:Unit;references:Name"`
+	Amount       uint
+	Note         string
+}

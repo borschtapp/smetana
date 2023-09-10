@@ -12,7 +12,7 @@ func GormConfig() gorm.Config {
 
 	config := gorm.Config{}
 	if enableLogger {
-		config.Logger = logger.Default.LogMode(logger.Silent)
+		config.Logger = logger.Default.LogMode(logger.Info)
 	}
 
 	return config
