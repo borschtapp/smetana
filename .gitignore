@@ -4,3 +4,7 @@ go.sum
 tmp/
 *.db
 .env
+
+# Swag files
+swagger.json
+swagger.yaml

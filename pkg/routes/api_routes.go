@@ -9,13 +9,6 @@ import (
 )
 
 func RegisterRoutes(router fiber.Router) {
-	router.Get("/_health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"success": true,
-			"message": "Hello, i'm ok!",
-		})
-	})
-
 	router.Post("/login", api.Login)
 	router.Post("/token/refresh", api.Refresh)
 

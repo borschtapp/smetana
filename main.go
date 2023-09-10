@@ -11,8 +11,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
 
+	_ "borscht.app/smetana/docs"
+	"borscht.app/smetana/handlers"
 	"borscht.app/smetana/pkg/configs"
 	"borscht.app/smetana/pkg/database"
 	"borscht.app/smetana/pkg/routes"
@@ -20,6 +23,11 @@ import (
 	"borscht.app/smetana/pkg/utils"
 )
 
+// @title Smetana API
+// @description The backend API for Borscht app.
+// @license.name MIT license
+// @license.url https://opensource.org/license/mit/
+// @BasePath /
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Failed to load dotenv $s", err)
@@ -53,12 +61,11 @@ func main() {
 		app.Use(logger.New())
 	}
 
-	app.Get("/", func(ctx *fiber.Ctx) error {
-		return ctx.Send([]byte("Welcome to the Smetana API!"))
-	})
-
 	apiGroup := app.Group("/api")
 	routes.RegisterRoutes(apiGroup)
+
+	app.Get("/_health", handlers.HealthCheck)
+	app.Get("/*", swagger.New())
 
 	log.Fatal(utils.Listen(app))
 }
