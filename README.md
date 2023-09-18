@@ -1,21 +1,22 @@
-# Clean Architecture with GoFiber
+# Smetana* 🇺🇦
 
-A simple book shop CRUD demonstration implementing the Clean Architecture in GoFiber
+<p style="text-align: center;">
+    <a href="https://github.com/borschtapp/smetana/tags"><img src="https://img.shields.io/github/v/tag/borschtapp/smetana" alt="semver tag" title="semver tag"/></a>
+    <a href="https://goreportcard.com/report/github.com/borschtapp/smetana"><img src="https://goreportcard.com/badge/github.com/borschtapp/smetana" alt="go report card" title="go report card"/></a>
+    <a href="https://github.com/borschtapp/smetana/blob/main/LICENSE"><img src="https://img.shields.io/github/license/borschtapp/smetana" alt="license" title="license"/></a>
+</p>
 
-## Installation
+Cookbooks management backend for Borscht App. Scrapes, stores, processes and serves recipes via REST API.
 
-In order to run the project, please follow the following steps:
+* _Smetana_ is a Ukrainian word for _sour cream_. No Borscht is complete without it.
 
-1. Clone the Repo
-2. Go to the "borscht.app/smetana" folder
-3. Run `go get`
-4. Replace your Mongo DB Connection string in `main.go`
+---
 
-## Routes
+## Development
 
-|  API Path  | Method |               What it does              |
-|:----------:|:------:|:---------------------------------------:|
-| /api/books |   GET  | Fetches the list of books from the shop |
-| /api/books |  POST  |      Creates/Adds book to the shop      |
-| /api/books | DELETE |    Removes/Deletes book from the shop   |
-| /api/books |  PUT |  Updates the book details from the shop |
+### Start the application
+
+```bash
+go run main.go
+```
+Go to http://localhost:3000
