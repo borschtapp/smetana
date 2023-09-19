@@ -19,6 +19,9 @@ jobs:
         with:
           go-version: 'stable'
 
+      - name: Run Validate
+        run: go vet .
+
       - name: Run Golint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -54,13 +57,13 @@ jobs:
           go-version: 'stable'
 
       - name: Build
-        run: GOOS=linux GOARCH=amd64 go build -o smetana
+        run: GOOS=linux GOARCH=amd64 go build -o tmp/app
 
       - name: Copy and run
         uses: mdallasanta/ssh-scp-deploy@v1.2.0
         with:
-          local: './smetana'
-          remote: '~/smetana'
+          local: './tmp/app'
+          remote: '~/smetana/app'
           host: ${{secrets.DEPLOY_HOST}}
           user: ${{secrets.DEPLOY_USERNAME}}
           key: ${{secrets.DEPLOY_PRIVATE_KEY}}
