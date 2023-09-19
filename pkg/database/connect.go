@@ -18,7 +18,15 @@ func Migrate() error {
 		&domain.UserToken{},
 		&domain.Recipe{},
 		&domain.RecipeImage{},
+		&domain.RecipeInstruction{},
+		&domain.RecipeIngredient{},
 		&domain.Publisher{},
+		&domain.PublisherTag{},
+		&domain.Unit{},
+		&domain.UnitTag{},
+		&domain.Food{},
+		&domain.FoodTag{},
+		&domain.FoodCategory{},
 	)
 	return err
 }
@@ -50,7 +58,7 @@ func dialectMysql() gorm.Dialector {
 	dbPassword := utils.Getenv("DB_PASSWORD", "smetana")
 	dbName := utils.Getenv("DB_NAME", "smetana")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	return mysql.Open(dsn)

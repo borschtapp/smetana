@@ -16,11 +16,11 @@ func RegisterRoutes(router fiber.Router) {
 	oauthGroup.Get("/google", oauth.GoogleRequest)
 	oauthGroup.Get("/google/callback", oauth.AuthCallbackGoogle)
 
-	usersGroup := router.Group("/users", middlewares.Protected())
-	usersGroup.Get("/", api.GetUser)
+	usersGroup := router.Group("/users")
+	usersGroup.Get("/", api.GetUser, middlewares.Protected())
 	usersGroup.Post("/", api.CreateUser)
-	usersGroup.Patch("/", api.UpdateUser)
-	usersGroup.Delete("/", api.DeleteUser)
+	usersGroup.Patch("/", api.UpdateUser, middlewares.Protected())
+	usersGroup.Delete("/", api.DeleteUser, middlewares.Protected())
 
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
 	recipesGroup.Get("/", api.GetRecipes)

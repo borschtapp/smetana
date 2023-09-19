@@ -17,4 +17,6 @@ type User struct {
 	Updated         time.Time      `gorm:"autoUpdateTime" json:"updated"`
 	Created         time.Time      `gorm:"autoCreateTime" json:"created"`
 	Deleted         gorm.DeletedAt `gorm:"index" json:"-"`
+
+	Tokens []UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }

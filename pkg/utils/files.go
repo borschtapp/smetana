@@ -24,7 +24,7 @@ func detectContentTypeFromResponse(r *http.Response) string {
 
 	// if we cannot detect type from headers, try to detect from body content
 	bodyBytes, _ := io.ReadAll(r.Body) // we need to read it fully, so we can restore it later
-	r.Body.Close()                     // must close manually
+	_ = r.Body.Close()                 // must close manually
 
 	detectedType := http.DetectContentType(bodyBytes)
 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // create new buffer with body
@@ -66,6 +66,10 @@ func DownloadAndPutObject(url string, bucket string, path string) (string, error
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", errors.New("unable to download image")
+	}
 
 	contentType := detectContentTypeFromResponse(resp)
 	extension := extensionByType(contentType)

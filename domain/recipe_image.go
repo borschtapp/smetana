@@ -10,14 +10,14 @@ import (
 
 type RecipeImage struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"-"`
+	RecipeID    uint64    `json:"-"`
 	Width       int       `json:"width,omitempty"`
 	Height      int       `json:"height,omitempty"`
 	Caption     string    `json:"caption,omitempty"`
 	RemoteUrl   string    `json:"-"`
 	DownloadUrl string    `json:"url"`
 
-	RecipeID uint   `json:"-"`
-	Recipe   Recipe `json:"-"`
+	Recipe Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (r *RecipeImage) BeforeCreate(tx *gorm.DB) error {
