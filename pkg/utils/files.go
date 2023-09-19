@@ -62,7 +62,7 @@ func extensionByType(typ string) string {
 func DownloadAndPutObject(url string, bucket string, path string) (string, error) {
 	var err error
 	var resp *http.Response
-	if resp, err = http.Get(url); err != nil { //nolint
+	if resp, err = http.Get(url); err != nil { //#nosec G107
 		return "", err
 	}
 	defer resp.Body.Close()
