@@ -13,15 +13,6 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-type AuthProvider struct {
-	name                string
-	state               string
-	codeVerifier        string
-	codeChallenge       string
-	codeChallengeMethod string
-	authUrl             string
-}
-
 type GoogleResponse struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`

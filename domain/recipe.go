@@ -201,12 +201,12 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 		recipe.Published = kripRecipe.DatePublished
 	}
 	if kripRecipe.Instructions != nil && len(kripRecipe.Instructions) > 0 {
-		for _, section := range kripRecipe.Instructions {
-			instruction := FromKripHowToStep(&section.HowToStep)
+		for i := range kripRecipe.Instructions {
+			instruction := FromKripHowToStep(&kripRecipe.Instructions[i].HowToStep)
 			recipe.Instructions = append(recipe.Instructions, instruction)
 
-			if section.Steps != nil && len(section.Steps) != 0 {
-				for _, step := range section.Steps {
+			if kripRecipe.Instructions[i].Steps != nil && len(kripRecipe.Instructions[i].Steps) != 0 {
+				for _, step := range kripRecipe.Instructions[i].Steps {
 					instruction := FromKripHowToStep(step)
 					instruction.Parent = &instruction.Order
 					recipe.Instructions = append(recipe.Instructions, instruction)

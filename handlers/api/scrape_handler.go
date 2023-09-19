@@ -64,19 +64,21 @@ func Scrape(c *fiber.Ctx) error {
 					ingredient.Note = &parsed.Annotation
 				}
 				if len(parsed.Ingredient) != 0 {
-					ingredient.Food = &domain.Food{Name: parsed.Ingredient}
+					food := &domain.Food{Name: parsed.Ingredient}
 					if err := dao.FindOrCreateFood(ingredient.Food); err != nil {
 						log.Warnf("en error on create food %v: %s", ingredient.Food, err.Error())
 					} else {
-						ingredient.FoodID = &ingredient.Food.ID
+						ingredient.Food = food
+						ingredient.FoodID = &food.ID
 					}
 				}
 				if len(parsed.Unit) != 0 {
-					ingredient.Unit = &domain.Unit{Name: parsed.Unit}
+					unit := &domain.Unit{Name: parsed.Unit}
 					if err := dao.FindOrCreateUnit(ingredient.Unit); err != nil {
 						log.Warnf("en error on create unit %v: %s", ingredient.Unit, err.Error())
 					} else {
-						ingredient.UnitID = &ingredient.Unit.ID
+						ingredient.Unit = unit
+						ingredient.UnitID = &unit.ID
 					}
 				}
 			}

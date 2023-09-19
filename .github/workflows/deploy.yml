@@ -1,37 +1,36 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Go
+name: Deploy
 
 on:
-  push:
-    branches:
-      - master
-      - main
+  workflow_run:
+    workflows: [ Linter, Security, Tests ]
+    types: [ completed ]
+    branches: [ main ]
 
 jobs:
-  Deploy:
-    needs: [Golint, Gosec, Tests]
+  deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 'stable'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 'stable'
 
-    - name: Build
-      run: GOOS=linux GOARCH=amd64 go build -o smetana
+      - name: Build
+        run: GOOS=linux GOARCH=amd64 go build -o smetana
 
-    - name: Copy and run
-      uses: mdallasanta/ssh-scp-deploy@v1.2.0
-      with:
-        local: './smetana'
-        remote: '~/smetana'
-        host: ${{secrets.DEPLOY_HOST}}
-        user: ${{secrets.DEPLOY_USERNAME}}
-        key: ${{secrets.DEPLOY_PRIVATE_KEY}}
-        pre_upload: systemctl stop smetana --user
-        post_upload: systemctl start smetana --user
-        ssh_options: -o StrictHostKeyChecking=no
+      - name: Copy and run
+        uses: mdallasanta/ssh-scp-deploy@v1.2.0
+        with:
+          local: './smetana'
+          remote: '~/smetana'
+          host: ${{secrets.DEPLOY_HOST}}
+          user: ${{secrets.DEPLOY_USERNAME}}
+          key: ${{secrets.DEPLOY_PRIVATE_KEY}}
+          pre_upload: systemctl stop smetana --user
+          post_upload: systemctl start smetana --user
+          ssh_options: -o StrictHostKeyChecking=no

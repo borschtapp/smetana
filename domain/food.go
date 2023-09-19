@@ -20,7 +20,7 @@ type Food struct {
 	Category      *FoodCategory  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"  json:"category,omitempty"`
 	Icon          *string        `json:"icon,omitempty"`
 	DefaultUnitID *uint          `json:"default_unit_id,omitempty"`
-	DefaultUnit   *Unit          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"  gorm:"foreignKey:DefaultUnitID" json:"default_unit,omitempty"`
+	DefaultUnit   *Unit          `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
 	Updated       time.Time      `gorm:"autoUpdateTime" json:"updated"`
 	Created       time.Time      `gorm:"autoCreateTime" json:"created"`
 	Deleted       gorm.DeletedAt `gorm:"index" json:"-"`
