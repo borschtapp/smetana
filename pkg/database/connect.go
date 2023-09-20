@@ -3,7 +3,6 @@ package database
 import (
 	"fmt"
 
-	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -33,22 +32,8 @@ func Migrate() error {
 
 func Connect() (err error) {
 	conf := configs.GormConfig()
-	DB, err = gorm.Open(selectDialect(), &conf)
+	DB, err = gorm.Open(dialectMysql(), &conf)
 	return
-}
-
-func selectDialect() gorm.Dialector {
-	dbType := utils.Getenv("DB_TYPE", "sqlite")
-
-	if dbType == "mysql" || dbType == "mariadb" {
-		return dialectMysql()
-	}
-
-	return dialectSqlLite()
-}
-
-func dialectSqlLite() gorm.Dialector {
-	return sqlite.Open("tmp/smetana.db")
 }
 
 func dialectMysql() gorm.Dialector {
