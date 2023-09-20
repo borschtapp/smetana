@@ -59,7 +59,7 @@ func extensionByType(typ string) string {
 	return extensions[0]
 }
 
-func DownloadAndPutObject(url string, bucket string, path string) (string, error) {
+func DownloadAndPutObject(url string, path string) (string, error) {
 	var err error
 	var resp *http.Response
 	/* #nosec G107 */
@@ -74,13 +74,13 @@ func DownloadAndPutObject(url string, bucket string, path string) (string, error
 
 	contentType := detectContentTypeFromResponse(resp)
 	extension := extensionByType(contentType)
-	if info, err := store.PutObject(bucket, path+extension, resp.Body, resp.ContentLength, contentType); err != nil {
+	if info, err := store.PutObject(path+extension, resp.Body, resp.ContentLength, contentType); err != nil {
 		return "", err
 	} else {
 		if info.Location != "" {
 			return info.Location, nil
 		}
-		return store.DirectUrl(bucket, path+extension), nil
+		return store.DirectUrl(path + extension), nil
 	}
 }
 
@@ -90,7 +90,7 @@ type UploadedImage struct {
 	Height int
 }
 
-func DownloadAndPutImage(imageUrl string, bucket string, path string) (*UploadedImage, error) {
+func DownloadAndPutImage(imageUrl string, path string) (*UploadedImage, error) {
 	var err error
 	var resp *http.Response
 
@@ -136,11 +136,11 @@ func DownloadAndPutImage(imageUrl string, bucket string, path string) (*Uploaded
 		data = buf.Bytes()
 	}
 
-	if info, err := store.PutObject(bucket, path, bytes.NewBuffer(data), int64(len(data)), "image/jpeg"); err != nil {
+	if info, err := store.PutObject(path, bytes.NewBuffer(data), int64(len(data)), "image/jpeg"); err != nil {
 		return nil, err
 	} else {
 		if info.Location == "" {
-			info.Location = store.DirectUrl(info.Bucket, info.Key)
+			info.Location = store.DirectUrl(info.Key)
 		}
 
 		return &UploadedImage{

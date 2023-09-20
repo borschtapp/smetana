@@ -27,8 +27,8 @@ func (r *RecipeImage) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-func (r *RecipeImage) FilePath() (string, string) {
-	return "recipe", strconv.FormatInt(int64(r.RecipeID), 10) + "/" + r.ID.String() + ".jpg"
+func (r *RecipeImage) FilePath() string {
+	return "recipe/" + strconv.FormatInt(int64(r.RecipeID), 10) + "/" + r.ID.String() + ".jpg"
 }
 
 func FromKripImage(image *krip.ImageObject) *RecipeImage {

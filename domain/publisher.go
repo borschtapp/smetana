@@ -29,8 +29,8 @@ type Publisher struct {
 	Tags    []PublisherTag `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
-func (p *Publisher) FilePath() (string, string) {
-	return "publisher", strings.ReplaceAll(strings.ToLower(p.Name), " ", "_")
+func (p *Publisher) FilePath() string {
+	return "publisher/" + strings.ReplaceAll(utils.CreateTag(p.Name), " ", "_")
 }
 
 func (p *Publisher) AfterCreate(tx *gorm.DB) (err error) {

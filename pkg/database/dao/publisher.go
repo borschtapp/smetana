@@ -21,8 +21,8 @@ func FindOrCreatePublisher(pub *domain.Publisher) error {
 		return err
 	} else {
 		if pub.Image != nil && len(*pub.Image) != 0 {
-			bucket, path := pub.FilePath()
-			if storedImage, err := utils.DownloadAndPutObject(*pub.Image, bucket, path); err != nil {
+			path := pub.FilePath()
+			if storedImage, err := utils.DownloadAndPutObject(*pub.Image, path); err != nil {
 				log.Warnf("en error on download publisher image %v: %s", pub, err.Error())
 			} else {
 				pub.Image = &storedImage
