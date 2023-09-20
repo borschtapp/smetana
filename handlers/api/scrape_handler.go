@@ -65,8 +65,8 @@ func Scrape(c *fiber.Ctx) error {
 				}
 				if len(parsed.Ingredient) != 0 {
 					food := &domain.Food{Name: parsed.Ingredient}
-					if err := dao.FindOrCreateFood(ingredient.Food); err != nil {
-						log.Warnf("en error on create food %v: %s", ingredient.Food, err.Error())
+					if err := dao.FindOrCreateFood(food); err != nil {
+						log.Warnf("en error on create food %v: %s", food, err.Error())
 					} else {
 						ingredient.Food = food
 						ingredient.FoodID = &food.ID
@@ -74,8 +74,8 @@ func Scrape(c *fiber.Ctx) error {
 				}
 				if len(parsed.Unit) != 0 {
 					unit := &domain.Unit{Name: parsed.Unit}
-					if err := dao.FindOrCreateUnit(ingredient.Unit); err != nil {
-						log.Warnf("en error on create unit %v: %s", ingredient.Unit, err.Error())
+					if err := dao.FindOrCreateUnit(unit); err != nil {
+						log.Warnf("en error on create unit %v: %s", unit, err.Error())
 					} else {
 						ingredient.Unit = unit
 						ingredient.UnitID = &unit.ID
@@ -110,8 +110,8 @@ func Scrape(c *fiber.Ctx) error {
 func processImage(wg *sync.WaitGroup, image *domain.RecipeImage) {
 	defer wg.Done()
 
-	bucket, path := image.FilePath()
-	if info, err := utils.DownloadAndPutImage(image.RemoteUrl, bucket, path); err != nil {
+	path := image.FilePath()
+	if info, err := utils.DownloadAndPutImage(image.RemoteUrl, path); err != nil {
 		log.Warnf("failed to download image: %v", err)
 	} else {
 		image.DownloadUrl = info.Path

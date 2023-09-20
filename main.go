@@ -47,7 +47,7 @@ func main() {
 
 	app := fiber.New(configs.FiberConfig())
 	app.Use(cors.New())
-	app.Use(recover.New())
+	app.Use(recover.New(configs.RecoverConfig()))
 	app.Use(helmet.New())
 	app.Use(etag.New())
 
