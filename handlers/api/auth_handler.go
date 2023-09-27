@@ -88,7 +88,7 @@ func Refresh(c *fiber.Ctx) error {
 
 	var userToken domain.UserToken
 	// Retrieve the token from database and check if it's valid.
-	if err := database.DB.Where(&domain.UserToken{Token: requestBody.RefreshToken, Type: "refresh"}).First(&userToken).Error; err != nil {
+	if err := database.DB.Joins("User").Where(&domain.UserToken{Token: requestBody.RefreshToken, Type: "refresh"}).First(&userToken).Error; err != nil {
 		return err
 	}
 
@@ -97,7 +97,7 @@ func Refresh(c *fiber.Ctx) error {
 		user := userToken.User
 
 		// remove old refresh token
-		if err := database.DB.Unscoped().Where(&userToken).Delete(&userToken).Error; err != nil {
+		if err := database.DB.Unscoped().Where(&domain.UserToken{Token: userToken.Token}).Delete(&domain.UserToken{}).Error; err != nil {
 			return err
 		}
 
