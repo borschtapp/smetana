@@ -11,7 +11,6 @@ import (
 
 // Tokens struct to describe tokens object.
 type Tokens struct {
-	Type    string `json:"token_type"`
 	Access  string `json:"access_token"`
 	Refresh string `json:"refresh_token,omitempty"`
 }
@@ -33,7 +32,6 @@ func GenerateNewTokens(id uint) (*Tokens, error) {
 	}
 
 	return &Tokens{
-		Type:    "Bearer",
 		Access:  accessToken,
 		Refresh: refreshToken,
 	}, nil

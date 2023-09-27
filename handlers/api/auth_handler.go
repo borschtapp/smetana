@@ -44,12 +44,12 @@ func Login(c *fiber.Ctx) error {
 	}
 }
 
-type AuthReturn struct {
+type AuthResponse struct {
+	domain.User
 	utils.Tokens
-	user *domain.User
 }
 
-func generateTokens(user domain.User) (*AuthReturn, error) {
+func generateTokens(user domain.User) (*AuthResponse, error) {
 	tokens, err := utils.GenerateNewTokens(user.ID)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func generateTokens(user domain.User) (*AuthReturn, error) {
 		return nil, err
 	}
 
-	return &AuthReturn{user: &user, Tokens: *tokens}, nil
+	return &AuthResponse{User: user, Tokens: *tokens}, nil
 }
 
 type RenewForm struct {

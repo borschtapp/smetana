@@ -42,6 +42,11 @@ func CreateUser(c *fiber.Ctx) error {
 		return errors.BadRequestVal(err)
 	}
 
+	var exists bool
+	if err := database.DB.Model(&domain.User{}).Select("COUNT(*) > 0").Where("email = ?", requestBody.Email).Find(&exists).Error; err != nil || exists {
+		return errors.BadRequestField("Email", "already exists")
+	}
+
 	user := new(domain.User)
 	user.Name = requestBody.Name
 	user.Email = requestBody.Email
@@ -58,7 +63,11 @@ func CreateUser(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(user)
+	if tokens, err := generateTokens(*user); err == nil {
+		return c.JSON(tokens)
+	} else {
+		return err
+	}
 }
 
 type UpdateUserForm struct {
