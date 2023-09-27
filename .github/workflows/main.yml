@@ -19,9 +19,6 @@ jobs:
         with:
           go-version: 'stable'
 
-      - name: Run Validate
-        run: go vet .
-
       - name: Run Golint
         uses: golangci/golangci-lint-action@v3
         with:

@@ -55,11 +55,14 @@ func generateTokens(user domain.User) (*AuthReturn, error) {
 		return nil, err
 	}
 
+	// Set expires in for refresh key from .env file.
+	expiresIn := time.Minute * time.Duration(utils.GetenvInt("JWT_REFRESH_EXPIRE_MINUTES", 10080))
+
 	token := new(domain.UserToken)
 	token.User = user
 	token.Type = "refresh"
 	token.Token = tokens.Refresh
-	token.Expires = time.Now().Add(time.Duration(tokens.RefreshExpiresIn) * time.Second)
+	token.Expires = time.Now().Add(expiresIn)
 
 	if err := database.DB.Create(&token).Error; err != nil {
 		return nil, err
