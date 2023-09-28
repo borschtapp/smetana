@@ -22,6 +22,11 @@ func Scrape(c *fiber.Ctx) error {
 	url := c.Query("url")
 	update := c.QueryBool("update", false)
 
+	tokenData, err := utils.ExtractTokenMetadata(c)
+	if err != nil {
+		return err
+	}
+
 	var recipeByUrl domain.Recipe
 	if err := database.DB.Where(&domain.Recipe{Url: &url}).
 		Preload(clause.Associations).
@@ -30,6 +35,10 @@ func Scrape(c *fiber.Ctx) error {
 		}).
 		First(&recipeByUrl).Error; err == nil {
 		if !update {
+			if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Append(&domain.Recipe{ID: recipeByUrl.ID}); err != nil {
+				return err
+			}
+
 			return c.JSON(recipeByUrl)
 		} else {
 			if err := database.DB.Delete(&recipeByUrl).Error; err != nil {
@@ -102,6 +111,10 @@ func Scrape(c *fiber.Ctx) error {
 		if err := database.DB.Create(recipe.Images).Error; err != nil {
 			log.Warnf("failed to save image: %v", err)
 		}
+	}
+
+	if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Append(&domain.Recipe{ID: recipe.ID}); err != nil {
+		return err
 	}
 
 	return c.Status(http.StatusCreated).JSON(recipe)
