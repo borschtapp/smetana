@@ -10,9 +10,12 @@ import (
 
 func RegisterRoutes(router fiber.Router) {
 	router.Post("/login", api.Login)
-	router.Post("/token/refresh", api.Refresh)
+
+	tokenGroup := router.Group("/token")
+	tokenGroup.Post("/refresh", api.Refresh)
 
 	oauthGroup := router.Group("/oauth")
+	oauthGroup.Post("/login", api.OAuthLogin)
 	oauthGroup.Get("/google", oauth.GoogleRequest)
 	oauthGroup.Get("/google/callback", oauth.AuthCallbackGoogle)
 

@@ -2,7 +2,7 @@ package oauth
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,10 +14,14 @@ import (
 )
 
 type GoogleResponse struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Verified bool   `json:"verified_email"`
-	Picture  string `json:"picture"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	Verified   bool   `json:"verified_email"`
+	Name       string `json:"name"`
+	GivenName  string `json:"given_name"`
+	FamilyName string `json:"family_name"`
+	Picture    string `json:"picture"`
+	Locale     string `json:"locale"`
 }
 
 func configGoogle() *oauth2.Config {
@@ -29,46 +33,45 @@ func configGoogle() *oauth2.Config {
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectUrl,
-		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.profile",
-			"https://www.googleapis.com/auth/userinfo.email",
-		},
-		Endpoint: google.Endpoint,
+		Scopes:       []string{"profile", "email"},
+		Endpoint:     google.Endpoint,
 	}
 	return conf
 }
 
-func GetEmail(token string) string {
+func GoogleGetProfile(token string) (*GoogleResponse, error) {
 	reqURL, err := url.Parse("https://www.googleapis.com/oauth2/v1/userinfo")
-
 	if err != nil {
-		return err.Error()
+		return nil, err
 	}
 
-	ptoken := fmt.Sprintf("Bearer %s", token)
 	res := &http.Request{
 		Method: "GET",
 		URL:    reqURL,
-		Header: map[string][]string{
-			"Authorization": {ptoken}},
+		Header: map[string][]string{"Authorization": {"Bearer " + token}, "Accept": {"application/json"}},
 	}
 	req, err := http.DefaultClient.Do(res)
 	if err != nil {
-		panic(err)
-
+		return nil, err
 	}
 	defer req.Body.Close()
+
+	if req.StatusCode != 200 {
+		return nil, errors.New("unexpected status code")
+	}
+
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	var data GoogleResponse
-	errorz := json.Unmarshal(body, &data)
-	if errorz != nil {
 
-		panic(errorz)
+	var data GoogleResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
 	}
-	return data.Email
+
+	return &data, nil
 }
 
 func GoogleRequest(c *fiber.Ctx) error {
@@ -83,6 +86,9 @@ func AuthCallbackGoogle(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	email := GetEmail(token.AccessToken)
-	return c.Status(200).JSON(fiber.Map{"email": email, "login": true})
+	profile, err := GoogleGetProfile(token.AccessToken)
+	if err != nil {
+		panic(err)
+	}
+	return c.Status(200).JSON(fiber.Map{"email": profile.Email, "login": true})
 }
