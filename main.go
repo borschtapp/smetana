@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,6 +30,9 @@ import (
 // @license.url https://opensource.org/license/mit/
 // @BasePath /
 func main() {
+	skipMigrations := flag.Bool("no-migrate", false, "Skip database migrations")
+	flag.Parse()
+
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Failed to load dotenv $s", err)
 	}
@@ -41,8 +45,10 @@ func main() {
 		log.Fatal("Database Connection Error $s", err)
 	}
 
-	if err := database.Migrate(); err != nil {
-		log.Fatal("Database Migration Error $s", err)
+	if !*skipMigrations {
+		if err := database.Migrate(); err != nil {
+			log.Fatal("Database Migration Error $s", err)
+		}
 	}
 
 	app := fiber.New(configs.FiberConfig())

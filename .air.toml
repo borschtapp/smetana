@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  args_bin = ["-no-migrate"]
   bin = "tmp\\smetana.exe"
   cmd = "go build -o ./tmp/smetana.exe ."
   delay = 0
