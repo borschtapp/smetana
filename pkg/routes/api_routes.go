@@ -24,11 +24,14 @@ func RegisterRoutes(router fiber.Router) {
 
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
 	recipesGroup.Get("/", api.GetRecipes)
+	recipesGroup.Get("/explore", api.ExploreRecipes)
 	recipesGroup.Get("/scrape", api.Scrape)
 	recipesGroup.Get("/:id", api.GetRecipe)
 	recipesGroup.Post("/", api.CreateRecipe)
 	recipesGroup.Put("/", api.UpdateRecipe)
 	recipesGroup.Delete("/:id", api.DeleteRecipe)
+	recipesGroup.Post("/:id/save", api.SaveRecipe)
+	recipesGroup.Delete("/:id/save", api.UnsaveRecipe)
 
 	publishersGroup := router.Group("/publishers", middlewares.Protected())
 	publishersGroup.Get("/", api.GetPublishers)

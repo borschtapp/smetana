@@ -21,8 +21,8 @@ type Food struct {
 	Icon          *string        `json:"icon,omitempty"`
 	DefaultUnitID *uint          `json:"default_unit_id,omitempty"`
 	DefaultUnit   *Unit          `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
-	Updated       time.Time      `gorm:"autoUpdateTime" json:"updated"`
-	Created       time.Time      `gorm:"autoCreateTime" json:"created"`
+	Updated       time.Time      `gorm:"autoUpdateTime" json:"-"`
+	Created       time.Time      `gorm:"autoCreateTime" json:"-"`
 	Deleted       gorm.DeletedAt `gorm:"index" json:"-"`
 
 	Tags []*FoodTag `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
@@ -47,7 +47,7 @@ type FoodCategory struct {
 	ParentID *uint          `json:"-"`
 	Parent   *FoodCategory  `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"parent"`
 	Name     string         `json:"name"`
-	Updated  time.Time      `gorm:"autoUpdateTime" json:"updated"`
-	Created  time.Time      `gorm:"autoCreateTime" json:"created"`
+	Updated  time.Time      `gorm:"autoUpdateTime" json:"-"`
+	Created  time.Time      `gorm:"autoCreateTime" json:"-"`
 	Deleted  gorm.DeletedAt `gorm:"index" json:"-"`
 }

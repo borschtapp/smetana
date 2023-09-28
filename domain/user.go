@@ -18,5 +18,6 @@ type User struct {
 	Created         time.Time      `gorm:"autoCreateTime" json:"created"`
 	Deleted         gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Tokens []UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Tokens  []UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Recipes []Recipe    `gorm:"many2many:user_recipes;"`
 }

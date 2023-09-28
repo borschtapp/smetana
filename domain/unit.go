@@ -16,8 +16,8 @@ type UnitTag struct {
 type Unit struct {
 	ID      uint           `gorm:"primaryKey" json:"id"`
 	Name    string         `json:"name"`
-	Updated time.Time      `gorm:"autoUpdateTime" json:"updated"`
-	Created time.Time      `gorm:"autoCreateTime" json:"created"`
+	Updated time.Time      `gorm:"autoUpdateTime" json:"-"`
+	Created time.Time      `gorm:"autoCreateTime" json:"-"`
 	Deleted gorm.DeletedAt `gorm:"index" json:"-"`
 
 	Tags []UnitTag `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
