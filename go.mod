@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/borschtapp/kapusta v0.0.1
 	github.com/borschtapp/krip v1.0.4
-	github.com/go-playground/validator/v10 v10.15.4
+	github.com/go-playground/validator/v10 v10.15.5
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/gofiber/jwt/v3 v3.3.10
 	github.com/gofiber/swagger v0.1.14
