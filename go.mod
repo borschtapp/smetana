@@ -6,9 +6,9 @@ require (
 	github.com/borschtapp/kapusta v0.0.1
 	github.com/borschtapp/krip v1.0.4
 	github.com/go-playground/validator/v10 v10.15.4
-	github.com/gofiber/fiber/v2 v2.49.2
+	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/gofiber/jwt/v3 v3.3.10
-	github.com/gofiber/swagger v0.1.13
+	github.com/gofiber/swagger v0.1.14
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/uuid v1.3.1
 	github.com/joho/godotenv v1.5.1
@@ -74,7 +74,7 @@ require (
 	github.com/valyala/fasthttp v1.50.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
