@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.63
-	github.com/sosodev/duration v1.1.0
+	github.com/sosodev/duration v1.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/swag v1.16.2
 	golang.org/x/crypto v0.15.0
