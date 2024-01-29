@@ -10,7 +10,7 @@ require (
 	github.com/gofiber/jwt/v3 v3.3.10
 	github.com/gofiber/swagger v0.1.14
 	github.com/golang-jwt/jwt/v5 v5.2.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.66
 	github.com/sosodev/duration v1.2.0
