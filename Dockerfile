@@ -1,5 +1,5 @@
 # Building the binary of the App
-FROM golang:1.21 AS build
+FROM golang:1.22 AS build
 
 ENV CGO_ENABLED=0
 ENV GOOS=linux
