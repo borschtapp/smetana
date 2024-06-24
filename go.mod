@@ -12,7 +12,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/minio/minio-go/v7 v7.0.71
+	github.com/minio/minio-go/v7 v7.0.72
 	github.com/sosodev/duration v1.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.3
