@@ -16,7 +16,7 @@ require (
 	github.com/sosodev/duration v1.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.3
-	golang.org/x/crypto v0.24.0
+	golang.org/x/crypto v0.25.0
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/text v0.16.0
 	gorm.io/driver/mysql v1.5.7
@@ -68,7 +68,7 @@ require (
 	github.com/valyala/fasthttp v1.55.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
