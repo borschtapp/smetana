@@ -18,7 +18,7 @@ require (
 	github.com/swaggo/swag v1.16.3
 	golang.org/x/crypto v0.25.0
 	golang.org/x/oauth2 v0.21.0
-	golang.org/x/text v0.16.0
+	golang.org/x/text v0.17.0
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.11
 )
