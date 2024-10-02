@@ -32,10 +32,7 @@ import (
 func main() {
 	skipMigrations := flag.Bool("no-migrate", false, "Skip database migrations")
 	flag.Parse()
-
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Failed to load dotenv $s", err)
-	}
+	_ = godotenv.Load() // optional
 
 	if err := store.Setup(); err != nil {
 		log.Fatal("Storage Setup Error $s", err)
