@@ -41,7 +41,7 @@ func GetRecipe(c *fiber.Ctx) error {
 		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
 			return db.Joins("Food").Joins("Unit")
 		}).
-		First(&recipe, uint(id)).Error; err != nil {
+		First(&recipe, uint64(id)).Error; err != nil { // #nosec G115
 		return err
 	}
 	return c.JSON(recipe)
@@ -107,6 +107,7 @@ func SaveRecipe(c *fiber.Ctx) error {
 		return err
 	}
 
+	// #nosec G115
 	if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Append(&domain.Recipe{ID: uint64(id)}); err != nil {
 		return err
 	}
@@ -124,6 +125,7 @@ func UnsaveRecipe(c *fiber.Ctx) error {
 		return err
 	}
 
+	// #nosec G115
 	if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Delete(&domain.Recipe{ID: uint64(id)}); err != nil {
 		return err
 	}

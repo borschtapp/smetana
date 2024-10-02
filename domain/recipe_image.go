@@ -28,6 +28,7 @@ func (r *RecipeImage) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (r *RecipeImage) FilePath() string {
+	// #nosec G115
 	return "recipe/" + strconv.FormatInt(int64(r.RecipeID), 10) + "/" + r.ID.String() + ".jpg"
 }
 

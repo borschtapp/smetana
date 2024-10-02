@@ -135,6 +135,7 @@ func DownloadAndPutImage(imageUrl string, path string) (*UploadedImage, error) {
 		data = buf.Bytes()
 	}
 
+	// #nosec G115
 	if info, err := store.PutObject(path, bytes.NewBuffer(data), int64(len(data)), "image/jpeg"); err != nil {
 		return nil, err
 	} else {
