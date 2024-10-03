@@ -1,7 +1,7 @@
 # Building the binary of the App
 FROM golang:1.23 AS build
 
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
 ENV GOOS=linux
 ENV GOARCH=amd64
 
@@ -27,11 +27,9 @@ WORKDIR /app
 
 COPY --from=build /build/main .
 COPY --from=build /build/.env .
+RUN chmod +x /app/main
 
-# Add packages
-RUN apk -U upgrade \
-    && apk add --no-cache dumb-init ca-certificates \
-    && chmod +x /app/main
+RUN apk add --no-cache dumb-init ca-certificates libc6-compat
 
 # Exposes port 3000 because our program listens on that port
 EXPOSE 3000
