@@ -7,6 +7,7 @@ import (
 	"github.com/borschtapp/krip"
 	"gorm.io/gorm"
 
+	"borscht.app/smetana/pkg/store"
 	"borscht.app/smetana/pkg/utils"
 )
 
@@ -16,14 +17,15 @@ type PublisherTag struct {
 }
 
 type Publisher struct {
-	ID          uint           `gorm:"primaryKey" json:"id"`
-	Name        string         `json:"name,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Url         string         `json:"url,omitempty"`
-	Image       *string        `json:"image,omitempty"`
-	Updated     time.Time      `gorm:"autoUpdateTime" json:"-"`
-	Created     time.Time      `gorm:"autoCreateTime" json:"-"`
-	Deleted     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uint               `gorm:"primaryKey" json:"id"`
+	Name        string             `json:"name,omitempty"`
+	Description *string            `json:"description,omitempty"`
+	Url         string             `json:"url,omitempty"`
+	Image       *store.StoragePath `json:"image,omitempty"`
+	RemoteImage *string            `json:"-" gorm:"-"`
+	Updated     time.Time          `gorm:"autoUpdateTime" json:"-"`
+	Created     time.Time          `gorm:"autoCreateTime" json:"-"`
+	Deleted     gorm.DeletedAt     `gorm:"index" json:"-"`
 
 	Recipes []Recipe       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
 	Tags    []PublisherTag `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
@@ -53,7 +55,7 @@ func NewPublisherFromKrip(org *krip.Organization) *Publisher {
 		model.Url = org.Url
 	}
 	if len(org.Logo) != 0 {
-		model.Image = &org.Logo
+		model.RemoteImage = &org.Logo
 	}
 	return model
 }

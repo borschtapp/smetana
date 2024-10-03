@@ -59,32 +59,30 @@ func extensionByType(typ string) string {
 	return extensions[0]
 }
 
-func DownloadAndPutObject(url string, path string) (string, error) {
+func DownloadAndPutObject(url string, path string) (*store.StoragePath, error) {
 	var err error
 	var resp *http.Response
 	if resp, err = http.Get(url); err != nil /* #nosec G107 */ {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", errors.New("unable to download image")
+		return nil, errors.New("unable to download image")
 	}
 
 	contentType := detectContentTypeFromResponse(resp)
 	extension := extensionByType(contentType)
 	if info, err := store.PutObject(path+extension, resp.Body, resp.ContentLength, contentType); err != nil {
-		return "", err
+		return nil, err
 	} else {
-		if info.Location != "" {
-			return info.Location, nil
-		}
-		return store.DirectUrl(path + extension), nil
+		storagePath := store.StoragePath(info.Key)
+		return &storagePath, nil
 	}
 }
 
 type UploadedImage struct {
-	Path   string
+	Path   store.StoragePath
 	Width  int
 	Height int
 }
@@ -139,12 +137,8 @@ func DownloadAndPutImage(imageUrl string, path string) (*UploadedImage, error) {
 	if info, err := store.PutObject(path, bytes.NewBuffer(data), int64(len(data)), "image/jpeg"); err != nil {
 		return nil, err
 	} else {
-		if info.Location == "" {
-			info.Location = store.DirectUrl(info.Key)
-		}
-
 		return &UploadedImage{
-			Path:   info.Location,
+			Path:   store.StoragePath(info.Key),
 			Width:  img.Bounds().Dx(),
 			Height: img.Bounds().Dy(),
 		}, nil

@@ -20,12 +20,12 @@ func FindOrCreatePublisher(pub *domain.Publisher) error {
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	} else {
-		if pub.Image != nil && len(*pub.Image) != 0 {
+		if pub.RemoteImage != nil && len(*pub.RemoteImage) != 0 {
 			path := pub.FilePath()
-			if storedImage, err := utils.DownloadAndPutObject(*pub.Image, path); err != nil {
+			if storedImage, err := utils.DownloadAndPutObject(*pub.RemoteImage, path); err != nil {
 				log.Warnf("en error on download publisher image %v: %s", pub, err.Error())
 			} else {
-				pub.Image = &storedImage
+				pub.Image = storedImage
 			}
 		}
 

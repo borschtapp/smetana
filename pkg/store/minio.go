@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -30,6 +32,31 @@ func PutObject(objectName string, reader io.Reader, objectSize int64, contentTyp
 	return MinIO.PutObject(ctx, bucket, objectName, reader, objectSize, minio.PutObjectOptions{ContentType: contentType})
 }
 
-func DirectUrl(path string) string {
+func AbsoluteUrl(path string) string {
+	if strings.HasPrefix(path, "http") {
+		return path
+	}
 	return MinIO.EndpointURL().String() + "/" + bucket + "/" + path
+}
+
+func RelativeUrl(path string) string {
+	if strings.HasPrefix(path, "http") {
+		return strings.TrimPrefix(path, MinIO.EndpointURL().String()+"/"+bucket+"/")
+	}
+	return path
+}
+
+type StoragePath string
+
+func (p StoragePath) MarshalJSON() ([]byte, error) {
+	return json.Marshal(AbsoluteUrl(string(p)))
+}
+
+func (p *StoragePath) UnmarshalJSON(b []byte) error {
+	var path string
+	err := json.Unmarshal(b, &path)
+	if err == nil {
+		*p = StoragePath(RelativeUrl(path))
+	}
+	return err
 }
