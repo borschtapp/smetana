@@ -19,4 +19,5 @@ Cookbooks management backend for Borscht App. Scrapes, stores, processes and ser
 ```bash
 go run main.go
 ```
-Go to http://localhost:3000
+
+Go to <http://localhost:3000>

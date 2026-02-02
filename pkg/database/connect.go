@@ -4,12 +4,30 @@ import (
 	"fmt"
 
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/pkg/configs"
-	"borscht.app/smetana/pkg/utils"
 )
+
+// DialectRegistry maps database type names to their dialector creators.
+var DialectRegistry = map[string]func(DatabaseConfig) gorm.Dialector{
+	"mysql": func(cfg DatabaseConfig) gorm.Dialector {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
+		return mysql.Open(dsn)
+	},
+	"postgres": func(cfg DatabaseConfig) gorm.Dialector {
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC",
+			cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.SSLMode)
+		return postgres.Open(dsn)
+	},
+	"sqlite": func(cfg DatabaseConfig) gorm.Dialector {
+		return sqlite.Open(cfg.Name)
+	},
+}
 
 func Migrate() error {
 	err := DB.AutoMigrate(
@@ -20,31 +38,32 @@ func Migrate() error {
 		&domain.RecipeInstruction{},
 		&domain.RecipeIngredient{},
 		&domain.Publisher{},
-		&domain.PublisherTag{},
 		&domain.Unit{},
-		&domain.UnitTag{},
 		&domain.Food{},
-		&domain.FoodTag{},
-		&domain.FoodCategory{},
+		&domain.Taxonomy{},
+		&domain.Household{},
+		&domain.RecipeSaved{},
+		&domain.MealPlan{},
+		&domain.Collection{},
+		&domain.ShoppingList{},
+		&domain.Feed{},
 	)
 	return err
 }
 
-func Connect() (err error) {
-	conf := configs.GormConfig()
-	DB, err = gorm.Open(dialectMysql(), &conf)
-	return
-}
+func Connect() (*gorm.DB, error) {
+	cfg := LoadConfig()
+	dialectCreator, ok := DialectRegistry[cfg.Type]
+	if !ok {
+		return nil, fmt.Errorf("unsupported database type: %s", cfg.Type)
+	}
 
-func dialectMysql() gorm.Dialector {
-	dbHost := utils.Getenv("DB_HOST", "localhost")
-	dbPort := utils.GetenvInt("DB_PORT", 3306)
-	dbUser := utils.Getenv("DB_USER", "smetana")
-	dbPassword := utils.Getenv("DB_PASSWORD", "smetana")
-	dbName := utils.Getenv("DB_NAME", "smetana")
+	gcfg := configs.GormConfig()
+	db, err := gorm.Open(dialectCreator(cfg), &gcfg)
+	if err != nil {
+		return nil, err
+	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPassword, dbHost, dbPort, dbName)
-
-	return mysql.Open(dsn)
+	DB = db
+	return db, nil
 }

@@ -1,62 +1,62 @@
 package domain
 
 import (
-	"math"
 	"time"
 
+	"borscht.app/smetana/pkg/types"
+	"borscht.app/smetana/pkg/utils"
 	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/utils"
-	"github.com/sosodev/duration"
+	kUtils "github.com/borschtapp/krip/utils"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Recipe struct {
-	ID          uint64         `gorm:"primaryKey" json:"id"`
-	Url         *string        `json:"url,omitempty"`
-	Name        *string        `json:"name,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Language    *string        `json:"language,omitempty"`
-	Author      *Author        `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
-	PublisherID *uint          `json:"-"`
-	Text        *string        `json:"text,omitempty"`
-	PrepTime    *int           `json:"prep_time,omitempty"`
-	CookTime    *int           `json:"cook_time,omitempty"`
-	TotalTime   *int           `json:"total_time,omitempty"`
-	Difficulty  *string        `json:"difficulty,omitempty"`
-	Method      *string        `json:"method,omitempty"`
-	Diets       *[]string      `gorm:"serializer:json" json:"diets,omitempty"`
-	Categories  *[]string      `gorm:"serializer:json" json:"categories,omitempty"`
-	Cuisines    *[]string      `gorm:"serializer:json" json:"cuisines,omitempty"`
-	Keywords    *[]string      `gorm:"serializer:json" json:"keywords,omitempty"`
-	Yield       *int           `json:"yield,omitempty"`
-	Equipment   *[]string      `gorm:"serializer:json" json:"equipment,omitempty"`
-	Nutrition   *Nutrition     `gorm:"embedded;embeddedPrefix:nutrition_" json:"nutrition,omitempty"`
-	Rating      *Rating        `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
-	Video       *Video         `gorm:"embedded;embeddedPrefix:video_" json:"video,omitempty"`
-	Published   *time.Time     `json:"published,omitempty"`
-	Updated     time.Time      `gorm:"autoUpdateTime" json:"updated"`
-	Created     time.Time      `gorm:"autoCreateTime" json:"created"`
-	Deleted     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uuid.UUID       `gorm:"type:char(36);primaryKey" json:"id"`
+	IsBasedOn   *string         `gorm:"uniqueIndex" json:"is_based_on,omitempty"`
+	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
+	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
+	Language    *string         `json:"language,omitempty" example:"en"`
+	Author      *Author         `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
+	PublisherID *uuid.UUID      `gorm:"type:char(36)" json:"-"`
+	FeedID      *uuid.UUID      `gorm:"type:char(36)" json:"feed_id,omitempty"`
+	Text        *string         `json:"text,omitempty"`
+	PrepTime    *types.Duration `json:"prep_time,omitempty" swaggertype:"integer" example:"900"`
+	CookTime    *types.Duration `json:"cook_time,omitempty" swaggertype:"integer" example:"1200"`
+	TotalTime   *types.Duration `json:"total_time,omitempty" swaggertype:"integer" example:"2100"`
+	Difficulty  *string         `json:"difficulty,omitempty" example:"Medium"`
+	Method      *string         `json:"method,omitempty" example:"Stovetop"`
+	Yield       *int            `json:"yield,omitempty" example:"4"`
+	Equipment   *[]string       `gorm:"serializer:json" json:"equipment,omitempty" example:"[\"Large pot\", \"Frying pan\"]"`
+	Nutrition   *Nutrition      `gorm:"embedded;embeddedPrefix:nutrition_" json:"nutrition,omitempty"`
+	Rating      *Rating         `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
+	Video       *Video          `gorm:"embedded;embeddedPrefix:video_" json:"video,omitempty"`
+	Published   *time.Time      `json:"published,omitempty" swaggertype:"string" format:"date-time"`
+	Updated     time.Time       `gorm:"autoUpdateTime" json:"updated" swaggertype:"string" format:"date-time"`
+	Created     time.Time       `gorm:"autoCreateTime" json:"created" swaggertype:"string" format:"date-time"`
 
 	Publisher    *Publisher           `json:"publisher,omitempty"`
+	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"feed,omitempty"`
 	Images       []*RecipeImage       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Ingredients  []*RecipeIngredient  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"ingredients,omitempty"`
 	Instructions []*RecipeInstruction `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"instructions,omitempty"`
+	Taxonomies   []*Taxonomy          `gorm:"many2many:recipe_taxonomies;" json:"taxonomies,omitempty"`
+	Collections  []*Collection        `gorm:"many2many:collection_recipes;" json:"collections,omitempty"`
 }
 
 type Nutrition struct {
-	Calories    uint   `json:"calories,omitempty"`     // The number of calories.
-	ServingSize string `json:"serving_size,omitempty"` // The serving size, in terms of the number of volume or mass.
+	Calories    float64 `json:"calories,omitempty" example:"450.5"`       // The number of calories.
+	ServingSize string  `json:"serving_size,omitempty" example:"1 plate"` // The serving size, in terms of the number of volume or mass.
 
-	Fats        uint `json:"fat,omitempty"`           // The number of grams of fat.
-	FatSat      uint `json:"fat_saturated,omitempty"` // The number of grams of saturated fat.
-	FatTrans    uint `json:"fat_trans,omitempty"`     // The number of grams of trans fat.
-	Cholesterol uint `json:"cholesterol,omitempty"`   // The number of milligrams of cholesterol.
-	Sodium      uint `json:"sodium,omitempty"`        // The number of milligrams of sodium.
-	Carbs       uint `json:"carbs,omitempty"`         // The number of grams of carbohydrates.
-	CarbSugar   uint `json:"carbs_sugar,omitempty"`   // The number of grams of sugar.
-	CarbFiber   uint `json:"carbs_fiber,omitempty"`   // The number of grams of fiber.
-	Protein     uint `json:"protein,omitempty"`       // The number of grams of protein.
+	Fats        float64 `json:"fat,omitempty" example:"15.2"`          // The number of grams of fat.
+	FatSat      float64 `json:"fat_saturated,omitempty" example:"5.1"` // The number of grams of saturated fat.
+	FatTrans    float64 `json:"fat_trans,omitempty" example:"0.1"`     // The number of grams of trans fat.
+	Cholesterol float64 `json:"cholesterol,omitempty" example:"35.0"`  // The number of milligrams of cholesterol.
+	Sodium      float64 `json:"sodium,omitempty" example:"250.0"`      // The number of milligrams of sodium.
+	Carbs       float64 `json:"carbs,omitempty" example:"60.0"`        // The number of grams of carbohydrates.
+	CarbSugar   float64 `json:"carbs_sugar,omitempty" example:"10.0"`  // The number of grams of sugar.
+	CarbFiber   float64 `json:"carbs_fiber,omitempty" example:"4.5"`   // The number of grams of fiber.
+	Protein     float64 `json:"protein,omitempty" example:"22.0"`      // The number of grams of protein.
 }
 
 type Rating struct {
@@ -91,7 +91,7 @@ func FromKripAuthor(person *krip.Person) *Author {
 
 func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	recipe := &Recipe{}
-	recipe.Url = &kripRecipe.Url
+	recipe.IsBasedOn = &kripRecipe.Url
 	if len(kripRecipe.Name) > 0 {
 		recipe.Name = &kripRecipe.Name
 	}
@@ -114,21 +114,18 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 		recipe.Text = &kripRecipe.Text
 	}
 	if len(kripRecipe.PrepTime) != 0 {
-		if d, err := duration.Parse(kripRecipe.PrepTime); err == nil {
-			val := int(math.Round(d.ToTimeDuration().Minutes()))
-			recipe.PrepTime = &val
+		if d, err := types.DurationFromISO8601(kripRecipe.PrepTime); err == nil {
+			recipe.PrepTime = &d
 		}
 	}
 	if len(kripRecipe.CookTime) != 0 {
-		if d, err := duration.Parse(kripRecipe.CookTime); err == nil {
-			val := int(math.Round(d.ToTimeDuration().Minutes()))
-			recipe.CookTime = &val
+		if d, err := types.DurationFromISO8601(kripRecipe.CookTime); err == nil {
+			recipe.CookTime = &d
 		}
 	}
 	if len(kripRecipe.TotalTime) != 0 {
-		if d, err := duration.Parse(kripRecipe.TotalTime); err == nil {
-			val := int(math.Round(d.ToTimeDuration().Minutes()))
-			recipe.TotalTime = &val
+		if d, err := types.DurationFromISO8601(kripRecipe.TotalTime); err == nil {
+			recipe.TotalTime = &d
 		}
 	}
 	if len(kripRecipe.Difficulty) > 0 {
@@ -137,43 +134,52 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	if len(kripRecipe.CookingMethod) > 0 {
 		recipe.Method = &kripRecipe.CookingMethod
 	}
-	if kripRecipe.Diets != nil && len(kripRecipe.Diets) > 0 {
-		recipe.Diets = &kripRecipe.Diets
+	if len(kripRecipe.Diets) > 0 {
+		for _, diet := range kripRecipe.Diets {
+			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "diet", Label: diet, Slug: utils.CreateTag(diet)})
+		}
 	}
-	if kripRecipe.Categories != nil && len(kripRecipe.Categories) > 0 {
-		recipe.Categories = &kripRecipe.Categories
+	if len(kripRecipe.Categories) > 0 {
+		for _, cat := range kripRecipe.Categories {
+			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "category", Label: cat, Slug: utils.CreateTag(cat)})
+		}
 	}
-	if kripRecipe.Cuisines != nil && len(kripRecipe.Cuisines) > 0 {
-		recipe.Cuisines = &kripRecipe.Cuisines
+	if len(kripRecipe.Cuisines) > 0 {
+		for _, cuisine := range kripRecipe.Cuisines {
+			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "cuisine", Label: cuisine, Slug: utils.CreateTag(cuisine)})
+		}
 	}
-	if kripRecipe.Keywords != nil && len(kripRecipe.Keywords) > 0 {
-		recipe.Keywords = &kripRecipe.Keywords
+	if len(kripRecipe.Keywords) > 0 {
+		for _, keyword := range kripRecipe.Keywords {
+			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "keyword", Label: keyword, Slug: utils.CreateTag(keyword)})
+		}
 	}
 	if kripRecipe.Yield > 0 {
 		recipe.Yield = &kripRecipe.Yield
 	}
-	if kripRecipe.Ingredients != nil && len(kripRecipe.Ingredients) > 0 {
+	if len(kripRecipe.Ingredients) > 0 {
 		for _, str := range kripRecipe.Ingredients {
 			textCopy := str
-			recipe.Ingredients = append(recipe.Ingredients, &RecipeIngredient{Text: &textCopy})
+			recipe.Ingredients = append(recipe.Ingredients, &RecipeIngredient{RawText: textCopy})
 		}
 	}
-	if kripRecipe.Equipment != nil && len(kripRecipe.Equipment) > 0 {
+	if len(kripRecipe.Equipment) > 0 {
 		recipe.Equipment = &kripRecipe.Equipment
 	}
 	if kripRecipe.Nutrition != nil {
+		// TODO: make krip return value in float64 or int
 		recipe.Nutrition = &Nutrition{
-			Calories:    uint(utils.FindNumber(kripRecipe.Nutrition.Calories)),
+			Calories:    float64(kUtils.FindNumber(kripRecipe.Nutrition.Calories)),
 			ServingSize: kripRecipe.Nutrition.ServingSize,
-			Carbs:       utils.ParseToMillis(kripRecipe.Nutrition.CarbohydrateContent),
-			CarbFiber:   utils.ParseToMillis(kripRecipe.Nutrition.FiberContent),
-			CarbSugar:   utils.ParseToMillis(kripRecipe.Nutrition.SugarContent),
-			Cholesterol: utils.ParseToMillis(kripRecipe.Nutrition.CholesterolContent, 1),
-			Sodium:      utils.ParseToMillis(kripRecipe.Nutrition.SodiumContent, 1),
-			Fats:        utils.ParseToMillis(kripRecipe.Nutrition.FatContent),
-			FatSat:      utils.ParseToMillis(kripRecipe.Nutrition.SaturatedFatContent),
-			FatTrans:    utils.ParseToMillis(kripRecipe.Nutrition.TransFatContent),
-			Protein:     utils.ParseToMillis(kripRecipe.Nutrition.ProteinContent),
+			Carbs:       float64(kUtils.ParseToMillis(kripRecipe.Nutrition.CarbohydrateContent)),
+			CarbFiber:   float64(kUtils.ParseToMillis(kripRecipe.Nutrition.FiberContent)),
+			CarbSugar:   float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SugarContent)),
+			Cholesterol: float64(kUtils.ParseToMillis(kripRecipe.Nutrition.CholesterolContent, 1)),
+			Sodium:      float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SodiumContent, 1)),
+			Fats:        float64(kUtils.ParseToMillis(kripRecipe.Nutrition.FatContent)),
+			FatSat:      float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SaturatedFatContent)),
+			FatTrans:    float64(kUtils.ParseToMillis(kripRecipe.Nutrition.TransFatContent)),
+			Protein:     float64(kUtils.ParseToMillis(kripRecipe.Nutrition.ProteinContent)),
 		}
 	}
 	if kripRecipe.Rating != nil {
@@ -200,15 +206,14 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	} else if kripRecipe.DatePublished != nil {
 		recipe.Published = kripRecipe.DatePublished
 	}
-	if kripRecipe.Instructions != nil && len(kripRecipe.Instructions) > 0 {
+	if len(kripRecipe.Instructions) > 0 {
 		for i := range kripRecipe.Instructions {
 			instruction := FromKripHowToStep(&kripRecipe.Instructions[i].HowToStep)
 			recipe.Instructions = append(recipe.Instructions, instruction)
 
-			if kripRecipe.Instructions[i].Steps != nil && len(kripRecipe.Instructions[i].Steps) != 0 {
+			if len(kripRecipe.Instructions[i].Steps) != 0 {
 				for _, step := range kripRecipe.Instructions[i].Steps {
 					instruction := FromKripHowToStep(step)
-					instruction.Parent = &instruction.Order
 					recipe.Instructions = append(recipe.Instructions, instruction)
 				}
 			}
@@ -216,4 +221,13 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	}
 
 	return recipe
+}
+
+func (r *Recipe) BeforeCreate(tx *gorm.DB) error {
+	if r.ID == uuid.Nil {
+		var err error
+		r.ID, err = uuid.NewV7()
+		return err
+	}
+	return nil
 }

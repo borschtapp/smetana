@@ -4,6 +4,11 @@ tmp/
 *.db
 .env
 
+# compiled files & data
+smetana*
+__debug*
+data/
+
 # Swag files
 swagger.json
 swagger.yaml

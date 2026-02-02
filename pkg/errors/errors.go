@@ -55,3 +55,11 @@ func Forbidden(m string) *Error {
 func NotFound(m string) *Error {
 	return &Error{Status: fiber.StatusNotFound, Code: "not-found", Message: m}
 }
+
+func NotImplemented(m string) *Error {
+	return &Error{Status: fiber.StatusNotImplemented, Code: "not-implemented", Message: m}
+}
+
+func InternalServerError(m string) *Error {
+	return &Error{Status: fiber.StatusInternalServerError, Code: "internal-server-error", Message: m}
+}

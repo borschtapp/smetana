@@ -3,31 +3,23 @@ package domain
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
-
-	"borscht.app/smetana/pkg/utils"
 )
 
-type UnitTag struct {
-	UnitID uint
-	Tag    string `gorm:"primaryKey"`
-}
-
 type Unit struct {
-	ID      uint           `gorm:"primaryKey" json:"id"`
-	Name    string         `json:"name"`
-	Updated time.Time      `gorm:"autoUpdateTime" json:"-"`
-	Created time.Time      `gorm:"autoCreateTime" json:"-"`
-	Deleted gorm.DeletedAt `gorm:"index" json:"-"`
+	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	Name    string    `gorm:"uniqueIndex:idx_unit_name,sort:desc" json:"name"`
+	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
-	Tags []UnitTag `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Taxonomies []*Taxonomy `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
 }
 
-func (u *Unit) AfterCreate(tx *gorm.DB) (err error) {
-	var tags = []UnitTag{
-		{UnitID: u.ID, Tag: utils.CreateTag(u.Name)},
+func (u *Unit) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == uuid.Nil {
+		var err error
+		u.ID, err = uuid.NewV7()
+		return err
 	}
-
-	tx.Create(&tags)
-	return
+	return nil
 }
