@@ -20,7 +20,7 @@ import (
 // @Success 200 {object} types.ListResponse[domain.Taxonomy]
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/taxonomies [get]
+// @Router /api/v1/taxonomies [get]
 func GetTaxonomies(c fiber.Ctx) error {
 	taxonomyType := c.Query("type")
 

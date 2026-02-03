@@ -25,7 +25,8 @@ import (
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
 // @Failure 401 {object} errors.Error
-// @Router /api/shoppinglist [get]
+// @Security ApiKeyAuth
+// @Router /api/v1/shoppinglist [get]
 func GetShoppingList(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
@@ -74,7 +75,7 @@ type ShoppingListForm struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/shoppinglist [post]
+// @Router /api/v1/shoppinglist [post]
 func CreateShoppingListItem(c fiber.Ctx) error {
 	var form ShoppingListForm
 	if err := c.Bind().Body(&form); err != nil {
@@ -134,7 +135,7 @@ type UpdateShoppingListForm struct {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/shoppinglist/{id} [patch]
+// @Router /api/v1/shoppinglist/{id} [patch]
 func UpdateShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -198,7 +199,7 @@ func UpdateShoppingListItem(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/shoppinglist/{id} [delete]
+// @Router /api/v1/shoppinglist/{id} [delete]
 func DeleteShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

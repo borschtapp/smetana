@@ -42,28 +42,3 @@ jobs:
 
       - name: Run Test
         run: go test ./... -v -race
-
-  deploy:
-    needs: [ lint, test ]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Build
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o smetana
-
-      - name: Copy and run
-        uses: mdallasanta/ssh-scp-deploy@v1.2.0
-        with:
-          local: './smetana'
-          remote: '~/smetana'
-          host: ${{secrets.DEPLOY_HOST}}
-          user: ${{secrets.DEPLOY_USERNAME}}
-          key: ${{secrets.DEPLOY_PRIVATE_KEY}}
-          post_upload: docker compose down smetana && docker compose up -d --build smetana
-          ssh_options: -o StrictHostKeyChecking=no

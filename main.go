@@ -89,14 +89,14 @@ func main() {
 
 	apiGroup := app.Group("/api/v1")
 
-	serverHost := utils.Getenv("SERVER_HOST", "127.0.0.1")
+	serverHost := utils.Getenv("SERVER_HOST", "")
 	serverPort := utils.GetenvInt("SERVER_PORT", 3000)
 
 	var fileStorage storage.FileStorage
-	baseUrl := os.Getenv("BASE_URL")
+	uploadsBaseUrl := os.Getenv("BASE_URL")
 	if os.Getenv("S3_BUCKET") != "" {
-		if baseUrl == "" {
-			baseUrl = fmt.Sprintf("%s/%s", os.Getenv("S3_HOST"), os.Getenv("S3_BUCKET"))
+		if uploadsBaseUrl == "" {
+			uploadsBaseUrl = fmt.Sprintf("%s/%s", os.Getenv("S3_HOST"), os.Getenv("S3_BUCKET"))
 		}
 		fileStorage = storage.NewS3Storage(fiberS3.Config{
 			Bucket:   os.Getenv("S3_BUCKET"),
@@ -106,13 +106,17 @@ func main() {
 				AccessKey:       os.Getenv("S3_ACCESS_KEY"),
 				SecretAccessKey: os.Getenv("S3_SECRET_KEY"),
 			},
-		}, baseUrl)
+		}, uploadsBaseUrl)
 	} else {
-		if baseUrl == "" {
-			baseUrl = fmt.Sprintf("http://%s:%d/uploads", serverHost, serverPort)
+		if uploadsBaseUrl == "" {
+			uploadsHost := serverHost
+			if serverHost == "" {
+				uploadsHost = "localhost"
+			}
+			uploadsBaseUrl = fmt.Sprintf("http://%s:%d/uploads", uploadsHost, serverPort)
 		}
 		storageRoot := utils.Getenv("STORAGE_ROOT", "./data/uploads")
-		fileStorage = storage.NewLocalStorage(storageRoot, baseUrl)
+		fileStorage = storage.NewLocalStorage(storageRoot, uploadsBaseUrl)
 		app.Use("/uploads", static.New(storageRoot))
 	}
 	storage.SetDefault(fileStorage)

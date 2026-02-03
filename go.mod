@@ -5,14 +5,14 @@ go 1.25.0
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
-	github.com/borschtapp/kapusta v0.0.2
-	github.com/borschtapp/krip v1.3.0
+	github.com/borschtapp/kapusta v0.1.0
+	github.com/borschtapp/krip v0.14.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gofiber/contrib/v3/jwt v1.0.0-rc.1
 	github.com/gofiber/contrib/v3/swaggo v1.0.0-rc.1
 	github.com/gofiber/fiber/v3 v3.0.0
-	github.com/gofiber/storage/s3/v2 v2.4.2
+	github.com/gofiber/storage/s3/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1

@@ -36,7 +36,7 @@ type SubscribeRequest struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/feeds [post]
+// @Router /api/v1/feeds [post]
 func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 	var req SubscribeRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -68,7 +68,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/feeds/{id} [delete]
+// @Router /api/v1/feeds/{id} [delete]
 func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -101,7 +101,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 // @Success 200 {object} types.ListResponse[domain.Feed]
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/feeds [get]
+// @Router /api/v1/feeds [get]
 func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
@@ -134,7 +134,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 // @Success 200 {object} types.ListResponse[domain.Recipe]
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/feeds/stream [get]
+// @Router /api/v1/feeds/stream [get]
 func (h *FeedHandler) GetStream(c fiber.Ctx) error {
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {

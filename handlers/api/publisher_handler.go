@@ -19,7 +19,7 @@ import (
 // @Success 200 {object} types.ListResponse[domain.Publisher]
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/publishers [get]
+// @Router /api/v1/publishers [get]
 func GetPublishers(c fiber.Ctx) error {
 	p := types.GetPagination(c)
 

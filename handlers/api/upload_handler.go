@@ -33,7 +33,7 @@ func NewUploadHandler(imageService *services.ImageService) *UploadHandler {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/uploads [post]
+// @Router /api/v1/uploads [post]
 func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {

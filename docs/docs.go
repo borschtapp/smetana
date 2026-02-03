@@ -42,7 +42,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/login": {
+        "/api/v1/auth/login": {
             "post": {
                 "description": "Authenticate user by email and password, returning access and refresh tokens.",
                 "consumes": [
@@ -88,13 +88,29 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/oidc/callback": {
+        "/api/v1/auth/oidc/callback": {
             "get": {
                 "description": "Handles the callback from the identity provider and issues local tokens.",
                 "tags": [
                     "auth"
                 ],
                 "summary": "OIDC Consumer.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CSRF State",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Auth Code",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -117,7 +133,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/oidc/login": {
+        "/api/v1/auth/oidc/login": {
             "get": {
                 "description": "Redirects the user to the configured OIDC provider.",
                 "tags": [
@@ -131,7 +147,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/refresh": {
+        "/api/v1/auth/refresh": {
             "post": {
                 "description": "Refresh access token using a valid refresh token.",
                 "consumes": [
@@ -177,7 +193,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/register": {
+        "/api/v1/auth/register": {
             "post": {
                 "description": "Register a new user with name, email, and password. Creates an associated personal Household.",
                 "consumes": [
@@ -217,8 +233,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/collections": {
+        "/api/v1/collections": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns collections associated with the user's household.",
                 "consumes": [
                     "*/*"
@@ -309,7 +330,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/collections/{id}": {
+        "/api/v1/collections/{id}": {
             "get": {
                 "security": [
                     {
@@ -482,7 +503,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/feeds": {
+        "/api/v1/feeds": {
             "get": {
                 "security": [
                     {
@@ -579,7 +600,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/feeds/stream": {
+        "/api/v1/feeds/stream": {
             "get": {
                 "security": [
                     {
@@ -627,7 +648,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/feeds/{id}": {
+        "/api/v1/feeds/{id}": {
             "delete": {
                 "security": [
                     {
@@ -679,7 +700,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/households/{id}": {
+        "/api/v1/households/{id}": {
             "get": {
                 "security": [
                     {
@@ -796,7 +817,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/households/{id}/members": {
+        "/api/v1/households/{id}/members": {
             "get": {
                 "security": [
                     {
@@ -925,7 +946,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/households/{id}/members/{userId}": {
+        "/api/v1/households/{id}/members/{userId}": {
             "delete": {
                 "security": [
                     {
@@ -990,8 +1011,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/mealplan": {
+        "/api/v1/mealplan": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns meal plan entries for the current household. Supports date range filtering.",
                 "consumes": [
                     "*/*"
@@ -1094,7 +1120,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/mealplan/{id}": {
+        "/api/v1/mealplan/{id}": {
             "delete": {
                 "security": [
                     {
@@ -1220,7 +1246,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/publishers": {
+        "/api/v1/publishers": {
             "get": {
                 "security": [
                     {
@@ -1268,7 +1294,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes": {
+        "/api/v1/recipes": {
             "get": {
                 "security": [
                     {
@@ -1383,7 +1409,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/import": {
+        "/api/v1/recipes/import": {
             "post": {
                 "security": [
                     {
@@ -1434,7 +1460,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}": {
+        "/api/v1/recipes/{id}": {
             "get": {
                 "security": [
                     {
@@ -1589,7 +1615,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}/favorite": {
+        "/api/v1/recipes/{id}/favorite": {
             "post": {
                 "security": [
                     {
@@ -1679,7 +1705,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}/ingredients": {
+        "/api/v1/recipes/{id}/ingredients": {
             "post": {
                 "security": [
                     {
@@ -1743,7 +1769,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}/ingredients/{ingredientId}": {
+        "/api/v1/recipes/{id}/ingredients/{ingredientId}": {
             "delete": {
                 "security": [
                     {
@@ -1877,7 +1903,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}/instructions": {
+        "/api/v1/recipes/{id}/instructions": {
             "post": {
                 "security": [
                     {
@@ -1941,7 +1967,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/recipes/{id}/instructions/{instructionId}": {
+        "/api/v1/recipes/{id}/instructions/{instructionId}": {
             "delete": {
                 "security": [
                     {
@@ -2075,8 +2101,13 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/shoppinglist": {
+        "/api/v1/shoppinglist": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "Returns all shopping list items for the current household.",
                 "consumes": [
                     "*/*"
@@ -2167,7 +2198,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/shoppinglist/{id}": {
+        "/api/v1/shoppinglist/{id}": {
             "delete": {
                 "security": [
                     {
@@ -2293,7 +2324,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/taxonomies": {
+        "/api/v1/taxonomies": {
             "get": {
                 "security": [
                     {
@@ -2347,7 +2378,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/uploads": {
+        "/api/v1/uploads": {
             "post": {
                 "security": [
                     {
@@ -2396,7 +2427,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/users/{id}": {
+        "/api/v1/users/{id}": {
             "get": {
                 "security": [
                     {

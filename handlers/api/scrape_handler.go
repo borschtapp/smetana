@@ -41,7 +41,7 @@ type ImportRequest struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/import [post]
+// @Router /api/v1/recipes/import [post]
 func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
 	var request ImportRequest
 	if err := c.Bind().Body(&request); err != nil {

@@ -23,7 +23,7 @@ import (
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/users/{id} [get]
+// @Router /api/v1/users/{id} [get]
 func GetUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -64,7 +64,7 @@ type UpdateUserForm struct {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/users/{id} [patch]
+// @Router /api/v1/users/{id} [patch]
 func UpdateUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -119,7 +119,7 @@ func UpdateUser(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/users/{id} [delete]
+// @Router /api/v1/users/{id} [delete]
 func DeleteUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

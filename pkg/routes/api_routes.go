@@ -33,7 +33,7 @@ func RegisterRoutes(router fiber.Router, imageService *services.ImageService) {
 	oidcGroup.Get("/callback", authHandler.OIDCCallback)
 
 	uploadHandler := api.NewUploadHandler(imageService)
-	router.Post("/api/uploads", uploadHandler.Upload, middlewares.Protected())
+	router.Post("/uploads", uploadHandler.Upload, middlewares.Protected())
 
 	usersGroup := router.Group("/users", middlewares.Protected())
 	usersGroup.Get("/:id", api.GetUser)

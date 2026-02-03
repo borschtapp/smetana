@@ -28,7 +28,8 @@ import (
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
 // @Failure 401 {object} errors.Error
-// @Router /api/mealplan [get]
+// @Security ApiKeyAuth
+// @Router /api/v1/mealplan [get]
 func GetMealPlan(c fiber.Ctx) error {
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
@@ -93,7 +94,7 @@ type MealPlanForm struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/mealplan [post]
+// @Router /api/v1/mealplan [post]
 func CreateMealPlan(c fiber.Ctx) error {
 	var form MealPlanForm
 	if err := c.Bind().Body(&form); err != nil {
@@ -158,7 +159,7 @@ type UpdateMealPlanForm struct {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/mealplan/{id} [patch]
+// @Router /api/v1/mealplan/{id} [patch]
 func UpdateMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -232,7 +233,7 @@ func UpdateMealPlan(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/mealplan/{id} [delete]
+// @Router /api/v1/mealplan/{id} [delete]
 func DeleteMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

@@ -25,7 +25,8 @@ import (
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Collection]
 // @Failure 401 {object} errors.Error
-// @Router /api/collections [get]
+// @Security ApiKeyAuth
+// @Router /api/v1/collections [get]
 func GetCollections(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
@@ -73,7 +74,7 @@ type CollectionForm struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/collections [post]
+// @Router /api/v1/collections [post]
 func CreateCollection(c fiber.Ctx) error {
 	var form CollectionForm
 	if err := c.Bind().Body(&form); err != nil {
@@ -120,7 +121,7 @@ func CreateCollection(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/collections/{id} [get]
+// @Router /api/v1/collections/{id} [get]
 func GetCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -172,7 +173,7 @@ type UpdateCollectionForm struct {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/collections/{id} [patch]
+// @Router /api/v1/collections/{id} [patch]
 func UpdateCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -251,7 +252,7 @@ func UpdateCollection(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/collections/{id} [delete]
+// @Router /api/v1/collections/{id} [delete]
 func DeleteCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

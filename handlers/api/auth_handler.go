@@ -41,7 +41,7 @@ type LoginForm struct {
 // @Success 200 {object} AuthResponse
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
-// @Router /api/auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var requestBody LoginForm
 	if err := c.Bind().Body(&requestBody); err != nil {
@@ -110,7 +110,7 @@ type RenewForm struct {
 // @Success 200 {object} AuthResponse
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
-// @Router /api/auth/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	var requestBody RenewForm
 	if err := c.Bind().Body(&requestBody); err != nil {
@@ -165,7 +165,7 @@ type RegisterForm struct {
 // @Param user body RegisterForm true "User registration data"
 // @Success 201 {object} AuthResponse
 // @Failure 400 {object} errors.Error
-// @Router /api/auth/register [post]
+// @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var requestBody RegisterForm
 	if err := c.Bind().Body(&requestBody); err != nil {
@@ -236,7 +236,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 // @Description Redirects the user to the configured OIDC provider.
 // @Tags auth
 // @Success 302
-// @Router /api/auth/oidc/login [get]
+// @Router /api/v1/auth/oidc/login [get]
 func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 	if h.oidcService == nil {
 		return errors.NotImplemented("OIDC service not configured")
@@ -261,7 +261,9 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 // @Success 200 {object} AuthResponse
 // @Failure 400 {object} errors.Error
 // @Failure 500 {object} errors.Error
-// @Router /api/auth/oidc/callback [get]
+// @Param state query string true "CSRF State"
+// @Param code query string true "Auth Code"
+// @Router /api/v1/auth/oidc/callback [get]
 func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	if h.oidcService == nil {
 		return errors.NotImplemented("OIDC service not configured")

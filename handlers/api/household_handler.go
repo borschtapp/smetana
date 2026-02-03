@@ -26,7 +26,7 @@ import (
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/households/{id} [get]
+// @Router /api/v1/households/{id} [get]
 func GetHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -71,7 +71,7 @@ type UpdateHouseholdForm struct {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/households/{id} [patch]
+// @Router /api/v1/households/{id} [patch]
 func UpdateHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -127,7 +127,7 @@ func UpdateHousehold(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/households/{id}/members [get]
+// @Router /api/v1/households/{id}/members [get]
 func GetHouseholdMembers(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -185,7 +185,7 @@ type AddMemberForm struct {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/households/{id}/members [post]
+// @Router /api/v1/households/{id}/members [post]
 func AddHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -240,7 +240,7 @@ func AddHouseholdMember(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/households/{id}/members/{userId} [delete]
+// @Router /api/v1/households/{id}/members/{userId} [delete]
 func RemoveHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

@@ -37,7 +37,7 @@ func NewRecipeHandler(recipeService *services.RecipeService) *RecipeHandler {
 // @Success 200 {object} types.ListResponse[domain.Recipe]
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes [get]
+// @Router /api/v1/recipes [get]
 func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
@@ -79,7 +79,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id} [get]
+// @Router /api/v1/recipes/{id} [get]
 func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -122,7 +122,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes [post]
+// @Router /api/v1/recipes [post]
 func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 	recipe := new(domain.Recipe)
 	if err := c.Bind().Body(&recipe); err != nil {
@@ -148,7 +148,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id} [patch]
+// @Router /api/v1/recipes/{id} [patch]
 func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -192,7 +192,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id} [delete]
+// @Router /api/v1/recipes/{id} [delete]
 func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -230,7 +230,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/favorite [post]
+// @Router /api/v1/recipes/{id}/favorite [post]
 func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -259,7 +259,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/favorite [delete]
+// @Router /api/v1/recipes/{id}/favorite [delete]
 func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -290,7 +290,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/ingredients [post]
+// @Router /api/v1/recipes/{id}/ingredients [post]
 func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -338,7 +338,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/ingredients/{ingredientId} [patch]
+// @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [patch]
 func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -390,7 +390,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/ingredients/{ingredientId} [delete]
+// @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [delete]
 func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -435,7 +435,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/instructions [post]
+// @Router /api/v1/recipes/{id}/instructions [post]
 func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -483,7 +483,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/instructions/{instructionId} [patch]
+// @Router /api/v1/recipes/{id}/instructions/{instructionId} [patch]
 func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -535,7 +535,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
-// @Router /api/recipes/{id}/instructions/{instructionId} [delete]
+// @Router /api/v1/recipes/{id}/instructions/{instructionId} [delete]
 func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
