@@ -42,7 +42,7 @@ func (s *ImageService) DownloadAndPutImage(imageUrl string, savePath string) (*U
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != 200 {

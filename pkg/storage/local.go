@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type LocalStorage struct {
@@ -16,7 +18,7 @@ func NewLocalStorage(root string, baseUrl string) *LocalStorage {
 		root = "./uploads"
 	}
 	// Ensure directory exists
-	_ = os.MkdirAll(root, os.ModePerm)
+	_ = os.MkdirAll(root, 0750)
 
 	return &LocalStorage{Root: root, BaseURL: baseUrl}
 }
@@ -26,13 +28,19 @@ func (s *LocalStorage) GetBaseURL() string {
 }
 
 func (s *LocalStorage) Save(path string, content io.Reader, size int64, contentType string) error {
-	fullPath := filepath.Join(s.Root, path)
+	// Clean and validate path to prevent directory traversal
+	fullPath := filepath.Join(s.Root, filepath.Clean(path))
+	relPath, err := filepath.Rel(s.Root, fullPath)
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		return errors.New("invalid path: directory traversal attempt")
+	}
+
 	dir := filepath.Dir(fullPath)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return err
 	}
 
-	file, err := os.Create(fullPath)
+	file, err := os.Create(fullPath) // #nosec G304 - path is validated above
 	if err != nil {
 		return err
 	}
@@ -43,6 +51,12 @@ func (s *LocalStorage) Save(path string, content io.Reader, size int64, contentT
 }
 
 func (s *LocalStorage) Delete(path string) error {
-	fullPath := filepath.Join(s.Root, path)
+	// Clean and validate path to prevent directory traversal
+	fullPath := filepath.Join(s.Root, filepath.Clean(path))
+	relPath, err := filepath.Rel(s.Root, fullPath)
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		return errors.New("invalid path: directory traversal attempt")
+	}
+
 	return os.Remove(fullPath)
 }
