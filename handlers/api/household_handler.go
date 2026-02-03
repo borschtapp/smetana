@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -27,7 +27,7 @@ import (
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/households/{id} [get]
-func GetHousehold(c *fiber.Ctx) error {
+func GetHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid household id")
@@ -72,14 +72,14 @@ type UpdateHouseholdForm struct {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/households/{id} [patch]
-func UpdateHousehold(c *fiber.Ctx) error {
+func UpdateHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid household id")
 	}
 
 	var form UpdateHouseholdForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -128,7 +128,7 @@ func UpdateHousehold(c *fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/households/{id}/members [get]
-func GetHouseholdMembers(c *fiber.Ctx) error {
+func GetHouseholdMembers(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid household id")
@@ -186,14 +186,14 @@ type AddMemberForm struct {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/households/{id}/members [post]
-func AddHouseholdMember(c *fiber.Ctx) error {
+func AddHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid household id")
 	}
 
 	var form AddMemberForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -241,7 +241,7 @@ func AddHouseholdMember(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/households/{id}/members/{userId} [delete]
-func RemoveHouseholdMember(c *fiber.Ctx) error {
+func RemoveHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid household id")

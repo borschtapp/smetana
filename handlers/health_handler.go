@@ -1,6 +1,6 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import "github.com/gofiber/fiber/v3"
 
 type SuccessMessage struct {
 	Success bool   `json:"success"`
@@ -15,7 +15,7 @@ type SuccessMessage struct {
 // @Produce json
 // @Success 200 {object} SuccessMessage
 // @Router /_health [get]
-func HealthCheck(c *fiber.Ctx) error {
+func HealthCheck(c fiber.Ctx) error {
 	return c.JSON(SuccessMessage{
 		Success: true,
 		Message: "Online, caffeinated, and ready to rock your requests!",

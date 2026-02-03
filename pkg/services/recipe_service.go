@@ -9,7 +9,7 @@ import (
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
 	"github.com/borschtapp/krip/model"
-	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

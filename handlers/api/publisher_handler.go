@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/pkg/database"
@@ -20,7 +20,7 @@ import (
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/publishers [get]
-func GetPublishers(c *fiber.Ctx) error {
+func GetPublishers(c fiber.Ctx) error {
 	p := types.GetPagination(c)
 
 	var total int64

@@ -154,8 +154,11 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "keyword", Label: keyword, Slug: utils.CreateTag(keyword)})
 		}
 	}
-	if kripRecipe.Yield > 0 {
-		recipe.Yield = &kripRecipe.Yield
+	if len(kripRecipe.Yield) != 0 {
+		yield := kUtils.FindInt(&kripRecipe.Yield)
+		if yield > 0 {
+			recipe.Yield = &yield
+		}
 	}
 	if len(kripRecipe.Ingredients) > 0 {
 		for _, str := range kripRecipe.Ingredients {
@@ -167,19 +170,18 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 		recipe.Equipment = &kripRecipe.Equipment
 	}
 	if kripRecipe.Nutrition != nil {
-		// TODO: make krip return value in float64 or int
 		recipe.Nutrition = &Nutrition{
-			Calories:    float64(kUtils.FindNumber(kripRecipe.Nutrition.Calories)),
+			Calories:    kripRecipe.Nutrition.Calories,
 			ServingSize: kripRecipe.Nutrition.ServingSize,
-			Carbs:       float64(kUtils.ParseToMillis(kripRecipe.Nutrition.CarbohydrateContent)),
-			CarbFiber:   float64(kUtils.ParseToMillis(kripRecipe.Nutrition.FiberContent)),
-			CarbSugar:   float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SugarContent)),
-			Cholesterol: float64(kUtils.ParseToMillis(kripRecipe.Nutrition.CholesterolContent, 1)),
-			Sodium:      float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SodiumContent, 1)),
-			Fats:        float64(kUtils.ParseToMillis(kripRecipe.Nutrition.FatContent)),
-			FatSat:      float64(kUtils.ParseToMillis(kripRecipe.Nutrition.SaturatedFatContent)),
-			FatTrans:    float64(kUtils.ParseToMillis(kripRecipe.Nutrition.TransFatContent)),
-			Protein:     float64(kUtils.ParseToMillis(kripRecipe.Nutrition.ProteinContent)),
+			Carbs:       kripRecipe.Nutrition.CarbohydrateContent,
+			CarbFiber:   kripRecipe.Nutrition.FiberContent,
+			CarbSugar:   kripRecipe.Nutrition.SugarContent,
+			Cholesterol: kripRecipe.Nutrition.CholesterolContent,
+			Sodium:      kripRecipe.Nutrition.SodiumContent,
+			Fats:        kripRecipe.Nutrition.FatContent,
+			FatSat:      kripRecipe.Nutrition.SaturatedFatContent,
+			FatTrans:    kripRecipe.Nutrition.TransFatContent,
+			Protein:     kripRecipe.Nutrition.ProteinContent,
 		}
 	}
 	if kripRecipe.Rating != nil {

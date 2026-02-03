@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -26,7 +26,7 @@ import (
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
 // @Failure 401 {object} errors.Error
 // @Router /api/shoppinglist [get]
-func GetShoppingList(c *fiber.Ctx) error {
+func GetShoppingList(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
@@ -75,9 +75,9 @@ type ShoppingListForm struct {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/shoppinglist [post]
-func CreateShoppingListItem(c *fiber.Ctx) error {
+func CreateShoppingListItem(c fiber.Ctx) error {
 	var form ShoppingListForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -135,14 +135,14 @@ type UpdateShoppingListForm struct {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/shoppinglist/{id} [patch]
-func UpdateShoppingListItem(c *fiber.Ctx) error {
+func UpdateShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid item id")
 	}
 
 	var form UpdateShoppingListForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -199,7 +199,7 @@ func UpdateShoppingListItem(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/shoppinglist/{id} [delete]
-func DeleteShoppingListItem(c *fiber.Ctx) error {
+func DeleteShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid item id")

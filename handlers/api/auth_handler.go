@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -42,9 +42,9 @@ type LoginForm struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Router /api/auth/login [post]
-func (h *AuthHandler) Login(c *fiber.Ctx) error {
+func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var requestBody LoginForm
-	if err := c.BodyParser(&requestBody); err != nil {
+	if err := c.Bind().Body(&requestBody); err != nil {
 		return errors.BadRequest(err.Error())
 	}
 
@@ -111,9 +111,9 @@ type RenewForm struct {
 // @Failure 400 {object} errors.Error
 // @Failure 401 {object} errors.Error
 // @Router /api/auth/refresh [post]
-func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
+func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	var requestBody RenewForm
-	if err := c.BodyParser(&requestBody); err != nil {
+	if err := c.Bind().Body(&requestBody); err != nil {
 		return errors.BadRequest(err.Error())
 	}
 
@@ -166,9 +166,9 @@ type RegisterForm struct {
 // @Success 201 {object} AuthResponse
 // @Failure 400 {object} errors.Error
 // @Router /api/auth/register [post]
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
+func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var requestBody RegisterForm
-	if err := c.BodyParser(&requestBody); err != nil {
+	if err := c.Bind().Body(&requestBody); err != nil {
 		return errors.BadRequest(err.Error())
 	}
 
@@ -237,7 +237,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 // @Tags auth
 // @Success 302
 // @Router /api/auth/oidc/login [get]
-func (h *AuthHandler) OIDCLogin(c *fiber.Ctx) error {
+func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 	if h.oidcService == nil {
 		return errors.NotImplemented("OIDC service not configured")
 	}
@@ -251,7 +251,7 @@ func (h *AuthHandler) OIDCLogin(c *fiber.Ctx) error {
 		SameSite: "Lax",
 		MaxAge:   600, // 10 minutes
 	})
-	return c.Redirect(h.oidcService.GetLoginURL(state))
+	return c.Redirect().To(h.oidcService.GetLoginURL(state))
 }
 
 // OIDCCallback godoc
@@ -262,7 +262,7 @@ func (h *AuthHandler) OIDCLogin(c *fiber.Ctx) error {
 // @Failure 400 {object} errors.Error
 // @Failure 500 {object} errors.Error
 // @Router /api/auth/oidc/callback [get]
-func (h *AuthHandler) OIDCCallback(c *fiber.Ctx) error {
+func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	if h.oidcService == nil {
 		return errors.NotImplemented("OIDC service not configured")
 	}
@@ -281,7 +281,7 @@ func (h *AuthHandler) OIDCCallback(c *fiber.Ctx) error {
 		return errors.BadRequest("Missing code")
 	}
 
-	_, idToken, err := h.oidcService.Exchange(c.Context(), code)
+	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
 		return errors.BadRequest("Failed to exchange token: " + err.Error())
 	}
@@ -337,3 +337,5 @@ func (h *AuthHandler) OIDCCallback(c *fiber.Ctx) error {
 		return err
 	}
 }
+
+// fiber:context-methods migrated

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -26,7 +26,7 @@ import (
 // @Success 200 {object} types.ListResponse[domain.Collection]
 // @Failure 401 {object} errors.Error
 // @Router /api/collections [get]
-func GetCollections(c *fiber.Ctx) error {
+func GetCollections(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
@@ -74,9 +74,9 @@ type CollectionForm struct {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/collections [post]
-func CreateCollection(c *fiber.Ctx) error {
+func CreateCollection(c fiber.Ctx) error {
 	var form CollectionForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -121,7 +121,7 @@ func CreateCollection(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/collections/{id} [get]
-func GetCollection(c *fiber.Ctx) error {
+func GetCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")
@@ -173,14 +173,14 @@ type UpdateCollectionForm struct {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/collections/{id} [patch]
-func UpdateCollection(c *fiber.Ctx) error {
+func UpdateCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")
 	}
 
 	var form UpdateCollectionForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -252,7 +252,7 @@ func UpdateCollection(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/collections/{id} [delete]
-func DeleteCollection(c *fiber.Ctx) error {
+func DeleteCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")

@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
@@ -24,7 +24,7 @@ import (
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/users/{id} [get]
-func GetUser(c *fiber.Ctx) error {
+func GetUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return errors.BadRequest("invalid user id")
@@ -65,14 +65,14 @@ type UpdateUserForm struct {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/users/{id} [patch]
-func UpdateUser(c *fiber.Ctx) error {
+func UpdateUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return errors.BadRequest("invalid user id")
 	}
 
 	var requestBody UpdateUserForm
-	if err := c.BodyParser(&requestBody); err != nil {
+	if err := c.Bind().Body(&requestBody); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func UpdateUser(c *fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/users/{id} [delete]
-func DeleteUser(c *fiber.Ctx) error {
+func DeleteUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return errors.BadRequest("invalid user id")

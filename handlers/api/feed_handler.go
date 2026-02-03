@@ -8,7 +8,7 @@ import (
 	"borscht.app/smetana/pkg/services"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -37,9 +37,9 @@ type SubscribeRequest struct {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/feeds [post]
-func (h *FeedHandler) Subscribe(c *fiber.Ctx) error {
+func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 	var req SubscribeRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -69,7 +69,7 @@ func (h *FeedHandler) Subscribe(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/feeds/{id} [delete]
-func (h *FeedHandler) Unsubscribe(c *fiber.Ctx) error {
+func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid feed id")
@@ -102,7 +102,7 @@ func (h *FeedHandler) Unsubscribe(c *fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/feeds [get]
-func (h *FeedHandler) ListSubscriptions(c *fiber.Ctx) error {
+func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (h *FeedHandler) ListSubscriptions(c *fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/feeds/stream [get]
-func (h *FeedHandler) GetStream(c *fiber.Ctx) error {
+func (h *FeedHandler) GetStream(c fiber.Ctx) error {
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err

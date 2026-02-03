@@ -3,8 +3,8 @@ package middlewares
 import (
 	"os"
 
-	"github.com/gofiber/fiber/v2"
-	jwtware "github.com/gofiber/jwt/v3"
+	jwtware "github.com/gofiber/contrib/v3/jwt"
+	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/pkg/errors"
 )
@@ -16,13 +16,12 @@ func Protected() fiber.Handler {
 
 	// Create config for JWT authentication middlewares.
 	return jwtware.New(jwtware.Config{
-		SigningKey:   []byte(secretKey),
-		ContextKey:   "jwt", // used in private routes
+		SigningKey:   jwtware.SigningKey{Key: []byte(secretKey)},
 		ErrorHandler: jwtError,
 	})
 }
 
-func jwtError(c *fiber.Ctx, err error) error {
+func jwtError(c fiber.Ctx, err error) error {
 	if err.Error() == "Missing or malformed JWT" {
 		return c.Status(fiber.StatusBadRequest).JSON(errors.BadRequest("Authorization header missing"))
 	}

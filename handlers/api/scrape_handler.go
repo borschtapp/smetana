@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -42,9 +42,9 @@ type ImportRequest struct {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/import [post]
-func (h *ScrapeHandler) Scrape(c *fiber.Ctx) error {
+func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
 	var request ImportRequest
-	if err := c.BodyParser(&request); err != nil {
+	if err := c.Bind().Body(&request); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 

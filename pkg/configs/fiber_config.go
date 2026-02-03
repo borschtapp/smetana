@@ -2,10 +2,9 @@ package configs
 
 import (
 	"errors"
-	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 
 	smetana "borscht.app/smetana/pkg/errors"
@@ -15,18 +14,13 @@ import (
 // FiberConfig func for configuration Fiber app.
 // See: https://docs.gofiber.io/api/fiber#config
 func FiberConfig() fiber.Config {
-	// Define server settings.
-	env := utils.Getenv("ENV", "development")
 	readTimeoutSecondsCount := utils.GetenvInt("SERVER_READ_TIMEOUT", 60)
-
-	isProduction := strings.EqualFold(env, "PRODUCTION")
 
 	// Return Fiber configuration.
 	return fiber.Config{
-		Prefork:     isProduction,
 		ReadTimeout: time.Second * time.Duration(readTimeoutSecondsCount),
 
-		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			var se *smetana.Error
 
 			if errors.Is(err, gorm.ErrRecordNotFound) {

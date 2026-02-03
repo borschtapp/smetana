@@ -5,7 +5,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/pkg/database"
-	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 	"gorm.io/gorm/clause"
 )

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/pkg/errors"
@@ -34,7 +34,7 @@ func NewUploadHandler(imageService *services.ImageService) *UploadHandler {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/uploads [post]
-func (h *UploadHandler) Upload(c *fiber.Ctx) error {
+func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		return errors.BadRequest("Missing file: " + err.Error())

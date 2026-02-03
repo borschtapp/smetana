@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -29,7 +29,7 @@ import (
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
 // @Failure 401 {object} errors.Error
 // @Router /api/mealplan [get]
-func GetMealPlan(c *fiber.Ctx) error {
+func GetMealPlan(c fiber.Ctx) error {
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 
@@ -94,9 +94,9 @@ type MealPlanForm struct {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/mealplan [post]
-func CreateMealPlan(c *fiber.Ctx) error {
+func CreateMealPlan(c fiber.Ctx) error {
 	var form MealPlanForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -159,14 +159,14 @@ type UpdateMealPlanForm struct {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/mealplan/{id} [patch]
-func UpdateMealPlan(c *fiber.Ctx) error {
+func UpdateMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid meal plan id")
 	}
 
 	var form UpdateMealPlanForm
-	if err := c.BodyParser(&form); err != nil {
+	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
@@ -233,7 +233,7 @@ func UpdateMealPlan(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/mealplan/{id} [delete]
-func DeleteMealPlan(c *fiber.Ctx) error {
+func DeleteMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid meal plan id")

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
@@ -38,7 +38,7 @@ func NewRecipeHandler(recipeService *services.RecipeService) *RecipeHandler {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes [get]
-func (h *RecipeHandler) GetRecipes(c *fiber.Ctx) error {
+func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (h *RecipeHandler) GetRecipes(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id} [get]
-func (h *RecipeHandler) GetRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -123,9 +123,9 @@ func (h *RecipeHandler) GetRecipe(c *fiber.Ctx) error {
 // @Failure 401 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes [post]
-func (h *RecipeHandler) CreateRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 	recipe := new(domain.Recipe)
-	if err := c.BodyParser(&recipe); err != nil {
+	if err := c.Bind().Body(&recipe); err != nil {
 		return err
 	}
 
@@ -149,7 +149,7 @@ func (h *RecipeHandler) CreateRecipe(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id} [patch]
-func (h *RecipeHandler) UpdateRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -170,7 +170,7 @@ func (h *RecipeHandler) UpdateRecipe(c *fiber.Ctx) error {
 	}
 
 	var recipe domain.Recipe
-	if err := c.BodyParser(&recipe); err != nil {
+	if err := c.Bind().Body(&recipe); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 	recipe.ID = id
@@ -193,7 +193,7 @@ func (h *RecipeHandler) UpdateRecipe(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id} [delete]
-func (h *RecipeHandler) DeleteRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -231,7 +231,7 @@ func (h *RecipeHandler) DeleteRecipe(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/favorite [post]
-func (h *RecipeHandler) SaveRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return err
@@ -260,7 +260,7 @@ func (h *RecipeHandler) SaveRecipe(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/favorite [delete]
-func (h *RecipeHandler) UnsaveRecipe(c *fiber.Ctx) error {
+func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func (h *RecipeHandler) UnsaveRecipe(c *fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/ingredients [post]
-func (h *RecipeHandler) CreateIngredient(c *fiber.Ctx) error {
+func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -312,7 +312,7 @@ func (h *RecipeHandler) CreateIngredient(c *fiber.Ctx) error {
 	}
 
 	ingredient := new(domain.RecipeIngredient)
-	if err := c.BodyParser(&ingredient); err != nil {
+	if err := c.Bind().Body(&ingredient); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 	ingredient.RecipeID = recipeID
@@ -339,7 +339,7 @@ func (h *RecipeHandler) CreateIngredient(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/ingredients/{ingredientId} [patch]
-func (h *RecipeHandler) UpdateIngredient(c *fiber.Ctx) error {
+func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -365,7 +365,7 @@ func (h *RecipeHandler) UpdateIngredient(c *fiber.Ctx) error {
 	}
 
 	ingredient := new(domain.RecipeIngredient)
-	if err := c.BodyParser(&ingredient); err != nil {
+	if err := c.Bind().Body(&ingredient); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 	ingredient.ID = ingredientID
@@ -391,7 +391,7 @@ func (h *RecipeHandler) UpdateIngredient(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/ingredients/{ingredientId} [delete]
-func (h *RecipeHandler) DeleteIngredient(c *fiber.Ctx) error {
+func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -436,7 +436,7 @@ func (h *RecipeHandler) DeleteIngredient(c *fiber.Ctx) error {
 // @Failure 403 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/instructions [post]
-func (h *RecipeHandler) CreateInstruction(c *fiber.Ctx) error {
+func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -457,7 +457,7 @@ func (h *RecipeHandler) CreateInstruction(c *fiber.Ctx) error {
 	}
 
 	instruction := new(domain.RecipeInstruction)
-	if err := c.BodyParser(&instruction); err != nil {
+	if err := c.Bind().Body(&instruction); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 	instruction.RecipeID = recipeID
@@ -484,7 +484,7 @@ func (h *RecipeHandler) CreateInstruction(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/instructions/{instructionId} [patch]
-func (h *RecipeHandler) UpdateInstruction(c *fiber.Ctx) error {
+func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
@@ -510,7 +510,7 @@ func (h *RecipeHandler) UpdateInstruction(c *fiber.Ctx) error {
 	}
 
 	instruction := new(domain.RecipeInstruction)
-	if err := c.BodyParser(&instruction); err != nil {
+	if err := c.Bind().Body(&instruction); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 	instruction.ID = instructionID
@@ -536,7 +536,7 @@ func (h *RecipeHandler) UpdateInstruction(c *fiber.Ctx) error {
 // @Failure 404 {object} errors.Error
 // @Security ApiKeyAuth
 // @Router /api/recipes/{id}/instructions/{instructionId} [delete]
-func (h *RecipeHandler) DeleteInstruction(c *fiber.Ctx) error {
+func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid recipe id")
