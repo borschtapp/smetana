@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"os"
 	"strings"
 
@@ -39,7 +40,7 @@ func ExtractTokenMetadata(c fiber.Ctx) (*TokenMetadata, error) {
 		}, nil
 	}
 
-	return nil, err
+	return nil, errors.New("invalid token")
 }
 
 func extractToken(c fiber.Ctx) string {

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/doyensec/safeurl"
 	_ "golang.org/x/image/webp"
 
 	"borscht.app/smetana/pkg/storage"
@@ -32,11 +33,9 @@ type UploadedImage struct {
 }
 
 func (s *ImageService) DownloadAndPutImage(imageUrl string, savePath string) (*UploadedImage, error) {
-	if !utils.IsPublicURL(imageUrl) {
-		return nil, errors.New("invalid or non-public image URL")
-	}
-
-	resp, err := http.Get(imageUrl) // #nosec G107
+	// safeurl validates the resolved IP at connection time, preventing SSRF and DNS rebinding attacks
+	client := safeurl.Client(safeurl.GetConfigBuilder().Build())
+	resp, err := client.Get(imageUrl)
 	if err != nil {
 		return nil, err
 	}

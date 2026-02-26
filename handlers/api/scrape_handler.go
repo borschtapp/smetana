@@ -63,7 +63,7 @@ func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
 		First(&recipeByUrl).Error; err == nil {
 		if !request.Update {
 			// Recipe exists, just add to user's recipes
-			if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Append(&domain.Recipe{ID: recipeByUrl.ID}); err != nil {
+			if err := h.recipeService.SaveRecipe(tokenData.ID, recipeByUrl.ID); err != nil {
 				return err
 			}
 			return c.JSON(recipeByUrl)
@@ -85,7 +85,7 @@ func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
 	}
 
 	// Add to user's recipes
-	if err := database.DB.Model(&domain.User{ID: tokenData.ID}).Association("Recipes").Append(&domain.Recipe{ID: recipe.ID}); err != nil {
+	if err := h.recipeService.SaveRecipe(tokenData.ID, recipe.ID); err != nil {
 		return err
 	}
 

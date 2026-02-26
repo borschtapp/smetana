@@ -58,6 +58,7 @@ require (
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/doyensec/safeurl v0.2.2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect

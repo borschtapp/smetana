@@ -124,6 +124,11 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [post]
 func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
+	tokenData, err := utils.ExtractTokenMetadata(c)
+	if err != nil {
+		return err
+	}
+
 	recipe := new(domain.Recipe)
 	if err := c.Bind().Body(&recipe); err != nil {
 		return err
@@ -132,6 +137,12 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 	if err := h.recipeService.CreateRecipe(recipe); err != nil {
 		return err
 	}
+
+	// Add recipe to user's saved recipes so the creator has access
+	if err := h.recipeService.SaveRecipe(tokenData.ID, recipe.ID); err != nil {
+		return err
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(recipe)
 }
 

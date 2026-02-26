@@ -218,13 +218,22 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 		return
 	}
 
+	// Ensure images have RecipeID set
+	for _, image := range recipe.Images {
+		image.RecipeID = recipe.ID
+	}
+
+	if err := database.DB.Create(recipe.Images).Error; err != nil {
+		log.Warnf("failed to save images: %v", err)
+		return
+	}
+
 	var wg sync.WaitGroup
 	// Limit concurrent downloads to 5 to avoid resource exhaustion
 	sem := make(chan struct{}, 5)
 
 	for _, image := range recipe.Images {
 		wg.Add(1)
-		image.RecipeID = recipe.ID
 		go func(img *domain.RecipeImage) {
 			defer wg.Done()
 			sem <- struct{}{}        // Acquire token
@@ -239,11 +248,6 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 				img.Height = info.Height
 			}
 		}(image)
-	}
-
-	// Save initial image records
-	if err := database.DB.Create(recipe.Images).Error; err != nil {
-		log.Warnf("failed to save images: %v", err)
 	}
 
 	// Wait for downloads to finish so we update dimensions/path

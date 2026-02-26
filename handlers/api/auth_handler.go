@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -15,6 +16,8 @@ import (
 	"borscht.app/smetana/pkg/services"
 	"borscht.app/smetana/pkg/utils"
 )
+
+var validate = validator.New()
 
 type AuthHandler struct {
 	oidcService *services.OIDCService
@@ -48,7 +51,6 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 		return errors.BadRequest(err.Error())
 	}
 
-	var validate = validator.New()
 	if err := validate.Struct(requestBody); err != nil {
 		return errors.BadRequestVal(err)
 	}
@@ -117,7 +119,6 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 		return errors.BadRequest(err.Error())
 	}
 
-	var validate = validator.New()
 	if err := validate.Struct(requestBody); err != nil {
 		return errors.BadRequestVal(err)
 	}
@@ -172,7 +173,6 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		return errors.BadRequest(err.Error())
 	}
 
-	var validate = validator.New()
 	if err := validate.Struct(requestBody); err != nil {
 		return errors.BadRequestVal(err)
 	}
@@ -285,7 +285,8 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 
 	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
-		return errors.BadRequest("Failed to exchange token: " + err.Error())
+		log.Warnf("OIDC token exchange failed: %v", err)
+		return errors.BadRequest("Failed to exchange token")
 	}
 
 	var claims struct {
@@ -315,17 +316,22 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 			user.Name = strings.Split(claims.Email, "@")[0]
 		}
 
-		// Create household
-		household := &domain.Household{
-			Name: user.Name + "'s Household",
-		}
-		if err := database.DB.Create(household).Error; err != nil {
-			return err
-		}
-		user.Household = household
-		user.HouseholdID = household.ID
+		err = database.DB.Transaction(func(tx *gorm.DB) error {
+			household := &domain.Household{
+				Name: user.Name + "'s Household",
+			}
+			if err := tx.Create(household).Error; err != nil {
+				return err
+			}
 
-		if err := database.DB.Create(&user).Error; err != nil {
+			user.HouseholdID = household.ID
+			user.Household = household
+			if err := tx.Create(&user).Error; err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 	} else if err != nil {
