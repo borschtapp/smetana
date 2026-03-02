@@ -4,153 +4,98 @@ import (
 	"sync"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
 	"github.com/borschtapp/krip/model"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type RecipeService struct {
-	imageService     *ImageService
-	publisherService *PublisherService
-	foodService      *FoodService
-	unitService      *UnitService
+	repo             domain.RecipeRepository
+	imageService     domain.ImageService
+	publisherService domain.PublisherService
+	foodRepo         domain.FoodRepository
+	unitRepo         domain.UnitRepository
+	userRepo         domain.UserRepository
 }
 
-func NewRecipeService(imageService *ImageService, publisherService *PublisherService, foodService *FoodService, unitService *UnitService) *RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, userRepo domain.UserRepository) *RecipeService {
 	return &RecipeService{
+		repo:             repo,
 		imageService:     imageService,
 		publisherService: publisherService,
-		foodService:      foodService,
-		unitService:      unitService,
+		foodRepo:         foodRepo,
+		unitRepo:         unitRepo,
+		userRepo:         userRepo,
 	}
 }
 
-func (s *RecipeService) GetUserRecipes(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
-	var recipes []domain.Recipe
-
-	baseQuery := database.DB.Model(&domain.Recipe{}).
-		Joins("JOIN recipe_saved ON recipe_saved.recipe_id = recipes.id").
-		Where("recipe_saved.user_id = ?", userID)
-
-	if q != "" {
-		baseQuery = baseQuery.Where("recipes.name LIKE ? OR recipes.description LIKE ?", "%"+q+"%", "%"+q+"%")
-	}
-
-	if cuisine != "" {
-		baseQuery = baseQuery.Joins("Left JOIN recipe_taxonomies as rt_cuisine ON rt_cuisine.recipe_id = recipes.id").
-			Joins("Left JOIN taxonomies as t_cuisine ON t_cuisine.id = rt_cuisine.taxonomy_id").
-			Where("t_cuisine.type = ? AND t_cuisine.slug = ?", "cuisine", cuisine)
-	}
-
-	if len(taxonomies) > 0 {
-		baseQuery = baseQuery.Joins("Left JOIN recipe_taxonomies as rt_tax ON rt_tax.recipe_id = recipes.id").
-			Joins("Left JOIN taxonomies as t_tax ON t_tax.id = rt_tax.taxonomy_id").
-			Where("t_tax.slug IN ?", taxonomies)
-	}
-
-	var total int64
-	if err := baseQuery.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	if err := baseQuery.
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		Order("recipes.updated DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&recipes).Error; err != nil {
-		return nil, 0, err
-	}
-	return recipes, total, nil
+func (s *RecipeService) ById(id uuid.UUID) (*domain.Recipe, error) {
+	return s.repo.ById(id)
 }
 
-func (s *RecipeService) GetRecipe(id uuid.UUID) (*domain.Recipe, error) {
-	var recipe domain.Recipe
-	if err := database.DB.
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		First(&recipe, id).Error; err != nil {
-		return nil, err
-	}
-	return &recipe, nil
+func (s *RecipeService) ByUrl(url string) (*domain.Recipe, error) {
+	return s.repo.ByUrl(url)
 }
 
-func (s *RecipeService) CreateRecipe(recipe *domain.Recipe) error {
-	return database.DB.Create(recipe).Error
+func (s *RecipeService) Create(recipe *domain.Recipe) error {
+	return s.repo.Create(recipe)
 }
 
-func (s *RecipeService) UpdateRecipe(recipe *domain.Recipe) error {
-	return database.DB.Model(recipe).Updates(recipe).Error
+func (s *RecipeService) Update(recipe *domain.Recipe) error {
+	return s.repo.Update(recipe)
 }
 
-func (s *RecipeService) DeleteRecipe(id uuid.UUID) error {
-	return database.DB.Delete(&domain.Recipe{}, id).Error
+func (s *RecipeService) Delete(id uuid.UUID) error {
+	return s.repo.Delete(id)
 }
 
-func (s *RecipeService) CanUserAccessRecipe(userID uuid.UUID, recipeID uuid.UUID) (bool, error) {
-	var count int64
-	err := database.DB.Table("recipe_saved").
-		Where("user_id = ? AND recipe_id = ?", userID, recipeID).
-		Count(&count).Error
+func (s *RecipeService) CanUserAccess(userID uuid.UUID, recipeID uuid.UUID) (bool, error) {
+	return s.repo.IsUserSaved(userID, recipeID)
+}
+
+func (s *RecipeService) UserSave(userID uuid.UUID, recipeID uuid.UUID) error {
+	user, err := s.userRepo.ById(userID)
 	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (s *RecipeService) SaveRecipe(userID uuid.UUID, recipeID uuid.UUID) error {
-	var user domain.User
-	if err := database.DB.Select("household_id").First(&user, userID).Error; err != nil {
 		return err
 	}
-
-	return database.DB.Create(&domain.RecipeSaved{
-		UserID:      userID,
-		RecipeID:    recipeID,
-		HouseholdID: user.HouseholdID,
-	}).Error
+	return s.repo.UserSave(userID, recipeID, user.HouseholdID)
 }
 
-func (s *RecipeService) UnsaveRecipe(userID uuid.UUID, recipeID uuid.UUID) error {
-	return database.DB.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error
+func (s *RecipeService) UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error {
+	return s.repo.UserUnsave(userID, recipeID)
+}
+
+func (s *RecipeService) UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
+	return s.repo.UserSearch(userID, q, taxonomies, cuisine, offset, limit)
 }
 
 func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient) error {
-	return database.DB.Create(ingredient).Error
+	return s.repo.CreateIngredient(ingredient)
 }
 
 func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
-	return database.DB.Model(ingredient).Updates(ingredient).Error
+	return s.repo.UpdateIngredient(ingredient)
 }
 
 func (s *RecipeService) DeleteIngredient(id uuid.UUID) error {
-	return database.DB.Delete(&domain.RecipeIngredient{}, id).Error
+	return s.repo.DeleteIngredient(id)
 }
 
 func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction) error {
-	return database.DB.Create(instruction).Error
+	return s.repo.CreateInstruction(instruction)
 }
 
 func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction) error {
-	return database.DB.Model(instruction).Updates(instruction).Error
+	return s.repo.UpdateInstruction(instruction)
 }
 
 func (s *RecipeService) DeleteInstruction(id uuid.UUID) error {
-	return database.DB.Delete(&domain.RecipeInstruction{}, id).Error
+	return s.repo.DeleteInstruction(id)
 }
 
-func (s *RecipeService) ImportFromUrl(url string) (*domain.Recipe, error) {
+func (s *RecipeService) ImportFromURL(url string) (*domain.Recipe, error) {
 	kripRecipe, err := krip.ScrapeUrl(url)
 	if err != nil {
 		return nil, err
@@ -163,7 +108,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 	recipe.FeedID = feedID
 
 	if recipe.Publisher != nil {
-		if err := s.publisherService.FindOrCreatePublisher(recipe.Publisher); err != nil {
+		if err := s.publisherService.FindOrCreate(recipe.Publisher); err != nil {
 			log.Warnf("error creating publisher %v: %s", recipe.Publisher, err.Error())
 		} else {
 			recipe.PublisherID = &recipe.Publisher.ID
@@ -172,7 +117,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 
 	s.ParseAndEnrichIngredients(recipe.Ingredients, kripRecipe.Language)
 
-	if err := database.DB.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit").Create(&recipe).Error; err != nil {
+	if err := s.repo.Import(recipe); err != nil {
 		return nil, err
 	}
 
@@ -194,7 +139,7 @@ func (s *RecipeService) ParseAndEnrichIngredients(ingredients []*domain.RecipeIn
 		}
 		if len(parsed.Ingredient) != 0 {
 			food := &domain.Food{Name: parsed.Ingredient}
-			if err := s.foodService.FindOrCreateFood(food); err != nil {
+			if err := s.foodRepo.FindOrCreate(food); err != nil {
 				log.Warnf("error creating food %v: %s", food, err.Error())
 			} else {
 				ingredient.Food = food
@@ -203,7 +148,7 @@ func (s *RecipeService) ParseAndEnrichIngredients(ingredients []*domain.RecipeIn
 		}
 		if len(parsed.Unit) != 0 {
 			unit := &domain.Unit{Name: parsed.Unit}
-			if err := s.unitService.FindOrCreateUnit(unit); err != nil {
+			if err := s.unitRepo.FindOrCreate(unit); err != nil {
 				log.Warnf("error creating unit %v: %s", unit, err.Error())
 			} else {
 				ingredient.Unit = unit
@@ -218,29 +163,27 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 		return
 	}
 
-	// Ensure images have RecipeID set
 	for _, image := range recipe.Images {
 		image.RecipeID = recipe.ID
 	}
 
-	if err := database.DB.Create(recipe.Images).Error; err != nil {
+	if err := s.repo.CreateImages(recipe.Images); err != nil {
 		log.Warnf("failed to save images: %v", err)
 		return
 	}
 
 	var wg sync.WaitGroup
-	// Limit concurrent downloads to 5 to avoid resource exhaustion
 	sem := make(chan struct{}, 5)
 
 	for _, image := range recipe.Images {
 		wg.Add(1)
 		go func(img *domain.RecipeImage) {
 			defer wg.Done()
-			sem <- struct{}{}        // Acquire token
-			defer func() { <-sem }() // Release token
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
 			basePath := "recipe/" + img.RecipeID.String() + "/" + img.ID.String()
-			if info, err := s.imageService.DownloadAndPutImage(img.RemoteUrl, basePath); err != nil {
+			if info, err := s.imageService.DownloadAndSaveImage(img.RemoteUrl, basePath); err != nil {
 				log.Warnf("failed to download image: %v", err)
 			} else {
 				img.DownloadUrl = &info.Path
@@ -250,13 +193,11 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 		}(image)
 	}
 
-	// Wait for downloads to finish so we update dimensions/path
 	wg.Wait()
 
-	// Update image records with download info
 	for _, img := range recipe.Images {
 		if img.DownloadUrl != nil {
-			database.DB.Save(img)
+			s.repo.UpdateImage(img)
 		}
 	}
 }

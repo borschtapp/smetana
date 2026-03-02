@@ -3,17 +3,25 @@ package api
 import (
 	"errors"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	sErrors "borscht.app/smetana/pkg/errors"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
+
+type ShoppingListHandler struct {
+	shoppingListService domain.ShoppingListService
+	userService         domain.UserService
+}
+
+func NewShoppingListHandler(shoppingListService domain.ShoppingListService, userService domain.UserService) *ShoppingListHandler {
+	return &ShoppingListHandler{
+		shoppingListService: shoppingListService,
+		userService:         userService,
+	}
+}
 
 // GetShoppingList godoc
 // @Summary List shopping list items.
@@ -24,28 +32,23 @@ import (
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist [get]
-func GetShoppingList(c fiber.Ctx) error {
+func (h *ShoppingListHandler) GetShoppingList(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
 	p := types.GetPagination(c)
-	query := database.DB.Preload("Unit").Where("household_id = ?", user.HouseholdID)
-
-	var total int64
-	query.Model(&domain.ShoppingList{}).Count(&total)
-
-	var items []domain.ShoppingList
-	if err := query.Offset(p.Offset()).Limit(p.Limit).Find(&items).Error; err != nil {
+	items, total, err := h.shoppingListService.List(user.HouseholdID, p.Offset(), p.Limit)
+	if err != nil {
 		return err
 	}
 
@@ -72,17 +75,16 @@ type ShoppingListForm struct {
 // @Produce json
 // @Param item body ShoppingListForm true "Shopping list item data"
 // @Success 201 {object} domain.ShoppingList
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist [post]
-func CreateShoppingListItem(c fiber.Ctx) error {
+func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
 	var form ShoppingListForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
-	validate := validator.New()
 	if err := validate.Struct(form); err != nil {
 		return sErrors.BadRequestVal(err)
 	}
@@ -92,8 +94,8 @@ func CreateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
@@ -104,12 +106,8 @@ func CreateShoppingListItem(c fiber.Ctx) error {
 		UnitID:      form.UnitID,
 	}
 
-	if err := database.DB.Create(item).Error; err != nil {
+	if err := h.shoppingListService.Create(item); err != nil {
 		return err
-	}
-
-	if item.UnitID != nil {
-		database.DB.Preload("Unit").First(item)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(item)
@@ -130,13 +128,13 @@ type UpdateShoppingListForm struct {
 // @Param id path string true "Item ID"
 // @Param item body UpdateShoppingListForm true "Shopping list item data"
 // @Success 200 {object} domain.ShoppingList
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist/{id} [patch]
-func UpdateShoppingListItem(c fiber.Ctx) error {
+func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid item id")
@@ -152,14 +150,14 @@ func UpdateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var item domain.ShoppingList
-	if err := database.DB.First(&item, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	item, err := h.shoppingListService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("item not found")
 		}
 		return err
@@ -179,7 +177,7 @@ func UpdateShoppingListItem(c fiber.Ctx) error {
 		item.IsBought = *form.IsBought
 	}
 
-	if err := database.DB.Save(&item).Error; err != nil {
+	if err := h.shoppingListService.Update(item); err != nil {
 		return err
 	}
 
@@ -194,13 +192,13 @@ func UpdateShoppingListItem(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Item ID"
 // @Success 204
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist/{id} [delete]
-func DeleteShoppingListItem(c fiber.Ctx) error {
+func (h *ShoppingListHandler) DeleteShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid item id")
@@ -211,14 +209,14 @@ func DeleteShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var item domain.ShoppingList
-	if err := database.DB.First(&item, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	item, err := h.shoppingListService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("item not found")
 		}
 		return err
@@ -228,7 +226,7 @@ func DeleteShoppingListItem(c fiber.Ctx) error {
 		return sErrors.Forbidden("item does not belong to your household")
 	}
 
-	if err := database.DB.Delete(&item).Error; err != nil {
+	if err := h.shoppingListService.Delete(id); err != nil {
 		return err
 	}
 

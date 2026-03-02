@@ -23,3 +23,11 @@ func (u *Unit) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type UnitRepository interface {
+	FindOrCreate(unit *Unit) error
+}
+
+type UnitService interface {
+	FindOrCreate(unit *Unit) error
+}

@@ -6,6 +6,7 @@ import (
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/borschtapp/krip"
+	"github.com/borschtapp/krip/model"
 	kUtils "github.com/borschtapp/krip/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -13,6 +14,7 @@ import (
 
 type Recipe struct {
 	ID          uuid.UUID       `gorm:"type:char(36);primaryKey" json:"id"`
+	Url         *string         `gorm:"-" json:"url,omitempty"`
 	IsBasedOn   *string         `gorm:"uniqueIndex" json:"is_based_on,omitempty"`
 	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
@@ -232,4 +234,49 @@ func (r *Recipe) BeforeCreate(tx *gorm.DB) error {
 		return err
 	}
 	return nil
+}
+
+type RecipeRepository interface {
+	ById(id uuid.UUID) (*Recipe, error)
+	ByUrl(url string) (*Recipe, error)
+	Create(recipe *Recipe) error
+	Import(recipe *Recipe) error
+	Update(recipe *Recipe) error
+	Delete(id uuid.UUID) error
+
+	IsUserSaved(userID uuid.UUID, recipeID uuid.UUID) (bool, error)
+	UserSave(userID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
+	UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error
+	UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+
+	CreateImages(images []*RecipeImage) error
+	UpdateImage(img *RecipeImage) error
+
+	CreateIngredient(ingredient *RecipeIngredient) error
+	UpdateIngredient(ingredient *RecipeIngredient) error
+	DeleteIngredient(id uuid.UUID) error
+
+	CreateInstruction(instruction *RecipeInstruction) error
+	UpdateInstruction(instruction *RecipeInstruction) error
+	DeleteInstruction(id uuid.UUID) error
+}
+
+type RecipeService interface {
+	ById(id uuid.UUID) (*Recipe, error)
+	ByUrl(url string) (*Recipe, error)
+	Create(recipe *Recipe) error
+	Update(recipe *Recipe) error
+	Delete(id uuid.UUID) error
+	CanUserAccess(userID uuid.UUID, recipeID uuid.UUID) (bool, error)
+	UserSave(userID uuid.UUID, recipeID uuid.UUID) error
+	UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error
+	UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+	CreateIngredient(ingredient *RecipeIngredient) error
+	UpdateIngredient(ingredient *RecipeIngredient) error
+	DeleteIngredient(id uuid.UUID) error
+	CreateInstruction(instruction *RecipeInstruction) error
+	UpdateInstruction(instruction *RecipeInstruction) error
+	DeleteInstruction(id uuid.UUID) error
+	ImportFromURL(url string) (*Recipe, error)
+	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)
 }

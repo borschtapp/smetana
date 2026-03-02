@@ -3,17 +3,25 @@ package api
 import (
 	"errors"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	sErrors "borscht.app/smetana/pkg/errors"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
+
+type CollectionHandler struct {
+	collectionService domain.CollectionService
+	userService       domain.UserService
+}
+
+func NewCollectionHandler(collectionService domain.CollectionService, userService domain.UserService) *CollectionHandler {
+	return &CollectionHandler{
+		collectionService: collectionService,
+		userService:       userService,
+	}
+}
 
 // GetCollections godoc
 // @Summary List user's collections.
@@ -24,28 +32,23 @@ import (
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Collection]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [get]
-func GetCollections(c fiber.Ctx) error {
+func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 	tokenData, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
 	p := types.GetPagination(c)
-	query := database.DB.Where("household_id = ?", user.HouseholdID)
-
-	var total int64
-	query.Model(&domain.Collection{}).Count(&total)
-
-	var collections []domain.Collection
-	if err := query.Offset(p.Offset()).Limit(p.Limit).Find(&collections).Error; err != nil {
+	collections, total, err := h.collectionService.List(user.HouseholdID, p.Offset(), p.Limit)
+	if err != nil {
 		return err
 	}
 
@@ -71,17 +74,16 @@ type CollectionForm struct {
 // @Produce json
 // @Param collection body CollectionForm true "Collection data"
 // @Success 201 {object} domain.Collection
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [post]
-func CreateCollection(c fiber.Ctx) error {
+func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 	var form CollectionForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
-	validate := validator.New()
 	if err := validate.Struct(form); err != nil {
 		return sErrors.BadRequestVal(err)
 	}
@@ -91,8 +93,8 @@ func CreateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
@@ -102,7 +104,7 @@ func CreateCollection(c fiber.Ctx) error {
 		Description: form.Description,
 	}
 
-	if err := database.DB.Create(collection).Error; err != nil {
+	if err := h.collectionService.Create(collection); err != nil {
 		return err
 	}
 
@@ -110,19 +112,18 @@ func CreateCollection(c fiber.Ctx) error {
 }
 
 // GetCollection godoc
-// @Summary Get collection details.
-// @Description Returns a collection with all its recipes.
+// @Summary Returns a collection with all its recipes.
 // @Tags collections
 // @Accept */*
 // @Produce json
 // @Param id path string true "Collection ID"
 // @Success 200 {object} domain.Collection
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [get]
-func GetCollection(c fiber.Ctx) error {
+func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")
@@ -133,14 +134,14 @@ func GetCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var collection domain.Collection
-	if err := database.DB.Preload("Recipes").First(&collection, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	collection, err := h.collectionService.ByIdWithRecipes(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("collection not found")
 		}
 		return err
@@ -154,9 +155,8 @@ func GetCollection(c fiber.Ctx) error {
 }
 
 type UpdateCollectionForm struct {
-	Name        *string     `json:"name"`
-	Description *string     `json:"description"`
-	RecipeIDs   []uuid.UUID `json:"recipe_ids"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
 }
 
 // UpdateCollection godoc
@@ -168,13 +168,13 @@ type UpdateCollectionForm struct {
 // @Param id path string true "Collection ID"
 // @Param collection body UpdateCollectionForm true "Collection update data"
 // @Success 200 {object} domain.Collection
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [patch]
-func UpdateCollection(c fiber.Ctx) error {
+func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")
@@ -190,14 +190,14 @@ func UpdateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var collection domain.Collection
-	if err := database.DB.First(&collection, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	collection, err := h.collectionService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("collection not found")
 		}
 		return err
@@ -214,30 +214,115 @@ func UpdateCollection(c fiber.Ctx) error {
 		collection.Description = *form.Description
 	}
 
-	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(&collection).Error; err != nil {
-			return err
-		}
-
-		if form.RecipeIDs != nil {
-			var recipes []domain.Recipe
-			if len(form.RecipeIDs) > 0 {
-				if err := tx.Where("id IN ?", form.RecipeIDs).Find(&recipes).Error; err != nil {
-					return err
-				}
-			}
-			if err := tx.Model(&collection).Association("Recipes").Replace(recipes); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
+	if err := h.collectionService.Update(collection); err != nil {
 		return err
 	}
 
 	return c.JSON(collection)
+}
+
+// AddRecipeToCollection godoc
+// @Summary Add a recipe to a collection.
+// @Tags collections
+// @Param id path string true "Collection ID"
+// @Param recipeId path string true "Recipe ID"
+// @Success 204
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/collections/{id}/recipes/{recipeId} [post]
+func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return sErrors.BadRequest("invalid collection id")
+	}
+
+	recipeID, err := uuid.Parse(c.Params("recipeId"))
+	if err != nil {
+		return sErrors.BadRequest("invalid recipe id")
+	}
+
+	tokenData, err := utils.ExtractTokenMetadata(c)
+	if err != nil {
+		return err
+	}
+
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
+		return err
+	}
+
+	collection, err := h.collectionService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
+			return sErrors.NotFound("collection not found")
+		}
+		return err
+	}
+
+	if collection.HouseholdID != user.HouseholdID {
+		return sErrors.Forbidden("collection does not belong to your household")
+	}
+
+	if err := h.collectionService.AddRecipe(collection, recipeID); err != nil {
+		return err
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// RemoveRecipeFromCollection godoc
+// @Summary Remove a recipe from a collection.
+// @Tags collections
+// @Param id path string true "Collection ID"
+// @Param recipeId path string true "Recipe ID"
+// @Success 204
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/collections/{id}/recipes/{recipeId} [delete]
+func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return sErrors.BadRequest("invalid collection id")
+	}
+
+	recipeID, err := uuid.Parse(c.Params("recipeId"))
+	if err != nil {
+		return sErrors.BadRequest("invalid recipe id")
+	}
+
+	tokenData, err := utils.ExtractTokenMetadata(c)
+	if err != nil {
+		return err
+	}
+
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
+		return err
+	}
+
+	collection, err := h.collectionService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
+			return sErrors.NotFound("collection not found")
+		}
+		return err
+	}
+
+	if collection.HouseholdID != user.HouseholdID {
+		return sErrors.Forbidden("collection does not belong to your household")
+	}
+
+	if err := h.collectionService.RemoveRecipe(collection, recipeID); err != nil {
+		return err
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // DeleteCollection godoc
@@ -248,12 +333,12 @@ func UpdateCollection(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Collection ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [delete]
-func DeleteCollection(c fiber.Ctx) error {
+func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid collection id")
@@ -264,14 +349,14 @@ func DeleteCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var collection domain.Collection
-	if err := database.DB.First(&collection, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	collection, err := h.collectionService.ById(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("collection not found")
 		}
 		return err
@@ -281,7 +366,7 @@ func DeleteCollection(c fiber.Ctx) error {
 		return sErrors.Forbidden("collection does not belong to your household")
 	}
 
-	if err := database.DB.Delete(&collection).Error; err != nil {
+	if err := h.collectionService.Delete(id); err != nil {
 		return err
 	}
 

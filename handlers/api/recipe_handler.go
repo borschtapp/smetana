@@ -4,22 +4,19 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gofiber/fiber/v3"
-	"gorm.io/gorm"
-
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/errors"
-	"borscht.app/smetana/pkg/services"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
 type RecipeHandler struct {
-	recipeService *services.RecipeService
+	recipeService domain.RecipeService
 }
 
-func NewRecipeHandler(recipeService *services.RecipeService) *RecipeHandler {
+func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 	return &RecipeHandler{recipeService: recipeService}
 }
 
@@ -35,7 +32,7 @@ func NewRecipeHandler(recipeService *services.RecipeService) *RecipeHandler {
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Recipe]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [get]
 func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
@@ -54,7 +51,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 
 	p := types.GetPagination(c)
 
-	recipes, total, err := h.recipeService.GetUserRecipes(tokenData.ID, q, taxonomies, cuisine, p.Offset(), p.Limit)
+	recipes, total, err := h.recipeService.UserSearch(tokenData.ID, q, taxonomies, cuisine, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -69,15 +66,14 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 }
 
 // GetRecipe godoc
-// @Summary Get a recipe by ID.
-// @Description Get details of a specific recipe by its ID.
+// @Summary Return details of a specific recipe by its ID.
 // @Tags recipes
 // @Accept */*
 // @Produce json
 // @Param id path string true "Recipe ID"
 // @Success 200 {object} domain.Recipe
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [get]
 func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
@@ -91,16 +87,16 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.GetRecipe(id)
+	recipe, err := h.recipeService.ById(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("recipe not found")
 		}
 		return err
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, id)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
 	if err != nil {
 		return err
 	}
@@ -119,8 +115,8 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 // @Produce json
 // @Param recipe body domain.Recipe true "Recipe data"
 // @Success 201 {object} domain.Recipe
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [post]
 func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
@@ -134,12 +130,12 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.CreateRecipe(recipe); err != nil {
+	if err := h.recipeService.Create(recipe); err != nil {
 		return err
 	}
 
 	// Add recipe to user's saved recipes so the creator has access
-	if err := h.recipeService.SaveRecipe(tokenData.ID, recipe.ID); err != nil {
+	if err := h.recipeService.UserSave(tokenData.ID, recipe.ID); err != nil {
 		return err
 	}
 
@@ -155,9 +151,9 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Param recipe body domain.Recipe true "Updated recipe data"
 // @Success 200 {object} domain.Recipe
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [patch]
 func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
@@ -172,7 +168,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, id)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
 	if err != nil {
 		return err
 	}
@@ -186,7 +182,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	}
 	recipe.ID = id
 
-	if err := h.recipeService.UpdateRecipe(&recipe); err != nil {
+	if err := h.recipeService.Update(&recipe); err != nil {
 		return err
 	}
 	return c.JSON(recipe)
@@ -200,8 +196,8 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Recipe ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [delete]
 func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
@@ -216,7 +212,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, id)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
 	if err != nil {
 		return err
 	}
@@ -224,7 +220,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return sErrors.Forbidden("you do not have access to this recipe")
 	}
 
-	if err := h.recipeService.DeleteRecipe(id); err != nil {
+	if err := h.recipeService.Delete(id); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -238,8 +234,8 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Recipe ID"
 // @Success 201
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/favorite [post]
 func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
@@ -253,7 +249,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.SaveRecipe(tokenData.ID, id); err != nil {
+	if err := h.recipeService.UserSave(tokenData.ID, id); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusCreated)
@@ -267,8 +263,8 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Recipe ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/favorite [delete]
 func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
@@ -282,7 +278,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.UnsaveRecipe(tokenData.ID, id); err != nil {
+	if err := h.recipeService.UserUnsave(tokenData.ID, id); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -297,9 +293,9 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Param ingredient body domain.RecipeIngredient true "Ingredient data"
 // @Success 201 {object} domain.RecipeIngredient
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients [post]
 func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
@@ -314,7 +310,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}
@@ -344,10 +340,10 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 // @Param ingredientId path string true "Ingredient ID"
 // @Param ingredient body domain.RecipeIngredient true "Updated ingredient data"
 // @Success 200 {object} domain.RecipeIngredient
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [patch]
 func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
@@ -367,7 +363,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}
@@ -397,9 +393,9 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Param ingredientId path string true "Ingredient ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [delete]
 func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
@@ -419,7 +415,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}
@@ -442,9 +438,9 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Param instruction body domain.RecipeInstruction true "Instruction data"
 // @Success 201 {object} domain.RecipeInstruction
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions [post]
 func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
@@ -459,7 +455,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}
@@ -489,10 +485,10 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 // @Param instructionId path string true "Instruction ID"
 // @Param instruction body domain.RecipeInstruction true "Updated instruction data"
 // @Success 200 {object} domain.RecipeInstruction
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions/{instructionId} [patch]
 func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
@@ -512,7 +508,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}
@@ -542,9 +538,9 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Param instructionId path string true "Instruction ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions/{instructionId} [delete]
 func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
@@ -564,7 +560,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	}
 
 	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccessRecipe(tokenData.ID, recipeID)
+	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
 	if err != nil {
 		return err
 	}

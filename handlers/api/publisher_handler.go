@@ -4,9 +4,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
 	"borscht.app/smetana/pkg/types"
 )
+
+type PublisherHandler struct {
+	publisherService domain.PublisherService
+}
+
+func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHandler {
+	return &PublisherHandler{publisherService: publisherService}
+}
 
 // GetPublishers godoc
 // @Summary List all publishers.
@@ -17,20 +24,13 @@ import (
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Publisher]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/publishers [get]
-func GetPublishers(c fiber.Ctx) error {
+func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 	p := types.GetPagination(c)
-
-	var total int64
-	database.DB.Model(&domain.Publisher{}).Count(&total)
-
-	var publishers []domain.Publisher
-	if err := database.DB.Model(&domain.Publisher{}).
-		Offset(p.Offset()).
-		Limit(p.Limit).
-		Find(&publishers).Error; err != nil {
+	publishers, total, err := h.publisherService.List(p.Offset(), p.Limit)
+	if err != nil {
 		return err
 	}
 

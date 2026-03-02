@@ -4,23 +4,18 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gofiber/fiber/v3"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	sErrors "borscht.app/smetana/pkg/errors"
-	"borscht.app/smetana/pkg/services"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
 )
 
-type ScrapeHandler struct {
-	recipeService *services.RecipeService
+type ImportHandler struct {
+	recipeService domain.RecipeService
 }
 
-func NewScrapeHandler(recipeService *services.RecipeService) *ScrapeHandler {
-	return &ScrapeHandler{
+func NewImportHandler(recipeService domain.RecipeService) *ImportHandler {
+	return &ImportHandler{
 		recipeService: recipeService,
 	}
 }
@@ -30,7 +25,7 @@ type ImportRequest struct {
 	Update bool   `json:"update"`
 }
 
-// Scrape godoc
+// Import godoc
 // @Summary Import a recipe from URL.
 // @Description Backend attempts semantic extraction first, then AI extraction. Returns the imported Recipe object.
 // @Tags recipes
@@ -38,11 +33,11 @@ type ImportRequest struct {
 // @Produce json
 // @Param import body ImportRequest true "Import request"
 // @Success 201 {object} domain.Recipe
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/import [post]
-func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
+func (h *ImportHandler) Import(c fiber.Ctx) error {
 	var request ImportRequest
 	if err := c.Bind().Body(&request); err != nil {
 		return sErrors.BadRequest(err.Error())
@@ -54,38 +49,34 @@ func (h *ScrapeHandler) Scrape(c fiber.Ctx) error {
 	}
 
 	// Check if recipe already exists by URL
-	var recipeByUrl domain.Recipe
-	if err := database.DB.Where(&domain.Recipe{IsBasedOn: &request.URL}).
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		First(&recipeByUrl).Error; err == nil {
+	recipeByUrl, err := h.recipeService.ByUrl(request.URL)
+	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
+		return err
+	}
+	if recipeByUrl != nil {
 		if !request.Update {
 			// Recipe exists, just add to user's recipes
-			if err := h.recipeService.SaveRecipe(tokenData.ID, recipeByUrl.ID); err != nil {
+			if err := h.recipeService.UserSave(tokenData.ID, recipeByUrl.ID); err != nil {
 				return err
 			}
 			return c.JSON(recipeByUrl)
 		} else {
 			// TODO: the recipe should not be deleted, but updated instead, only if user has permission to do that. If not, create a duplicate
 			// Delete existing to re-import
-			if err := database.DB.Delete(&recipeByUrl).Error; err != nil {
+			if err := h.recipeService.Delete(recipeByUrl.ID); err != nil {
 				return err
 			}
 		}
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
 	}
 
 	// Import recipe from URL
-	recipe, err := h.recipeService.ImportFromUrl(request.URL)
+	recipe, err := h.recipeService.ImportFromURL(request.URL)
 	if err != nil {
 		return err
 	}
 
 	// Add to user's recipes
-	if err := h.recipeService.SaveRecipe(tokenData.ID, recipe.ID); err != nil {
+	if err := h.recipeService.UserSave(tokenData.ID, recipe.ID); err != nil {
 		return err
 	}
 

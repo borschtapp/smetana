@@ -61,12 +61,13 @@ func main() {
 		log.Fatalf("Unable to create data directory: %s", err)
 	}
 
-	if _, err := database.Connect(); err != nil {
+	db, err := database.Connect()
+	if err != nil {
 		log.Fatalf("Database Connection Error %s", err)
 	}
 
 	if !*skipMigrations {
-		if err := database.Migrate(); err != nil {
+		if err := database.Migrate(db); err != nil {
 			log.Fatalf("Database Migration Error %s", err)
 		}
 	}
@@ -123,7 +124,7 @@ func main() {
 
 	imageService := services.NewImageService(fileStorage)
 
-	routes.RegisterRoutes(apiGroup, imageService)
+	routes.RegisterApiRoutes(apiGroup, imageService, db)
 
 	app.Get("/_health", handlers.HealthCheck)
 	app.Get("/*", swaggo.New())

@@ -4,17 +4,25 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
-
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	sErrors "borscht.app/smetana/pkg/errors"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
+
+type MealPlanHandler struct {
+	mealPlanService domain.MealPlanService
+	userService     domain.UserService
+}
+
+func NewMealPlanHandler(mealPlanService domain.MealPlanService, userService domain.UserService) *MealPlanHandler {
+	return &MealPlanHandler{
+		mealPlanService: mealPlanService,
+		userService:     userService,
+	}
+}
 
 // GetMealPlan godoc
 // @Summary List meal plan entries.
@@ -27,10 +35,10 @@ import (
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan [get]
-func GetMealPlan(c fiber.Ctx) error {
+func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 
@@ -39,30 +47,26 @@ func GetMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	p := types.GetPagination(c)
-	query := database.DB.Preload("Recipe").Where("household_id = ?", user.HouseholdID)
-
+	var from, to *time.Time
 	if fromStr != "" {
-		if from, err := time.Parse("2006-01-02", fromStr); err == nil {
-			query = query.Where("date >= ?", from)
+		if t, err := time.Parse("2006-01-02", fromStr); err == nil {
+			from = &t
 		}
 	}
 	if toStr != "" {
-		if to, err := time.Parse("2006-01-02", toStr); err == nil {
-			query = query.Where("date <= ?", to)
+		if t, err := time.Parse("2006-01-02", toStr); err == nil {
+			to = &t
 		}
 	}
 
-	var total int64
-	query.Model(&domain.MealPlan{}).Count(&total)
-
-	var mealPlans []domain.MealPlan
-	if err := query.Offset(p.Offset()).Limit(p.Limit).Find(&mealPlans).Error; err != nil {
+	p := types.GetPagination(c)
+	mealPlans, total, err := h.mealPlanService.List(user.HouseholdID, from, to, p.Offset(), p.Limit)
+	if err != nil {
 		return err
 	}
 
@@ -91,17 +95,16 @@ type MealPlanForm struct {
 // @Produce json
 // @Param mealplan body MealPlanForm true "Meal plan data"
 // @Success 201 {object} domain.MealPlan
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan [post]
-func CreateMealPlan(c fiber.Ctx) error {
+func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 	var form MealPlanForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sErrors.BadRequest(err.Error())
 	}
 
-	validate := validator.New()
 	if err := validate.Struct(form); err != nil {
 		return sErrors.BadRequestVal(err)
 	}
@@ -111,8 +114,8 @@ func CreateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
@@ -125,13 +128,8 @@ func CreateMealPlan(c fiber.Ctx) error {
 		Note:        form.Note,
 	}
 
-	if err := database.DB.Create(mealPlan).Error; err != nil {
+	if err := h.mealPlanService.Create(mealPlan); err != nil {
 		return err
-	}
-
-	// Preload recipe if provided
-	if mealPlan.RecipeID != nil {
-		database.DB.Preload("Recipe").First(mealPlan)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(mealPlan)
@@ -154,13 +152,13 @@ type UpdateMealPlanForm struct {
 // @Param id path string true "Meal Plan ID"
 // @Param mealplan body UpdateMealPlanForm true "Meal plan update data"
 // @Success 200 {object} domain.MealPlan
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [patch]
-func UpdateMealPlan(c fiber.Ctx) error {
+func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid meal plan id")
@@ -176,14 +174,14 @@ func UpdateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var mealPlan domain.MealPlan
-	if err := database.DB.First(&mealPlan, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("meal plan not found")
 		}
 		return err
@@ -209,12 +207,8 @@ func UpdateMealPlan(c fiber.Ctx) error {
 		mealPlan.Note = form.Note
 	}
 
-	if err := database.DB.Save(&mealPlan).Error; err != nil {
+	if err := h.mealPlanService.Update(mealPlan); err != nil {
 		return err
-	}
-
-	if mealPlan.RecipeID != nil {
-		database.DB.Preload("Recipe").First(&mealPlan)
 	}
 
 	return c.JSON(mealPlan)
@@ -228,13 +222,13 @@ func UpdateMealPlan(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Meal Plan ID"
 // @Success 204
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [delete]
-func DeleteMealPlan(c fiber.Ctx) error {
+func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return sErrors.BadRequest("invalid meal plan id")
@@ -245,14 +239,14 @@ func DeleteMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, tokenData.ID).Error; err != nil {
+	user, err := h.userService.ById(tokenData.ID)
+	if err != nil {
 		return err
 	}
 
-	var mealPlan domain.MealPlan
-	if err := database.DB.First(&mealPlan, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id)
+	if err != nil {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("meal plan not found")
 		}
 		return err
@@ -262,7 +256,7 @@ func DeleteMealPlan(c fiber.Ctx) error {
 		return sErrors.Forbidden("meal plan does not belong to your household")
 	}
 
-	if err := database.DB.Delete(&mealPlan).Error; err != nil {
+	if err := h.mealPlanService.Delete(id); err != nil {
 		return err
 	}
 

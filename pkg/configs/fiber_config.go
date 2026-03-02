@@ -1,14 +1,12 @@
 package configs
 
 import (
-	"errors"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
-	"gorm.io/gorm"
-
-	smetana "borscht.app/smetana/pkg/errors"
+	"borscht.app/smetana/domain"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/utils"
+	"github.com/gofiber/fiber/v3"
 )
 
 // FiberConfig func for configuration Fiber app.
@@ -21,20 +19,18 @@ func FiberConfig() fiber.Config {
 		ReadTimeout: time.Second * time.Duration(readTimeoutSecondsCount),
 
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
-			var se *smetana.Error
+			var se *domain.Error
 
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				se = smetana.NotFound("The requested entity does not exist")
-			} else if e, ok := err.(*smetana.Error); ok {
+			if e, ok := err.(*domain.Error); ok {
 				se = e
 			} else if e, ok := err.(*fiber.Error); ok {
 				if e.Code == fiber.StatusNotFound {
-					se = smetana.NotFound(err.Error())
+					se = sentinels.NotFound(err.Error())
 				} else {
-					se = &smetana.Error{Status: e.Code, Code: "internal-server", Message: e.Message}
+					se = &domain.Error{Status: e.Code, Code: "internal-server", Message: e.Message}
 				}
 			} else {
-				se = &smetana.Error{Status: fiber.StatusInternalServerError, Code: "internal-server", Message: err.Error()}
+				se = &domain.Error{Status: fiber.StatusInternalServerError, Code: "internal-server", Message: err.Error()}
 			}
 
 			return ctx.Status(se.Status).JSON(se)

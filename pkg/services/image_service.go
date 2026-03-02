@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"borscht.app/smetana/domain"
 	"github.com/doyensec/safeurl"
 	_ "golang.org/x/image/webp"
 
@@ -26,16 +27,10 @@ func NewImageService(s storage.FileStorage) *ImageService {
 	return &ImageService{storage: s}
 }
 
-type UploadedImage struct {
-	Path   storage.Path
-	Width  int
-	Height int
-}
-
-func (s *ImageService) DownloadAndPutImage(imageUrl string, savePath string) (*UploadedImage, error) {
+func (s *ImageService) DownloadAndSaveImage(imageURL string, savePath string) (*domain.UploadedImage, error) {
 	// safeurl validates the resolved IP at connection time, preventing SSRF and DNS rebinding attacks
 	client := safeurl.Client(safeurl.GetConfigBuilder().Build())
-	resp, err := client.Get(imageUrl)
+	resp, err := client.Get(imageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +53,10 @@ func (s *ImageService) DownloadAndPutImage(imageUrl string, savePath string) (*U
 		contentType = http.DetectContentType(data)
 	}
 
-	return s.SaveImage(savePath, data, contentType)
+	return s.SaveImageData(savePath, data, contentType)
 }
 
-func (s *ImageService) SaveImage(basePath string, data []byte, contentType string) (*UploadedImage, error) {
+func (s *ImageService) SaveImageData(basePath string, data []byte, contentType string) (*domain.UploadedImage, error) {
 	fullPath := basePath
 	if filepath.Ext(basePath) == "" {
 		extension := utils.ExtensionByType(contentType)
@@ -81,7 +76,7 @@ func (s *ImageService) SaveImage(basePath string, data []byte, contentType strin
 		height = config.Height
 	}
 
-	return &UploadedImage{
+	return &domain.UploadedImage{
 		Path:   storage.Path(fullPath),
 		Width:  width,
 		Height: height,

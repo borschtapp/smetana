@@ -27,3 +27,25 @@ func (c *Collection) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type CollectionRepository interface {
+	ById(id uuid.UUID) (*Collection, error)
+	ByIdWithRecipes(id uuid.UUID) (*Collection, error)
+	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
+	Create(collection *Collection) error
+	Update(collection *Collection) error
+	Delete(id uuid.UUID) error
+	AddRecipe(collection *Collection, recipeID uuid.UUID) error
+	RemoveRecipe(collection *Collection, recipeID uuid.UUID) error
+}
+
+type CollectionService interface {
+	ById(id uuid.UUID) (*Collection, error)
+	ByIdWithRecipes(id uuid.UUID) (*Collection, error)
+	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
+	Create(collection *Collection) error
+	Update(collection *Collection) error
+	Delete(id uuid.UUID) error
+	AddRecipe(collection *Collection, recipeID uuid.UUID) error
+	RemoveRecipe(collection *Collection, recipeID uuid.UUID) error
+}

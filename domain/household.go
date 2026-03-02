@@ -22,3 +22,17 @@ func (h *Household) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type HouseholdRepository interface {
+	ById(id uuid.UUID) (*Household, error)
+	Create(household *Household) error
+	Update(household *Household) error
+	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
+}
+
+type HouseholdService interface {
+	ById(id uuid.UUID) (*Household, error)
+	Create(household *Household) error
+	Update(household *Household) error
+	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
+}

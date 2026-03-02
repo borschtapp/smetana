@@ -49,7 +49,7 @@ func NewOIDCService() (*OIDCService, error) {
 	}, nil
 }
 
-func (s *OIDCService) GetLoginURL(state string) string {
+func (s *OIDCService) LoginURL(state string) string {
 	return s.oauth2Config.AuthCodeURL(state)
 }
 

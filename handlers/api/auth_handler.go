@@ -8,24 +8,25 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	"borscht.app/smetana/pkg/errors"
-	"borscht.app/smetana/pkg/services"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/utils"
 )
 
 var validate = validator.New()
 
 type AuthHandler struct {
-	oidcService *services.OIDCService
+	oidcService  domain.OIDCService
+	userService  domain.UserService
+	tokenService domain.TokenService
 }
 
-func NewAuthHandler(oidcService *services.OIDCService) *AuthHandler {
+func NewAuthHandler(oidcService domain.OIDCService, userService domain.UserService, tokenService domain.TokenService) *AuthHandler {
 	return &AuthHandler{
-		oidcService: oidcService,
+		oidcService:  oidcService,
+		userService:  userService,
+		tokenService: tokenService,
 	}
 }
 
@@ -42,29 +43,29 @@ type LoginForm struct {
 // @Produce json
 // @Param login body LoginForm true "Login credentials"
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var requestBody LoginForm
 	if err := c.Bind().Body(&requestBody); err != nil {
-		return errors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(requestBody); err != nil {
-		return errors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
-	var user domain.User
-	if err := database.DB.Where(&domain.User{Email: requestBody.Email}).Find(&user).Error; err != nil {
+	user, err := h.userService.ByEmail(requestBody.Email)
+	if err != nil {
 		return err
 	}
 
 	if !utils.ValidatePassword(user.Password, requestBody.Password) {
-		return errors.BadRequest("wrong user email address or password")
+		return sentinels.BadRequest("wrong user email address or password")
 	}
 
-	if tokens, err := h.generateTokens(user); err == nil {
+	if tokens, err := h.issueTokens(*user); err == nil {
 		return c.JSON(tokens)
 	} else {
 		return err
@@ -76,22 +77,22 @@ type AuthResponse struct {
 	utils.Tokens
 }
 
-func (h *AuthHandler) generateTokens(user domain.User) (*AuthResponse, error) {
+func (h *AuthHandler) issueTokens(user domain.User) (*AuthResponse, error) {
 	tokens, err := utils.GenerateNewTokens(user.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Set expires in for refresh key from .env file.
 	expiresIn := time.Minute * time.Duration(utils.GetenvInt("JWT_REFRESH_EXPIRE_MINUTES", 10080))
 
-	token := new(domain.UserToken)
-	token.UserID = user.ID
-	token.Type = "refresh"
-	token.Token = tokens.Refresh
-	token.Expires = time.Now().Add(expiresIn)
+	token := &domain.UserToken{
+		UserID:  user.ID,
+		Type:    "refresh",
+		Token:   tokens.Refresh,
+		Expires: time.Now().Add(expiresIn),
+	}
 
-	if err := database.DB.Create(&token).Error; err != nil {
+	if err := h.tokenService.CreateRefreshToken(token); err != nil {
 		return nil, err
 	}
 
@@ -110,44 +111,41 @@ type RenewForm struct {
 // @Produce json
 // @Param refresh body RenewForm true "Refresh token"
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	var requestBody RenewForm
 	if err := c.Bind().Body(&requestBody); err != nil {
-		return errors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(requestBody); err != nil {
-		return errors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
-	var userToken domain.UserToken
-	// Retrieve the token from database and check if it's valid.
-	if err := database.DB.Joins("User").Where(&domain.UserToken{Token: requestBody.RefreshToken, Type: "refresh"}).First(&userToken).Error; err != nil {
-		return errors.Unauthorized("Invalid refresh token")
+	userToken, err := h.tokenService.ByRefreshToken(requestBody.RefreshToken)
+	if err != nil {
+		return sentinels.Unauthorized("Invalid refresh token")
 	}
 
-	// Checking, if now time greater than Refresh token expiration time.
 	if time.Now().Before(userToken.Expires) {
 		user := userToken.User
 		if user == nil {
-			return errors.Unauthorized("User not found for this token")
+			return sentinels.Unauthorized("User not found for this token")
 		}
 
-		// remove old refresh token
-		if err := database.DB.Unscoped().Where(&domain.UserToken{Token: userToken.Token}).Delete(&domain.UserToken{}).Error; err != nil {
+		if err := h.tokenService.DeleteRefreshToken(userToken.Token); err != nil {
 			return err
 		}
 
-		if tokens, err := h.generateTokens(*user); err == nil {
+		if tokens, err := h.issueTokens(*user); err == nil {
 			return c.JSON(tokens)
 		} else {
 			return err
 		}
 	} else {
-		return errors.Unauthorized("unauthorized, your session was ended earlier")
+		return sentinels.Unauthorized("unauthorized, your session was ended earlier")
 	}
 }
 
@@ -165,66 +163,48 @@ type RegisterForm struct {
 // @Produce json
 // @Param user body RegisterForm true "User registration data"
 // @Success 201 {object} AuthResponse
-// @Failure 400 {object} errors.Error
+// @Failure 400 {object} domain.Error
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var requestBody RegisterForm
 	if err := c.Bind().Body(&requestBody); err != nil {
-		return errors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(requestBody); err != nil {
-		return errors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
-	var existingUser domain.User
-	if err := database.DB.Where(&domain.User{Email: requestBody.Email}).First(&existingUser).Error; err == nil {
-		return errors.BadRequest("user with this email already exists")
+	if _, err := h.userService.ByEmail(requestBody.Email); err == nil {
+		return sentinels.BadRequest("user with this email already exists")
 	}
 
 	hash, err := utils.HashPassword(requestBody.Password)
 	if err != nil {
-		return errors.InternalServerError("Failed to hash password")
+		return sentinels.InternalServerError("Failed to hash password")
+	}
+
+	name := requestBody.Name
+	if name == "" {
+		name = strings.Split(requestBody.Email, "@")[0]
 	}
 
 	user := domain.User{
 		ID:       uuid.New(),
 		Email:    requestBody.Email,
 		Password: hash,
+		Name:     name,
 		Created:  time.Now(),
 	}
-	if requestBody.Name != "" {
-		user.Name = requestBody.Name
-	} else {
-		user.Name = strings.Split(requestBody.Email, "@")[0]
-	}
 
-	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		// 1. Create personal Household
-		household := &domain.Household{
-			Name: user.Name + "'s Household",
-		}
-		if err := tx.Create(household).Error; err != nil {
-			return err
-		}
-
-		// 2. Create User linked to Household
-		user.HouseholdID = household.ID
-		user.Household = household
-		if err := tx.Create(&user).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
+	if err := h.userService.Create(&user); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			return errors.BadRequestField("Email", "already exists")
+			return sentinels.BadRequestField("Email", "already exists")
 		}
 		return err
 	}
 
-	if tokens, err := h.generateTokens(user); err == nil {
+	if tokens, err := h.issueTokens(user); err == nil {
 		return c.Status(fiber.StatusCreated).JSON(tokens)
 	} else {
 		return err
@@ -239,9 +219,9 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 // @Router /api/v1/auth/oidc/login [get]
 func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 	if h.oidcService == nil {
-		return errors.NotImplemented("OIDC service not configured")
+		return sentinels.NotImplemented("OIDC service not configured")
 	}
-	// Generate cryptographically secure random state for CSRF protection
+
 	state := utils.GenerateRandomString(32)
 	c.Cookie(&fiber.Cookie{
 		Name:     "oidc_state",
@@ -251,7 +231,7 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 		SameSite: "Lax",
 		MaxAge:   600, // 10 minutes
 	})
-	return c.Redirect().To(h.oidcService.GetLoginURL(state))
+	return c.Redirect().To(h.oidcService.LoginURL(state))
 }
 
 // OIDCCallback godoc
@@ -259,34 +239,33 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 // @Description Handles the callback from the identity provider and issues local tokens.
 // @Tags auth
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} errors.Error
-// @Failure 500 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 500 {object} domain.Error
 // @Param state query string true "CSRF State"
 // @Param code query string true "Auth Code"
 // @Router /api/v1/auth/oidc/callback [get]
 func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	if h.oidcService == nil {
-		return errors.NotImplemented("OIDC service not configured")
+		return sentinels.NotImplemented("OIDC service not configured")
 	}
 
-	// Validate state to prevent CSRF attacks
 	state := c.Query("state")
 	cookieState := c.Cookies("oidc_state")
 	if state == "" || state != cookieState {
-		return errors.BadRequest("Invalid or missing state parameter")
+		return sentinels.BadRequest("Invalid or missing state parameter")
 	}
-	// Clear the state cookie
+
 	c.ClearCookie("oidc_state")
 
 	code := c.Query("code")
 	if code == "" {
-		return errors.BadRequest("Missing code")
+		return sentinels.BadRequest("Missing code")
 	}
 
 	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
 		log.Warnf("OIDC token exchange failed: %v", err)
-		return errors.BadRequest("Failed to exchange token")
+		return sentinels.BadRequest("Failed to exchange token")
 	}
 
 	var claims struct {
@@ -296,54 +275,17 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 		Sub      string `json:"sub"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		return errors.InternalServerError("Failed to parse claims")
+		return sentinels.InternalServerError("Failed to parse claims")
 	}
 
-	// Find or create user
-	var user domain.User
-	err = database.DB.Where(&domain.User{Email: claims.Email}).Preload("Household").First(&user).Error
-
-	if err != nil && err == gorm.ErrRecordNotFound {
-		// Create new user (JIT provisioning)
-		user = domain.User{
-			ID:      uuid.New(),
-			Email:   claims.Email,
-			Name:    claims.Name,
-			Created: time.Now(),
-			// No password for OIDC users
-		}
-		if user.Name == "" {
-			user.Name = strings.Split(claims.Email, "@")[0]
-		}
-
-		err = database.DB.Transaction(func(tx *gorm.DB) error {
-			household := &domain.Household{
-				Name: user.Name + "'s Household",
-			}
-			if err := tx.Create(household).Error; err != nil {
-				return err
-			}
-
-			user.HouseholdID = household.ID
-			user.Household = household
-			if err := tx.Create(&user).Error; err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
+	user, err := h.userService.FindOrRegisterOIDCUser(claims.Email, claims.Name)
+	if err != nil {
 		return err
 	}
 
-	// Issue local tokens
-	if tokens, err := h.generateTokens(user); err == nil {
+	if tokens, err := h.issueTokens(*user); err == nil {
 		return c.JSON(tokens)
 	} else {
 		return err
 	}
 }
-
-// fiber:context-methods migrated

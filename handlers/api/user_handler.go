@@ -1,33 +1,40 @@
 package api
 
 import (
-	"github.com/go-playground/validator/v10"
+	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
-	"borscht.app/smetana/pkg/errors"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/utils"
 )
 
+type UserHandler struct {
+	userService domain.UserService
+}
+
+func NewUserHandler(userService domain.UserService) *UserHandler {
+	return &UserHandler{
+		userService: userService,
+	}
+}
+
 // GetUser godoc
-// @Summary Get user by ID.
-// @Description Get details of a specific user.
+// @Summary Return details of a specific user.
 // @Tags users
 // @Accept */*
 // @Produce json
 // @Param id path string true "User ID"
 // @Success 200 {object} domain.User
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [get]
-func GetUser(c fiber.Ctx) error {
+func (h *UserHandler) GetUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return errors.BadRequest("invalid user id")
+		return sentinels.BadRequest("invalid user id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -36,11 +43,11 @@ func GetUser(c fiber.Ctx) error {
 	}
 
 	if id != tokenData.ID {
-		return errors.Forbidden("you can only access your own profile")
+		return sentinels.Forbidden("you can only access your own profile")
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, id).Error; err != nil {
+	user, err := h.userService.ById(id)
+	if err != nil {
 		return err
 	}
 	return c.JSON(user)
@@ -60,15 +67,15 @@ type UpdateUserForm struct {
 // @Param id path string true "User ID"
 // @Param user body UpdateUserForm true "User update data"
 // @Success 200 {object} domain.User
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [patch]
-func UpdateUser(c fiber.Ctx) error {
+func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return errors.BadRequest("invalid user id")
+		return sentinels.BadRequest("invalid user id")
 	}
 
 	var requestBody UpdateUserForm
@@ -76,9 +83,8 @@ func UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
-	var validate = validator.New()
 	if err := validate.Struct(requestBody); err != nil {
-		return errors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -87,11 +93,11 @@ func UpdateUser(c fiber.Ctx) error {
 	}
 
 	if id != tokenData.ID {
-		return errors.Forbidden("you can only update your own profile")
+		return sentinels.Forbidden("you can only update your own profile")
 	}
 
-	var user domain.User
-	if err := database.DB.First(&user, id).Error; err != nil {
+	user, err := h.userService.ById(id)
+	if err != nil {
 		return err
 	}
 
@@ -102,7 +108,7 @@ func UpdateUser(c fiber.Ctx) error {
 		user.Email = *requestBody.Email
 	}
 
-	if err := database.DB.Save(&user).Error; err != nil {
+	if err := h.userService.Update(user); err != nil {
 		return err
 	}
 	return c.JSON(user)
@@ -116,14 +122,14 @@ func UpdateUser(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "User ID"
 // @Success 204
-// @Failure 401 {object} errors.Error
-// @Failure 403 {object} errors.Error
+// @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [delete]
-func DeleteUser(c fiber.Ctx) error {
+func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return errors.BadRequest("invalid user id")
+		return sentinels.BadRequest("invalid user id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -132,10 +138,10 @@ func DeleteUser(c fiber.Ctx) error {
 	}
 
 	if id != tokenData.ID {
-		return errors.Forbidden("you can only delete your own profile")
+		return sentinels.Forbidden("you can only delete your own profile")
 	}
 
-	if err := database.DB.Delete(&domain.User{}, id).Error; err != nil {
+	if err := h.userService.Delete(id); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

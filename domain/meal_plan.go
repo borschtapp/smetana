@@ -30,3 +30,19 @@ func (mp *MealPlan) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type MealPlanRepository interface {
+	ByIdWithRecipes(id uuid.UUID) (*MealPlan, error)
+	List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]MealPlan, int64, error)
+	Create(mealPlan *MealPlan) error
+	Update(mealPlan *MealPlan) error
+	Delete(id uuid.UUID) error
+}
+
+type MealPlanService interface {
+	ByIdWithRecipes(id uuid.UUID) (*MealPlan, error)
+	List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]MealPlan, int64, error)
+	Create(mealPlan *MealPlan) error
+	Update(mealPlan *MealPlan) error
+	Delete(id uuid.UUID) error
+}

@@ -4,20 +4,18 @@ import (
 	"errors"
 
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/errors"
-	"borscht.app/smetana/pkg/services"
+	sErrors "borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type FeedHandler struct {
-	feedService *services.FeedService
+	feedService domain.FeedService
 }
 
-func NewFeedHandler(service *services.FeedService) *FeedHandler {
+func NewFeedHandler(service domain.FeedService) *FeedHandler {
 	return &FeedHandler{feedService: service}
 }
 
@@ -33,8 +31,8 @@ type SubscribeRequest struct {
 // @Produce json
 // @Param request body SubscribeRequest true "Subscribe request"
 // @Success 201 {object} domain.Feed
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds [post]
 func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
@@ -64,9 +62,9 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Feed ID"
 // @Success 204
-// @Failure 400 {object} errors.Error
-// @Failure 401 {object} errors.Error
-// @Failure 404 {object} errors.Error
+// @Failure 400 {object} domain.Error
+// @Failure 401 {object} domain.Error
+// @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds/{id} [delete]
 func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
@@ -81,7 +79,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 	}
 
 	if err := h.feedService.Unsubscribe(claims.ID, id); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, domain.ErrRecordNotFound) {
 			return sErrors.NotFound("subscription not found")
 		}
 		return err
@@ -92,14 +90,14 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 
 // ListSubscriptions godoc
 // @Summary List subscriptions
-// @Description Get all feeds the user is subscribed to.
+// @Description ByIdWithRecipes all feeds the user is subscribed to.
 // @Tags feeds
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Feed]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds [get]
 func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
@@ -109,7 +107,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	feeds, total, err := h.feedService.ListSubscriptions(claims.ID, p.Offset(), p.Limit)
+	feeds, total, err := h.feedService.List(claims.ID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -123,26 +121,25 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	})
 }
 
-// GetStream godoc
-// @Summary Get recipe stream
-// @Description Get a timeline of recipes from subscribed feeds.
+// ListStream godoc
+// @Summary List a timeline of recipes from subscribed feeds.
 // @Tags feeds
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Recipe]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds/stream [get]
-func (h *FeedHandler) GetStream(c fiber.Ctx) error {
+func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
 	}
 
 	p := types.GetPagination(c)
-	recipes, total, err := h.feedService.GetStream(claims.ID, p.Page, p.Limit)
+	recipes, total, err := h.feedService.Stream(claims.ID, p.Page, p.Limit)
 	if err != nil {
 		return err
 	}

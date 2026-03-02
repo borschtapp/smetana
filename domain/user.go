@@ -32,3 +32,31 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type UserRepository interface {
+	ById(id uuid.UUID) (*User, error)
+	ByEmail(email string) (*User, error)
+	ByEmailWithHousehold(email string) (*User, error)
+	Create(user *User) error
+	Update(user *User) error
+	Delete(id uuid.UUID) error
+
+	FindRefreshToken(tokenStr string) (*UserToken, error)
+	CreateRefreshToken(token *UserToken) error
+	DeleteRefreshToken(tokenStr string) error
+}
+
+type UserService interface {
+	ById(id uuid.UUID) (*User, error)
+	ByEmail(email string) (*User, error)
+	Update(user *User) error
+	Delete(id uuid.UUID) error
+	Create(user *User) error
+	FindOrRegisterOIDCUser(email, name string) (*User, error)
+}
+
+type TokenService interface {
+	CreateRefreshToken(token *UserToken) error
+	ByRefreshToken(tokenStr string) (*UserToken, error)
+	DeleteRefreshToken(tokenStr string) error
+}

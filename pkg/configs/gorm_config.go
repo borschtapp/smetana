@@ -1,19 +1,59 @@
 package configs
 
 import (
+	"fmt"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
 	"borscht.app/smetana/pkg/utils"
 )
 
-func GormConfig() gorm.Config {
+type databaseEnvVars struct {
+	Type     string
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
+	SSLMode  string // For Postgres
+}
+
+var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
+	"mysql": func(cfg databaseEnvVars) gorm.Dialector {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
+		return mysql.Open(dsn)
+	},
+	"postgres": func(cfg databaseEnvVars) gorm.Dialector {
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC",
+			cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.SSLMode)
+		return postgres.Open(dsn)
+	},
+	"sqlite": func(cfg databaseEnvVars) gorm.Dialector {
+		return sqlite.Open(cfg.Name)
+	},
+}
+
+func GormConfig() (gorm.Config, gorm.Dialector) {
 	enableLogger := utils.GetenvBool("GORM_ENABLE_LOGGER", false)
+	envVars := databaseEnvVars{
+		Type:     utils.Getenv("DB_TYPE", "sqlite"),
+		Host:     utils.Getenv("DB_HOST", "localhost"),
+		Port:     utils.GetenvInt("DB_PORT", 3306),
+		Name:     utils.Getenv("DB_NAME", "./data/borscht.db"),
+		User:     utils.Getenv("DB_USER", ""),
+		Password: utils.Getenv("DB_PASSWORD", ""),
+		SSLMode:  utils.Getenv("DB_SSLMODE", "disable"),
+	}
 
 	config := gorm.Config{}
 	if enableLogger {
 		config.Logger = logger.Default.LogMode(logger.Info)
 	}
 
-	return config
+	return config, dialectRegistry[envVars.Type](envVars)
 }

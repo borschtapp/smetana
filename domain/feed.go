@@ -34,3 +34,24 @@ func (f *Feed) BeforeCreate(tx *gorm.DB) error {
 	f.Active = true
 	return nil
 }
+
+type FeedRepository interface {
+	ByUrl(url string) (*Feed, error)
+	List(userID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	ListActive() ([]Feed, error)
+	Create(recipe *Feed) error
+	Update(recipe *Feed) error
+	Delete(id uuid.UUID) error
+
+	Stream(userID uuid.UUID, page, limit int) ([]Recipe, int64, error)
+	AddFeed(userID uuid.UUID, feed *Feed) error
+	DeleteFeed(userID uuid.UUID, feedID uuid.UUID) error
+}
+
+type FeedService interface {
+	Subscribe(userID uuid.UUID, url string) (*Feed, error)
+	Unsubscribe(userID uuid.UUID, feedID uuid.UUID) error
+	List(userID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	Stream(userID uuid.UUID, page, limit int) ([]Recipe, int64, error)
+	FetchUpdates() error
+}

@@ -32,3 +32,11 @@ func (f *Food) BeforeCreate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type FoodRepository interface {
+	FindOrCreate(food *Food) error
+}
+
+type FoodService interface {
+	FindOrCreate(food *Food) error
+}

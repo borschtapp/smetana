@@ -52,3 +52,13 @@ func NewPublisherFromKrip(org *krip.Organization) *Publisher {
 	}
 	return model
 }
+
+type PublisherRepository interface {
+	List(offset, limit int) ([]Publisher, int64, error)
+	FindOrCreate(pub *Publisher) error
+}
+
+type PublisherService interface {
+	List(offset, limit int) ([]Publisher, int64, error)
+	FindOrCreate(pub *Publisher) error
+}

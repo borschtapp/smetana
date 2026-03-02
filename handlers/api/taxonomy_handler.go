@@ -4,9 +4,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/database"
 	"borscht.app/smetana/pkg/types"
 )
+
+type TaxonomyHandler struct {
+	taxonomyService domain.TaxonomyService
+}
+
+func NewTaxonomyHandler(taxonomyService domain.TaxonomyService) *TaxonomyHandler {
+	return &TaxonomyHandler{taxonomyService: taxonomyService}
+}
 
 // GetTaxonomies godoc
 // @Summary List all taxonomies.
@@ -18,24 +25,15 @@ import (
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Taxonomy]
-// @Failure 401 {object} errors.Error
+// @Failure 401 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/taxonomies [get]
-func GetTaxonomies(c fiber.Ctx) error {
+func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
 	taxonomyType := c.Query("type")
 
 	p := types.GetPagination(c)
-	query := database.DB.Model(&domain.Taxonomy{})
-
-	if taxonomyType != "" {
-		query = query.Where("type = ?", taxonomyType)
-	}
-
-	var total int64
-	query.Count(&total)
-
-	var taxonomies []domain.Taxonomy
-	if err := query.Offset(p.Offset()).Limit(p.Limit).Find(&taxonomies).Error; err != nil {
+	taxonomies, total, err := h.taxonomyService.List(taxonomyType, p.Offset(), p.Limit)
+	if err != nil {
 		return err
 	}
 
