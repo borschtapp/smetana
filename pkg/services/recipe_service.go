@@ -32,28 +32,37 @@ func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageSer
 	}
 }
 
-func (s *RecipeService) ById(id uuid.UUID) (*domain.Recipe, error) {
-	return s.repo.ById(id)
+func (s *RecipeService) ById(id uuid.UUID, userID uuid.UUID) (*domain.Recipe, error) {
+	recipe, err := s.repo.ById(id)
+	if err != nil {
+		return nil, err
+	}
+	canAccess, err := s.repo.IsUserSaved(userID, id)
+	if err != nil {
+		return nil, err
+	}
+	if !canAccess {
+		return nil, domain.ErrForbidden
+	}
+	return recipe, nil
 }
 
-func (s *RecipeService) ByUrl(url string) (*domain.Recipe, error) {
-	return s.repo.ByUrl(url)
+func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID) error {
+	if err := s.repo.Create(recipe); err != nil {
+		return err
+	}
+	return s.UserSave(userID, recipe.ID)
 }
 
-func (s *RecipeService) Create(recipe *domain.Recipe) error {
-	return s.repo.Create(recipe)
-}
-
-func (s *RecipeService) Update(recipe *domain.Recipe) error {
+func (s *RecipeService) Update(recipe *domain.Recipe, userID uuid.UUID) error {
 	return s.repo.Update(recipe)
 }
 
-func (s *RecipeService) Delete(id uuid.UUID) error {
+func (s *RecipeService) Delete(id uuid.UUID, userID uuid.UUID) error {
+	if _, err := s.ById(id, userID); err != nil {
+		return err
+	}
 	return s.repo.Delete(id)
-}
-
-func (s *RecipeService) CanUserAccess(userID uuid.UUID, recipeID uuid.UUID) (bool, error) {
-	return s.repo.IsUserSaved(userID, recipeID)
 }
 
 func (s *RecipeService) UserSave(userID uuid.UUID, recipeID uuid.UUID) error {
@@ -72,33 +81,51 @@ func (s *RecipeService) UserSearch(userID uuid.UUID, q string, taxonomies []stri
 	return s.repo.UserSearch(userID, q, taxonomies, cuisine, offset, limit)
 }
 
-func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient) error {
+func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID) error {
+	if _, err := s.ById(ingredient.RecipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.CreateIngredient(ingredient)
 }
 
-func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
+func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID) error {
+	if _, err := s.ById(ingredient.RecipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.UpdateIngredient(ingredient)
 }
 
-func (s *RecipeService) DeleteIngredient(id uuid.UUID) error {
+func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error {
+	if _, err := s.ById(recipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.DeleteIngredient(id)
 }
 
-func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction) error {
+func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID) error {
+	if _, err := s.ById(instruction.RecipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.CreateInstruction(instruction)
 }
 
-func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction) error {
+func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID) error {
+	if _, err := s.ById(instruction.RecipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.UpdateInstruction(instruction)
 }
 
-func (s *RecipeService) DeleteInstruction(id uuid.UUID) error {
+func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error {
+	if _, err := s.ById(recipeID, userID); err != nil {
+		return err
+	}
 	return s.repo.DeleteInstruction(id)
 }
 
-// ImportForUser imports a recipe from URL and saves it for the given user.
+// ImportFromURL imports a recipe from URL and saves it for the given user.
 // If the recipe already exists: saves it for the user (unless forceUpdate=true, in which case it is re-imported).
-func (s *RecipeService) ImportForUser(url string, userID uuid.UUID, forceUpdate bool) (*domain.Recipe, error) {
+func (s *RecipeService) ImportFromURL(url string, userID uuid.UUID, forceUpdate bool) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
 		return nil, err
@@ -114,7 +141,13 @@ func (s *RecipeService) ImportForUser(url string, userID uuid.UUID, forceUpdate 
 			return nil, err
 		}
 	}
-	recipe, err := s.ImportFromURL(url)
+
+	kripRecipe, err := krip.ScrapeUrl(url)
+	if err != nil {
+		return nil, err
+	}
+	recipe, err := s.ImportFromKripRecipe(kripRecipe, nil)
+
 	if err != nil {
 		return nil, err
 	}
@@ -122,14 +155,6 @@ func (s *RecipeService) ImportForUser(url string, userID uuid.UUID, forceUpdate 
 		return nil, err
 	}
 	return recipe, nil
-}
-
-func (s *RecipeService) ImportFromURL(url string) (*domain.Recipe, error) {
-	kripRecipe, err := krip.ScrapeUrl(url)
-	if err != nil {
-		return nil, err
-	}
-	return s.ImportFromKripRecipe(kripRecipe, nil)
 }
 
 func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*domain.Recipe, error) {

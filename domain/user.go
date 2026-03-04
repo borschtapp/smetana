@@ -41,22 +41,20 @@ type UserRepository interface {
 	Update(user *User) error
 	Delete(id uuid.UUID) error
 
-	FindRefreshToken(tokenStr string) (*UserToken, error)
-	CreateRefreshToken(token *UserToken) error
-	DeleteRefreshToken(tokenStr string) error
+	FindToken(tokenStr string, tokenType string) (*UserToken, error)
+	CreateToken(token *UserToken) error
+	DeleteToken(tokenStr string) error
 }
 
 type UserService interface {
-	ById(id uuid.UUID) (*User, error)
+	ById(id uuid.UUID, requesterID uuid.UUID) (*User, error)
 	ByEmail(email string) (*User, error)
-	Update(user *User) error
-	Delete(id uuid.UUID) error
+	ByEmailWithHousehold(email string) (*User, error)
+	Update(user *User, requesterID uuid.UUID) error
+	Delete(id uuid.UUID, requesterID uuid.UUID) error
 	Create(user *User) error
-	FindOrRegisterOIDCUser(email, name string) (*User, error)
-}
 
-type TokenService interface {
+	FindRefreshToken(tokenStr string) (*UserToken, error)
 	CreateRefreshToken(token *UserToken) error
-	ByRefreshToken(tokenStr string) (*UserToken, error)
 	DeleteRefreshToken(tokenStr string) error
 }

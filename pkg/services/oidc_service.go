@@ -2,11 +2,16 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 
+	"borscht.app/smetana/domain"
 	"borscht.app/smetana/pkg/utils"
 )
 
@@ -14,9 +19,10 @@ type OIDCService struct {
 	provider     *oidc.Provider
 	oauth2Config *oauth2.Config
 	verifier     *oidc.IDTokenVerifier
+	userService  domain.UserService
 }
 
-func NewOIDCService() (*OIDCService, error) {
+func NewOIDCService(userService domain.UserService) (*OIDCService, error) {
 	providerURL := utils.Getenv("OIDC_PROVIDER", "")
 	clientID := utils.Getenv("OIDC_CLIENT_ID", "")
 	clientSecret := utils.Getenv("OIDC_CLIENT_SECRET", "")
@@ -46,6 +52,7 @@ func NewOIDCService() (*OIDCService, error) {
 		provider:     provider,
 		oauth2Config: conf,
 		verifier:     verifier,
+		userService:  userService,
 	}, nil
 }
 
@@ -70,4 +77,34 @@ func (s *OIDCService) Exchange(ctx context.Context, code string) (*oauth2.Token,
 	}
 
 	return oauth2Token, idToken, nil
+}
+
+// FindOrRegisterOIDCUser finds a user by email (with Household preloaded) or creates one via JIT provisioning.
+func (s *OIDCService) FindOrRegisterOIDCUser(email, name string) (*domain.User, error) {
+	user, err := s.userService.ByEmailWithHousehold(email)
+	if err == nil {
+		return user, nil
+	}
+
+	if !errors.Is(err, domain.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	newUser := domain.User{
+		ID:      uuid.New(),
+		Email:   email,
+		Name:    name,
+		Created: time.Now(),
+	}
+	if newUser.Name == "" {
+		newUser.Name = strings.Split(email, "@")[0]
+	}
+
+	if err := s.userService.Create(&newUser); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			return s.userService.ByEmailWithHousehold(email)
+		}
+		return nil, err
+	}
+	return &newUser, nil
 }

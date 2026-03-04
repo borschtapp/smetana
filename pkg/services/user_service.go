@@ -1,9 +1,7 @@
 package services
 
 import (
-	"errors"
 	"strings"
-	"time"
 
 	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
@@ -17,7 +15,10 @@ func NewUserService(repo domain.UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) ById(id uuid.UUID) (*domain.User, error) {
+func (s *UserService) ById(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
+	if id != requesterID {
+		return nil, domain.ErrForbidden
+	}
 	return s.repo.ById(id)
 }
 
@@ -25,43 +26,47 @@ func (s *UserService) ByEmail(email string) (*domain.User, error) {
 	return s.repo.ByEmail(email)
 }
 
-func (s *UserService) Update(user *domain.User) error {
+func (s *UserService) ByEmailWithHousehold(email string) (*domain.User, error) {
+	return s.repo.ByEmailWithHousehold(email)
+}
+
+func (s *UserService) Update(user *domain.User, requesterID uuid.UUID) error {
+	if user.ID != requesterID {
+		return domain.ErrForbidden
+	}
 	return s.repo.Update(user)
 }
 
-func (s *UserService) Delete(id uuid.UUID) error {
+func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
+	if id != requesterID {
+		return domain.ErrForbidden
+	}
 	return s.repo.Delete(id)
 }
 
 // Create provisions a personal household then persists the user in a single transaction.
 func (s *UserService) Create(user *domain.User) error {
 	user.Household = &domain.Household{Name: user.Name + "'s Household"}
-	return s.repo.Create(user)
+	if err := s.repo.Create(user); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
+			return domain.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
 }
 
-// FindOrRegisterOIDCUser finds a user by email (with Household preloaded) or creates one via JIT provisioning.
-func (s *UserService) FindOrRegisterOIDCUser(email, name string) (*domain.User, error) {
-	user, err := s.repo.ByEmailWithHousehold(email)
-	if err == nil {
-		return user, nil
-	}
+// FindRefreshToken retrieves a refresh token with its associated user.
+func (s *UserService) FindRefreshToken(tokenStr string) (*domain.UserToken, error) {
+	return s.repo.FindToken(tokenStr, "refresh")
+}
 
-	if !errors.Is(err, domain.ErrRecordNotFound) {
-		return nil, err
-	}
+// CreateRefreshToken persists a new refresh token for a user.
+func (s *UserService) CreateRefreshToken(token *domain.UserToken) error {
+	return s.repo.CreateToken(token)
+}
 
-	newUser := domain.User{
-		ID:      uuid.New(),
-		Email:   email,
-		Name:    name,
-		Created: time.Now(),
-	}
-	if newUser.Name == "" {
-		newUser.Name = strings.Split(email, "@")[0]
-	}
-
-	if err := s.Create(&newUser); err != nil {
-		return nil, err
-	}
-	return &newUser, nil
+// DeleteRefreshToken permanently removes a refresh token.
+func (s *UserService) DeleteRefreshToken(tokenStr string) error {
+	return s.repo.DeleteToken(tokenStr)
 }

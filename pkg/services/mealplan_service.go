@@ -47,7 +47,16 @@ func (s *MealPlanService) Create(mealPlan *domain.MealPlan) error {
 	return nil
 }
 
-func (s *MealPlanService) Update(mealPlan *domain.MealPlan) error {
+func (s *MealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
+	existing, err := s.repo.ByIdWithRecipes(mealPlan.ID)
+	if err != nil {
+		return err
+	}
+
+	if existing.HouseholdID != householdID {
+		return domain.ErrForbidden
+	}
+
 	if err := s.repo.Update(mealPlan); err != nil {
 		return err
 	}

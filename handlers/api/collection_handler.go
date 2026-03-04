@@ -11,13 +11,11 @@ import (
 
 type CollectionHandler struct {
 	collectionService domain.CollectionService
-	userService       domain.UserService
 }
 
-func NewCollectionHandler(collectionService domain.CollectionService, userService domain.UserService) *CollectionHandler {
+func NewCollectionHandler(collectionService domain.CollectionService) *CollectionHandler {
 	return &CollectionHandler{
 		collectionService: collectionService,
-		userService:       userService,
 	}
 }
 

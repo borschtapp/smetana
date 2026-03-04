@@ -17,16 +17,14 @@ import (
 var validate = validator.New()
 
 type AuthHandler struct {
-	oidcService  domain.OIDCService
-	userService  domain.UserService
-	tokenService domain.TokenService
+	oidcService domain.OIDCService
+	userService domain.UserService
 }
 
-func NewAuthHandler(oidcService domain.OIDCService, userService domain.UserService, tokenService domain.TokenService) *AuthHandler {
+func NewAuthHandler(oidcService domain.OIDCService, userService domain.UserService) *AuthHandler {
 	return &AuthHandler{
-		oidcService:  oidcService,
-		userService:  userService,
-		tokenService: tokenService,
+		oidcService: oidcService,
+		userService: userService,
 	}
 }
 
@@ -92,7 +90,7 @@ func (h *AuthHandler) issueTokens(user domain.User) (*AuthResponse, error) {
 		Expires: time.Now().Add(expiresIn),
 	}
 
-	if err := h.tokenService.CreateRefreshToken(token); err != nil {
+	if err := h.userService.CreateRefreshToken(token); err != nil {
 		return nil, err
 	}
 
@@ -124,7 +122,7 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	userToken, err := h.tokenService.ByRefreshToken(requestBody.RefreshToken)
+	userToken, err := h.userService.FindRefreshToken(requestBody.RefreshToken)
 	if err != nil {
 		return sentinels.Unauthorized("Invalid refresh token")
 	}
@@ -135,7 +133,7 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 			return sentinels.Unauthorized("User not found for this token")
 		}
 
-		if err := h.tokenService.DeleteRefreshToken(userToken.Token); err != nil {
+		if err := h.userService.DeleteRefreshToken(userToken.Token); err != nil {
 			return err
 		}
 
@@ -198,9 +196,6 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 	}
 
 	if err := h.userService.Create(&user); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			return sentinels.BadRequestField("Email", "already exists")
-		}
 		return err
 	}
 
@@ -278,7 +273,7 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 		return sentinels.InternalServerError("Failed to parse claims")
 	}
 
-	user, err := h.userService.FindOrRegisterOIDCUser(claims.Email, claims.Name)
+	user, err := h.oidcService.FindOrRegisterOIDCUser(claims.Email, claims.Name)
 	if err != nil {
 		return err
 	}

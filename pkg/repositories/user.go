@@ -68,19 +68,19 @@ func (r *UserRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.User{}, id).Error
 }
 
-func (r *UserRepository) FindRefreshToken(tokenStr string) (*domain.UserToken, error) {
+func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.UserToken, error) {
 	var userToken domain.UserToken
-	err := r.db.Joins("User").Where(&domain.UserToken{Token: tokenStr, Type: "refresh"}).First(&userToken).Error
+	err := r.db.Joins("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error
 	if err != nil {
 		return nil, err
 	}
 	return &userToken, nil
 }
 
-func (r *UserRepository) CreateRefreshToken(token *domain.UserToken) error {
+func (r *UserRepository) CreateToken(token *domain.UserToken) error {
 	return r.db.Create(token).Error
 }
 
-func (r *UserRepository) DeleteRefreshToken(tokenStr string) error {
+func (r *UserRepository) DeleteToken(tokenStr string) error {
 	return r.db.Unscoped().Where(&domain.UserToken{Token: tokenStr}).Delete(&domain.UserToken{}).Error
 }

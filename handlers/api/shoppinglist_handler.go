@@ -11,13 +11,11 @@ import (
 
 type ShoppingListHandler struct {
 	shoppingListService domain.ShoppingListService
-	userService         domain.UserService
 }
 
-func NewShoppingListHandler(shoppingListService domain.ShoppingListService, userService domain.UserService) *ShoppingListHandler {
+func NewShoppingListHandler(shoppingListService domain.ShoppingListService) *ShoppingListHandler {
 	return &ShoppingListHandler{
 		shoppingListService: shoppingListService,
-		userService:         userService,
 	}
 }
 
@@ -138,7 +136,7 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	item, err := h.shoppingListService.ById(id)
+	item, err := h.shoppingListService.ById(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

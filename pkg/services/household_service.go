@@ -14,7 +14,10 @@ func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRe
 	return &HouseholdService{repo: repo, userRepo: userRepo}
 }
 
-func (s *HouseholdService) ById(id uuid.UUID) (*domain.Household, error) {
+func (s *HouseholdService) ById(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
+	if id != requesterHouseholdID {
+		return nil, domain.ErrForbidden
+	}
 	return s.repo.ById(id)
 }
 
@@ -22,16 +25,25 @@ func (s *HouseholdService) Create(household *domain.Household) error {
 	return s.repo.Create(household)
 }
 
-func (s *HouseholdService) Update(household *domain.Household) error {
+func (s *HouseholdService) Update(household *domain.Household, requesterHouseholdID uuid.UUID) error {
+	if household.ID != requesterHouseholdID {
+		return domain.ErrForbidden
+	}
 	return s.repo.Update(household)
 }
 
-func (s *HouseholdService) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
+func (s *HouseholdService) Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
+	if householdID != requesterHouseholdID {
+		return nil, 0, domain.ErrForbidden
+	}
 	return s.repo.Members(householdID, offset, limit)
 }
 
 // AddMember looks up the user by email and assigns them to the household.
-func (s *HouseholdService) AddMember(householdID uuid.UUID, targetEmail string) (*domain.User, error) {
+func (s *HouseholdService) AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) (*domain.User, error) {
+	if householdID != requesterHouseholdID {
+		return nil, domain.ErrForbidden
+	}
 	target, err := s.userRepo.ByEmail(targetEmail)
 	if err != nil {
 		return nil, err
@@ -44,7 +56,10 @@ func (s *HouseholdService) AddMember(householdID uuid.UUID, targetEmail string) 
 }
 
 // RemoveMember verifies the user belongs to the household, then moves them to a new solo household.
-func (s *HouseholdService) RemoveMember(householdID uuid.UUID, targetUserID uuid.UUID) error {
+func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
+	if householdID != requesterHouseholdID {
+		return domain.ErrForbidden
+	}
 	target, err := s.userRepo.ById(targetUserID)
 	if err != nil {
 		return err

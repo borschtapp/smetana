@@ -53,9 +53,8 @@ func (r *FeedRepository) List(userID uuid.UUID, offset, limit int) ([]domain.Fee
 	return feeds, total, err
 }
 
-func (r *FeedRepository) Stream(userID uuid.UUID, page, limit int) ([]domain.Recipe, int64, error) {
+func (r *FeedRepository) Stream(userID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
 	var recipes []domain.Recipe
-	offset := (page - 1) * limit
 
 	baseQuery := r.db.
 		Joins("JOIN feeds ON feeds.id = recipes.feed_id").

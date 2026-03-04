@@ -72,6 +72,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Success 200 {object} domain.Recipe
 // @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [get]
@@ -86,18 +87,9 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ById(id)
+	recipe, err := h.recipeService.ById(id, tokenData.ID)
 	if err != nil {
 		return err
-	}
-
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	return c.JSON(recipe)
@@ -105,7 +97,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 
 // CreateRecipe godoc
 // @Summary Create a new recipe.
-// @Description Create a new recipe from JSON body.
+// @Description Create a new recipe from JSON body. The recipe is automatically saved for the creator.
 // @Tags recipes
 // @Accept json
 // @Produce json
@@ -126,12 +118,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.Create(recipe); err != nil {
-		return err
-	}
-
-	// Add recipe to user's saved recipes so the creator has access
-	if err := h.recipeService.UserSave(tokenData.ID, recipe.ID); err != nil {
+	if err := h.recipeService.Create(recipe, tokenData.ID); err != nil {
 		return err
 	}
 
@@ -149,6 +136,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 // @Success 200 {object} domain.Recipe
 // @Failure 400 {object} domain.Error
 // @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [patch]
@@ -163,13 +151,9 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
-	if err != nil {
+	// Verify access before accepting the update body
+	if _, err := h.recipeService.ById(id, tokenData.ID); err != nil {
 		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	var recipe domain.Recipe
@@ -178,7 +162,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	}
 	recipe.ID = id
 
-	if err := h.recipeService.Update(&recipe); err != nil {
+	if err := h.recipeService.Update(&recipe, tokenData.ID); err != nil {
 		return err
 	}
 	return c.JSON(recipe)
@@ -193,6 +177,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 // @Param id path string true "Recipe ID"
 // @Success 204
 // @Failure 401 {object} domain.Error
+// @Failure 403 {object} domain.Error
 // @Failure 404 {object} domain.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [delete]
@@ -207,16 +192,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, id)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
-	if err := h.recipeService.Delete(id); err != nil {
+	if err := h.recipeService.Delete(id, tokenData.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -305,22 +281,13 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
 	ingredient := new(domain.RecipeIngredient)
 	if err := c.Bind().Body(&ingredient); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
 	ingredient.RecipeID = recipeID
 
-	if err := h.recipeService.CreateIngredient(ingredient); err != nil {
+	if err := h.recipeService.CreateIngredient(ingredient, tokenData.ID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(ingredient)
@@ -358,15 +325,6 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
 	ingredient := new(domain.RecipeIngredient)
 	if err := c.Bind().Body(&ingredient); err != nil {
 		return sentinels.BadRequest(err.Error())
@@ -374,7 +332,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	ingredient.ID = ingredientID
 	ingredient.RecipeID = recipeID
 
-	if err := h.recipeService.UpdateIngredient(ingredient); err != nil {
+	if err := h.recipeService.UpdateIngredient(ingredient, tokenData.ID); err != nil {
 		return err
 	}
 	return c.JSON(ingredient)
@@ -410,16 +368,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
-	if err := h.recipeService.DeleteIngredient(ingredientID); err != nil {
+	if err := h.recipeService.DeleteIngredient(ingredientID, recipeID, tokenData.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -450,22 +399,13 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
 	instruction := new(domain.RecipeInstruction)
 	if err := c.Bind().Body(&instruction); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
 	instruction.RecipeID = recipeID
 
-	if err := h.recipeService.CreateInstruction(instruction); err != nil {
+	if err := h.recipeService.CreateInstruction(instruction, tokenData.ID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(instruction)
@@ -503,15 +443,6 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
 	instruction := new(domain.RecipeInstruction)
 	if err := c.Bind().Body(&instruction); err != nil {
 		return sentinels.BadRequest(err.Error())
@@ -519,7 +450,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	instruction.ID = instructionID
 	instruction.RecipeID = recipeID
 
-	if err := h.recipeService.UpdateInstruction(instruction); err != nil {
+	if err := h.recipeService.UpdateInstruction(instruction, tokenData.ID); err != nil {
 		return err
 	}
 	return c.JSON(instruction)
@@ -555,16 +486,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if user has access to this recipe
-	canAccess, err := h.recipeService.CanUserAccess(tokenData.ID, recipeID)
-	if err != nil {
-		return err
-	}
-	if !canAccess {
-		return sentinels.Forbidden("you do not have access to this recipe")
-	}
-
-	if err := h.recipeService.DeleteInstruction(instructionID); err != nil {
+	if err := h.recipeService.DeleteInstruction(instructionID, recipeID, tokenData.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

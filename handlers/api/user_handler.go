@@ -42,11 +42,7 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 		return err
 	}
 
-	if id != tokenData.ID {
-		return sentinels.Forbidden("you can only access your own profile")
-	}
-
-	user, err := h.userService.ById(id)
+	user, err := h.userService.ById(id, tokenData.ID)
 	if err != nil {
 		return err
 	}
@@ -92,11 +88,7 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
-	if id != tokenData.ID {
-		return sentinels.Forbidden("you can only update your own profile")
-	}
-
-	user, err := h.userService.ById(id)
+	user, err := h.userService.ById(id, tokenData.ID)
 	if err != nil {
 		return err
 	}
@@ -108,7 +100,7 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		user.Email = *requestBody.Email
 	}
 
-	if err := h.userService.Update(user); err != nil {
+	if err := h.userService.Update(user, tokenData.ID); err != nil {
 		return err
 	}
 	return c.JSON(user)
@@ -137,11 +129,7 @@ func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 		return err
 	}
 
-	if id != tokenData.ID {
-		return sentinels.Forbidden("you can only delete your own profile")
-	}
-
-	if err := h.userService.Delete(id); err != nil {
+	if err := h.userService.Delete(id, tokenData.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

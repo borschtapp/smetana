@@ -41,11 +41,7 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	if tokenData.HouseholdID != id {
-		return sentinels.Forbidden("you do not have access to this household")
-	}
-
-	household, err := h.householdService.ById(id)
+	household, err := h.householdService.ById(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
@@ -91,17 +87,13 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	if tokenData.HouseholdID != id {
-		return sentinels.Forbidden("you do not have permission to update this household")
-	}
-
-	household, err := h.householdService.ById(id)
+	household, err := h.householdService.ById(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
 
 	household.Name = form.Name
-	if err := h.householdService.Update(household); err != nil {
+	if err := h.householdService.Update(household, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -133,12 +125,8 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 		return err
 	}
 
-	if tokenData.HouseholdID != id {
-		return sentinels.Forbidden("you do not have access to this household")
-	}
-
 	p := types.GetPagination(c)
-	members, total, err := h.householdService.Members(id, p.Offset(), p.Limit)
+	members, total, err := h.householdService.Members(id, tokenData.HouseholdID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -191,11 +179,7 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	if tokenData.HouseholdID != id {
-		return sentinels.Forbidden("you do not have permission to manage this household")
-	}
-
-	targetUser, err := h.householdService.AddMember(id, form.Email)
+	targetUser, err := h.householdService.AddMember(id, tokenData.HouseholdID, form.Email)
 	if err != nil {
 		return err
 	}
@@ -234,11 +218,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	if tokenData.HouseholdID != id {
-		return sentinels.Forbidden("you do not have permission to manage this household")
-	}
-
-	if err := h.householdService.RemoveMember(id, targetUserID); err != nil {
+	if err := h.householdService.RemoveMember(id, tokenData.HouseholdID, targetUserID); err != nil {
 		return err
 	}
 

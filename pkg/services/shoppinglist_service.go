@@ -14,8 +14,15 @@ func NewShoppingListService(repo domain.ShoppingListRepository) *ShoppingListSer
 	return &ShoppingListService{repo: repo}
 }
 
-func (s *ShoppingListService) ById(id uuid.UUID) (*domain.ShoppingList, error) {
-	return s.repo.ById(id)
+func (s *ShoppingListService) ById(id uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+	item, err := s.repo.ById(id)
+	if err != nil {
+		return nil, err
+	}
+	if item.HouseholdID != householdID {
+		return nil, domain.ErrForbidden
+	}
+	return item, nil
 }
 
 func (s *ShoppingListService) List(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {

@@ -13,13 +13,11 @@ import (
 
 type MealPlanHandler struct {
 	mealPlanService domain.MealPlanService
-	userService     domain.UserService
 }
 
-func NewMealPlanHandler(mealPlanService domain.MealPlanService, userService domain.UserService) *MealPlanHandler {
+func NewMealPlanHandler(mealPlanService domain.MealPlanService) *MealPlanHandler {
 	return &MealPlanHandler{
 		mealPlanService: mealPlanService,
-		userService:     userService,
 	}
 }
 
@@ -184,7 +182,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 		mealPlan.Note = form.Note
 	}
 
-	if err := h.mealPlanService.Update(mealPlan); err != nil {
+	if err := h.mealPlanService.Update(mealPlan, tokenData.HouseholdID); err != nil {
 		return err
 	}
 

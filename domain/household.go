@@ -27,14 +27,16 @@ type HouseholdRepository interface {
 	ById(id uuid.UUID) (*Household, error)
 	Create(household *Household) error
 	Update(household *Household) error
+
 	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
 }
 
 type HouseholdService interface {
-	ById(id uuid.UUID) (*Household, error)
+	ById(id uuid.UUID, requesterHouseholdID uuid.UUID) (*Household, error)
 	Create(household *Household) error
-	Update(household *Household) error
-	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
-	AddMember(householdID uuid.UUID, targetEmail string) (*User, error)
-	RemoveMember(householdID uuid.UUID, targetUserID uuid.UUID) error
+	Update(household *Household, requesterHouseholdID uuid.UUID) error
+
+	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
+	AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) (*User, error)
+	RemoveMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error
 }

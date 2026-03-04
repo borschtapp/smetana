@@ -10,4 +10,5 @@ import (
 type OIDCService interface {
 	LoginURL(state string) string
 	Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error)
+	FindOrRegisterOIDCUser(email, name string) (*User, error)
 }

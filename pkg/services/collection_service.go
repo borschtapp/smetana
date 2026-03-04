@@ -6,12 +6,11 @@ import (
 )
 
 type CollectionService struct {
-	repo        domain.CollectionRepository
-	userService *UserService
+	repo domain.CollectionRepository
 }
 
-func NewCollectionService(repo domain.CollectionRepository, userService *UserService) *CollectionService {
-	return &CollectionService{repo: repo, userService: userService}
+func NewCollectionService(repo domain.CollectionRepository) *CollectionService {
+	return &CollectionService{repo: repo}
 }
 
 func (s *CollectionService) ById(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {

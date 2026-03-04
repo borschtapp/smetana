@@ -14,19 +14,20 @@ import (
 
 type FeedService struct {
 	repo          domain.FeedRepository
-	recipeService *RecipeService
+	recipeRepo    domain.RecipeRepository
+	recipeService domain.RecipeService
 }
 
-func NewFeedService(repo domain.FeedRepository, service *RecipeService) *FeedService {
-	return &FeedService{repo: repo, recipeService: service}
+func NewFeedService(repo domain.FeedRepository, recipeRepo domain.RecipeRepository, service domain.RecipeService) *FeedService {
+	return &FeedService{repo: repo, recipeRepo: recipeRepo, recipeService: service}
 }
 
 func (s *FeedService) List(userID uuid.UUID, offset, limit int) ([]domain.Feed, int64, error) {
 	return s.repo.List(userID, offset, limit)
 }
 
-func (s *FeedService) Stream(userID uuid.UUID, page, limit int) ([]domain.Recipe, int64, error) {
-	return s.repo.Stream(userID, page, limit)
+func (s *FeedService) Stream(userID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
+	return s.repo.Stream(userID, offset, limit)
 }
 
 func (s *FeedService) Subscribe(userID uuid.UUID, url string) (*domain.Feed, error) {
@@ -104,7 +105,7 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 			continue
 		}
 
-		if _, err := s.recipeService.ByUrl(kripRecipe.Url); err == nil {
+		if _, err := s.recipeRepo.ByUrl(kripRecipe.Url); err == nil {
 			continue
 		}
 

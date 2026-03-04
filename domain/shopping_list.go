@@ -39,7 +39,7 @@ type ShoppingListRepository interface {
 }
 
 type ShoppingListService interface {
-	ById(id uuid.UUID) (*ShoppingList, error)
+	ById(id uuid.UUID, householdID uuid.UUID) (*ShoppingList, error)
 	List(householdID uuid.UUID, offset, limit int) ([]ShoppingList, int64, error)
 	Create(item *ShoppingList) error
 	Update(item *ShoppingList, householdID uuid.UUID) error

@@ -43,6 +43,6 @@ type MealPlanService interface {
 	ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*MealPlan, error)
 	List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]MealPlan, int64, error)
 	Create(mealPlan *MealPlan) error
-	Update(mealPlan *MealPlan) error
+	Update(mealPlan *MealPlan, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 }

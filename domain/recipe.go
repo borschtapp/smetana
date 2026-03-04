@@ -262,22 +262,23 @@ type RecipeRepository interface {
 }
 
 type RecipeService interface {
-	ById(id uuid.UUID) (*Recipe, error)
-	ByUrl(url string) (*Recipe, error)
-	Create(recipe *Recipe) error
-	Update(recipe *Recipe) error
-	Delete(id uuid.UUID) error
-	CanUserAccess(userID uuid.UUID, recipeID uuid.UUID) (bool, error)
+	ById(id uuid.UUID, userID uuid.UUID) (*Recipe, error)
+	Create(recipe *Recipe, userID uuid.UUID) error
+	Update(recipe *Recipe, userID uuid.UUID) error
+	Delete(id uuid.UUID, userID uuid.UUID) error
+
 	UserSave(userID uuid.UUID, recipeID uuid.UUID) error
 	UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error
 	UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
-	CreateIngredient(ingredient *RecipeIngredient) error
-	UpdateIngredient(ingredient *RecipeIngredient) error
-	DeleteIngredient(id uuid.UUID) error
-	CreateInstruction(instruction *RecipeInstruction) error
-	UpdateInstruction(instruction *RecipeInstruction) error
-	DeleteInstruction(id uuid.UUID) error
-	ImportForUser(url string, userID uuid.UUID, forceUpdate bool) (*Recipe, error)
-	ImportFromURL(url string) (*Recipe, error)
+
+	CreateIngredient(ingredient *RecipeIngredient, userID uuid.UUID) error
+	UpdateIngredient(ingredient *RecipeIngredient, userID uuid.UUID) error
+	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error
+
+	CreateInstruction(instruction *RecipeInstruction, userID uuid.UUID) error
+	UpdateInstruction(instruction *RecipeInstruction, userID uuid.UUID) error
+	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error
+
+	ImportFromURL(url string, userID uuid.UUID, forceUpdate bool) (*Recipe, error)
 	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)
 }

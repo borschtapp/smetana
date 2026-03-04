@@ -39,6 +39,10 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 
+	if err := validate.Struct(req); err != nil {
+		return sentinels.BadRequestVal(err)
+	}
+
 	claims, err := utils.ExtractTokenMetadata(c)
 	if err != nil {
 		return err
@@ -134,7 +138,7 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	recipes, total, err := h.feedService.Stream(claims.ID, p.Page, p.Limit)
+	recipes, total, err := h.feedService.Stream(claims.ID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
