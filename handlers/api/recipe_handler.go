@@ -1,11 +1,10 @@
 package api
 
 import (
-	"errors"
 	"strings"
 
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -79,7 +78,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -89,9 +88,6 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 
 	recipe, err := h.recipeService.ById(id)
 	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("recipe not found")
-		}
 		return err
 	}
 
@@ -101,7 +97,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	return c.JSON(recipe)
@@ -159,7 +155,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -173,12 +169,12 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	var recipe domain.Recipe
 	if err := c.Bind().Body(&recipe); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 	recipe.ID = id
 
@@ -203,7 +199,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -217,7 +213,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	if err := h.recipeService.Delete(id); err != nil {
@@ -301,7 +297,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -315,12 +311,12 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	ingredient := new(domain.RecipeIngredient)
 	if err := c.Bind().Body(&ingredient); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 	ingredient.RecipeID = recipeID
 
@@ -349,12 +345,12 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	ingredientID, err := uuid.Parse(c.Params("ingredientId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid ingredient id")
+		return sentinels.BadRequest("invalid ingredient id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -368,12 +364,12 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	ingredient := new(domain.RecipeIngredient)
 	if err := c.Bind().Body(&ingredient); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 	ingredient.ID = ingredientID
 	ingredient.RecipeID = recipeID
@@ -401,12 +397,12 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	ingredientID, err := uuid.Parse(c.Params("ingredientId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid ingredient id")
+		return sentinels.BadRequest("invalid ingredient id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -420,7 +416,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	if err := h.recipeService.DeleteIngredient(ingredientID); err != nil {
@@ -446,7 +442,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -460,12 +456,12 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	instruction := new(domain.RecipeInstruction)
 	if err := c.Bind().Body(&instruction); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 	instruction.RecipeID = recipeID
 
@@ -494,12 +490,12 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	instructionID, err := uuid.Parse(c.Params("instructionId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid instruction id")
+		return sentinels.BadRequest("invalid instruction id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -513,12 +509,12 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	instruction := new(domain.RecipeInstruction)
 	if err := c.Bind().Body(&instruction); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 	instruction.ID = instructionID
 	instruction.RecipeID = recipeID
@@ -546,12 +542,12 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	recipeID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	instructionID, err := uuid.Parse(c.Params("instructionId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid instruction id")
+		return sentinels.BadRequest("invalid instruction id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -565,7 +561,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return err
 	}
 	if !canAccess {
-		return sErrors.Forbidden("you do not have access to this recipe")
+		return sentinels.Forbidden("you do not have access to this recipe")
 	}
 
 	if err := h.recipeService.DeleteInstruction(instructionID); err != nil {

@@ -78,7 +78,7 @@ type AuthResponse struct {
 }
 
 func (h *AuthHandler) issueTokens(user domain.User) (*AuthResponse, error) {
-	tokens, err := utils.GenerateNewTokens(user.ID)
+	tokens, err := utils.GenerateNewTokens(user.ID, user.HouseholdID)
 	if err != nil {
 		return nil, err
 	}

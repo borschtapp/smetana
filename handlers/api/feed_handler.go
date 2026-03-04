@@ -1,10 +1,8 @@
 package api
 
 import (
-	"errors"
-
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -38,7 +36,7 @@ type SubscribeRequest struct {
 func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 	var req SubscribeRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	claims, err := utils.ExtractTokenMetadata(c)
@@ -48,7 +46,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 
 	feed, err := h.feedService.Subscribe(claims.ID, req.Url)
 	if err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(feed)
@@ -70,7 +68,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid feed id")
+		return sentinels.BadRequest("invalid feed id")
 	}
 
 	claims, err := utils.ExtractTokenMetadata(c)
@@ -79,9 +77,6 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 	}
 
 	if err := h.feedService.Unsubscribe(claims.ID, id); err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("subscription not found")
-		}
 		return err
 	}
 

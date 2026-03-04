@@ -12,3 +12,4 @@ func (e *Error) Error() string {
 }
 
 var ErrRecordNotFound = &Error{Status: 404, Code: "not-found", Message: "The requested entity does not exist"}
+var ErrForbidden = &Error{Status: 403, Code: "forbidden", Message: "Access denied"}

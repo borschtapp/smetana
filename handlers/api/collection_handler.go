@@ -1,10 +1,8 @@
 package api
 
 import (
-	"errors"
-
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -41,13 +39,8 @@ func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	p := types.GetPagination(c)
-	collections, total, err := h.collectionService.List(user.HouseholdID, p.Offset(), p.Limit)
+	collections, total, err := h.collectionService.List(tokenData.HouseholdID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -81,11 +74,11 @@ type CollectionForm struct {
 func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 	var form CollectionForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(form); err != nil {
-		return sErrors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -93,13 +86,8 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	collection := &domain.Collection{
-		HouseholdID: user.HouseholdID,
+		HouseholdID: tokenData.HouseholdID,
 		Name:        form.Name,
 		Description: form.Description,
 	}
@@ -126,7 +114,7 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid collection id")
+		return sentinels.BadRequest("invalid collection id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -134,21 +122,9 @@ func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
+	collection, err := h.collectionService.ByIdWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
-	}
-
-	collection, err := h.collectionService.ByIdWithRecipes(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("collection not found")
-		}
-		return err
-	}
-
-	if collection.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("collection does not belong to your household")
 	}
 
 	return c.JSON(collection)
@@ -177,12 +153,12 @@ type UpdateCollectionForm struct {
 func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid collection id")
+		return sentinels.BadRequest("invalid collection id")
 	}
 
 	var form UpdateCollectionForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -190,23 +166,10 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
+	collection, err := h.collectionService.ById(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
-
-	collection, err := h.collectionService.ById(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("collection not found")
-		}
-		return err
-	}
-
-	if collection.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("collection does not belong to your household")
-	}
-
 	if form.Name != nil {
 		collection.Name = *form.Name
 	}
@@ -214,7 +177,7 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 		collection.Description = *form.Description
 	}
 
-	if err := h.collectionService.Update(collection); err != nil {
+	if err := h.collectionService.Update(collection, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -236,12 +199,12 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid collection id")
+		return sentinels.BadRequest("invalid collection id")
 	}
 
 	recipeID, err := uuid.Parse(c.Params("recipeId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -249,24 +212,7 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	collection, err := h.collectionService.ById(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("collection not found")
-		}
-		return err
-	}
-
-	if collection.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("collection does not belong to your household")
-	}
-
-	if err := h.collectionService.AddRecipe(collection, recipeID); err != nil {
+	if err := h.collectionService.AddRecipe(id, recipeID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -288,12 +234,12 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid collection id")
+		return sentinels.BadRequest("invalid collection id")
 	}
 
 	recipeID, err := uuid.Parse(c.Params("recipeId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid recipe id")
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -301,24 +247,7 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	collection, err := h.collectionService.ById(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("collection not found")
-		}
-		return err
-	}
-
-	if collection.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("collection does not belong to your household")
-	}
-
-	if err := h.collectionService.RemoveRecipe(collection, recipeID); err != nil {
+	if err := h.collectionService.RemoveRecipe(id, recipeID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -341,7 +270,7 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid collection id")
+		return sentinels.BadRequest("invalid collection id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -349,24 +278,7 @@ func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	collection, err := h.collectionService.ById(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("collection not found")
-		}
-		return err
-	}
-
-	if collection.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("collection does not belong to your household")
-	}
-
-	if err := h.collectionService.Delete(id); err != nil {
+	if err := h.collectionService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 

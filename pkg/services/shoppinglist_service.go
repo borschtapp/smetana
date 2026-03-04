@@ -36,7 +36,14 @@ func (s *ShoppingListService) Create(item *domain.ShoppingList) error {
 	return nil
 }
 
-func (s *ShoppingListService) Update(item *domain.ShoppingList) error {
+func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid.UUID) error {
+	existing, err := s.repo.ById(item.ID)
+	if err != nil {
+		return err
+	}
+	if existing.HouseholdID != householdID {
+		return domain.ErrForbidden
+	}
 	if err := s.repo.Update(item); err != nil {
 		return err
 	}
@@ -50,6 +57,13 @@ func (s *ShoppingListService) Update(item *domain.ShoppingList) error {
 	return nil
 }
 
-func (s *ShoppingListService) Delete(id uuid.UUID) error {
+func (s *ShoppingListService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+	item, err := s.repo.ById(id)
+	if err != nil {
+		return err
+	}
+	if item.HouseholdID != householdID {
+		return domain.ErrForbidden
+	}
 	return s.repo.Delete(id)
 }

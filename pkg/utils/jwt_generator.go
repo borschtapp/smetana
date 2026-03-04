@@ -17,9 +17,9 @@ type Tokens struct {
 }
 
 // GenerateNewTokens func for generate a new Access & Refresh tokens.
-func GenerateNewTokens(id uuid.UUID) (*Tokens, error) {
+func GenerateNewTokens(id uuid.UUID, householdId uuid.UUID) (*Tokens, error) {
 	// Generate JWT Access token.
-	accessToken, err := generateNewAccessToken(id)
+	accessToken, err := generateNewAccessToken(id, householdId)
 	if err != nil {
 		// Return token generation error.
 		return nil, err
@@ -38,7 +38,7 @@ func GenerateNewTokens(id uuid.UUID) (*Tokens, error) {
 	}, nil
 }
 
-func generateNewAccessToken(id uuid.UUID) (string, error) {
+func generateNewAccessToken(id uuid.UUID, householdId uuid.UUID) (string, error) {
 	// Set secret key from .env file.
 	secret := os.Getenv("JWT_SECRET_KEY")
 	// Set expires in for secret key from .env file
@@ -47,6 +47,7 @@ func generateNewAccessToken(id uuid.UUID) (string, error) {
 	// Create a claims
 	claims := jwt.MapClaims{
 		"id":  id.String(),
+		"hid": householdId.String(),
 		"exp": time.Now().Add(expiresIn).Unix(),
 	}
 

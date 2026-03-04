@@ -16,8 +16,15 @@ func NewMealPlanService(repo domain.MealPlanRepository) *MealPlanService {
 	return &MealPlanService{repo: repo}
 }
 
-func (s *MealPlanService) ByIdWithRecipes(id uuid.UUID) (*domain.MealPlan, error) {
-	return s.repo.ByIdWithRecipes(id)
+func (s *MealPlanService) ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.MealPlan, error) {
+	mealPlan, err := s.repo.ByIdWithRecipes(id)
+	if err != nil {
+		return nil, err
+	}
+	if mealPlan.HouseholdID != householdID {
+		return nil, domain.ErrForbidden
+	}
+	return mealPlan, nil
 }
 
 func (s *MealPlanService) List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]domain.MealPlan, int64, error) {
@@ -56,6 +63,13 @@ func (s *MealPlanService) Update(mealPlan *domain.MealPlan) error {
 	return nil
 }
 
-func (s *MealPlanService) Delete(id uuid.UUID) error {
+func (s *MealPlanService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+	mealPlan, err := s.repo.ByIdWithRecipes(id)
+	if err != nil {
+		return err
+	}
+	if mealPlan.HouseholdID != householdID {
+		return domain.ErrForbidden
+	}
 	return s.repo.Delete(id)
 }

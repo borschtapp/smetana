@@ -12,8 +12,9 @@ import (
 
 // TokenMetadata struct to describe metadata in JWT.
 type TokenMetadata struct {
-	ID      uuid.UUID
-	Expires int64
+	ID          uuid.UUID
+	HouseholdID uuid.UUID
+	Expires     int64
 }
 
 // ExtractTokenMetadata func to extract metadata from JWT.
@@ -31,12 +32,18 @@ func ExtractTokenMetadata(c fiber.Ctx) (*TokenMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Household ID.
+		hid, err := uuid.Parse(claims["hid"].(string))
+		if err != nil {
+			return nil, err
+		}
 		// Expires time.
 		expires := int64(claims["exp"].(float64))
 
 		return &TokenMetadata{
-			ID:      id,
-			Expires: expires,
+			ID:          id,
+			HouseholdID: hid,
+			Expires:     expires,
 		}, nil
 	}
 

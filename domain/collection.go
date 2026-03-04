@@ -40,12 +40,12 @@ type CollectionRepository interface {
 }
 
 type CollectionService interface {
-	ById(id uuid.UUID) (*Collection, error)
-	ByIdWithRecipes(id uuid.UUID) (*Collection, error)
+	ById(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
+	ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
 	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
 	Create(collection *Collection) error
-	Update(collection *Collection) error
-	Delete(id uuid.UUID) error
-	AddRecipe(collection *Collection, recipeID uuid.UUID) error
-	RemoveRecipe(collection *Collection, recipeID uuid.UUID) error
+	Update(collection *Collection, householdID uuid.UUID) error
+	Delete(id uuid.UUID, householdID uuid.UUID) error
+	AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
+	RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 }

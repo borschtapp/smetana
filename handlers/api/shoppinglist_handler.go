@@ -1,10 +1,8 @@
 package api
 
 import (
-	"errors"
-
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -41,13 +39,8 @@ func (h *ShoppingListHandler) GetShoppingList(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	p := types.GetPagination(c)
-	items, total, err := h.shoppingListService.List(user.HouseholdID, p.Offset(), p.Limit)
+	items, total, err := h.shoppingListService.List(tokenData.HouseholdID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -82,11 +75,11 @@ type ShoppingListForm struct {
 func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
 	var form ShoppingListForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(form); err != nil {
-		return sErrors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -94,13 +87,8 @@ func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	item := &domain.ShoppingList{
-		HouseholdID: user.HouseholdID,
+		HouseholdID: tokenData.HouseholdID,
 		Product:     form.Name,
 		Quantity:    form.Quantity,
 		UnitID:      form.UnitID,
@@ -137,12 +125,12 @@ type UpdateShoppingListForm struct {
 func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid item id")
+		return sentinels.BadRequest("invalid item id")
 	}
 
 	var form UpdateShoppingListForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -150,21 +138,9 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	item, err := h.shoppingListService.ById(id)
 	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("item not found")
-		}
 		return err
-	}
-
-	if item.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("item does not belong to your household")
 	}
 
 	if form.Name != nil {
@@ -177,7 +153,7 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 		item.IsBought = *form.IsBought
 	}
 
-	if err := h.shoppingListService.Update(item); err != nil {
+	if err := h.shoppingListService.Update(item, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -201,7 +177,7 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 func (h *ShoppingListHandler) DeleteShoppingListItem(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid item id")
+		return sentinels.BadRequest("invalid item id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -209,24 +185,7 @@ func (h *ShoppingListHandler) DeleteShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	item, err := h.shoppingListService.ById(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("item not found")
-		}
-		return err
-	}
-
-	if item.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("item does not belong to your household")
-	}
-
-	if err := h.shoppingListService.Delete(id); err != nil {
+	if err := h.shoppingListService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 

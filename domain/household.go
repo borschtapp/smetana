@@ -35,4 +35,6 @@ type HouseholdService interface {
 	Create(household *Household) error
 	Update(household *Household) error
 	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
+	AddMember(householdID uuid.UUID, targetEmail string) (*User, error)
+	RemoveMember(householdID uuid.UUID, targetUserID uuid.UUID) error
 }

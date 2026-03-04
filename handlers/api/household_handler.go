@@ -1,10 +1,8 @@
 package api
 
 import (
-	"errors"
-
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -35,7 +33,7 @@ func NewHouseholdHandler(householdService domain.HouseholdService, userService d
 func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid household id")
+		return sentinels.BadRequest("invalid household id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -43,13 +41,8 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	if user.HouseholdID != id {
-		return sErrors.Forbidden("you do not have access to this household")
+	if tokenData.HouseholdID != id {
+		return sentinels.Forbidden("you do not have access to this household")
 	}
 
 	household, err := h.householdService.ById(id)
@@ -64,6 +57,7 @@ type UpdateHouseholdForm struct {
 	Name string `validate:"required,min=2" json:"name"`
 }
 
+// UpdateHousehold godoc
 // @Summary Update household by ID.
 // @Description Rename a specific household.
 // @Tags households
@@ -80,16 +74,16 @@ type UpdateHouseholdForm struct {
 func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid household id")
+		return sentinels.BadRequest("invalid household id")
 	}
 
 	var form UpdateHouseholdForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(form); err != nil {
-		return sErrors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -97,13 +91,8 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	if user.HouseholdID != id {
-		return sErrors.Forbidden("you do not have permission to update this household")
+	if tokenData.HouseholdID != id {
+		return sentinels.Forbidden("you do not have permission to update this household")
 	}
 
 	household, err := h.householdService.ById(id)
@@ -119,6 +108,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 	return c.JSON(household)
 }
 
+// GetHouseholdMembers godoc
 // @Summary List household members by household ID.
 // @Description Returns a list of users in a specific household.
 // @Tags households
@@ -135,7 +125,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid household id")
+		return sentinels.BadRequest("invalid household id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -143,13 +133,8 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	if user.HouseholdID != id {
-		return sErrors.Forbidden("you do not have access to this household")
+	if tokenData.HouseholdID != id {
+		return sentinels.Forbidden("you do not have access to this household")
 	}
 
 	p := types.GetPagination(c)
@@ -171,6 +156,7 @@ type AddMemberForm struct {
 	Email string `validate:"required,email" json:"email" format:"email" example:"newmember@example.com"`
 }
 
+// AddHouseholdMember godoc
 // @Summary Add a member to the household by household ID.
 // @Description Assigns a user to a specific household by email.
 // @Tags households
@@ -188,12 +174,16 @@ type AddMemberForm struct {
 func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid household id")
+		return sentinels.BadRequest("invalid household id")
 	}
 
 	var form AddMemberForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
+	}
+
+	if err := validate.Struct(form); err != nil {
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -201,31 +191,19 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	currentUser, err := h.userService.ById(tokenData.ID)
+	if tokenData.HouseholdID != id {
+		return sentinels.Forbidden("you do not have permission to manage this household")
+	}
+
+	targetUser, err := h.householdService.AddMember(id, form.Email)
 	if err != nil {
-		return err
-	}
-
-	if currentUser.HouseholdID != id {
-		return sErrors.Forbidden("you do not have permission to manage this household")
-	}
-
-	targetUser, err := h.userService.ByEmail(form.Email)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("user with this email not found")
-		}
-		return err
-	}
-
-	targetUser.HouseholdID = id
-	if err := h.userService.Update(targetUser); err != nil {
 		return err
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(targetUser)
 }
 
+// RemoveHouseholdMember godoc
 // @Summary Remove a member from the household by IDs.
 // @Description Disassociates a user from a specific household.
 // @Tags households
@@ -243,12 +221,12 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid household id")
+		return sentinels.BadRequest("invalid household id")
 	}
 
 	targetUserID, err := uuid.Parse(c.Params("userId"))
 	if err != nil {
-		return sErrors.BadRequest("invalid user id")
+		return sentinels.BadRequest("invalid user id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -256,31 +234,11 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	currentUser, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
+	if tokenData.HouseholdID != id {
+		return sentinels.Forbidden("you do not have permission to manage this household")
 	}
 
-	if currentUser.HouseholdID != id {
-		return sErrors.Forbidden("you do not have permission to manage this household")
-	}
-
-	targetUser, err := h.userService.ById(targetUserID)
-	if err != nil {
-		return err
-	}
-
-	if targetUser.HouseholdID != id {
-		return sErrors.Forbidden("user is not in this household")
-	}
-
-	newHousehold := &domain.Household{Name: targetUser.Name + "'s Household"}
-	if err = h.householdService.Create(newHousehold); err != nil {
-		return err
-	}
-
-	targetUser.HouseholdID = newHousehold.ID
-	if err := h.userService.Update(targetUser); err != nil {
+	if err := h.householdService.RemoveMember(id, targetUserID); err != nil {
 		return err
 	}
 

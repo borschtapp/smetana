@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"sync"
 
 	"borscht.app/smetana/domain"
@@ -93,6 +94,34 @@ func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction)
 
 func (s *RecipeService) DeleteInstruction(id uuid.UUID) error {
 	return s.repo.DeleteInstruction(id)
+}
+
+// ImportForUser imports a recipe from URL and saves it for the given user.
+// If the recipe already exists: saves it for the user (unless forceUpdate=true, in which case it is re-imported).
+func (s *RecipeService) ImportForUser(url string, userID uuid.UUID, forceUpdate bool) (*domain.Recipe, error) {
+	existing, err := s.repo.ByUrl(url)
+	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
+		return nil, err
+	}
+	if existing != nil {
+		if !forceUpdate {
+			if err := s.UserSave(userID, existing.ID); err != nil {
+				return nil, err
+			}
+			return existing, nil
+		}
+		if err := s.repo.Delete(existing.ID); err != nil {
+			return nil, err
+		}
+	}
+	recipe, err := s.ImportFromURL(url)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.UserSave(userID, recipe.ID); err != nil {
+		return nil, err
+	}
+	return recipe, nil
 }
 
 func (s *RecipeService) ImportFromURL(url string) (*domain.Recipe, error) {

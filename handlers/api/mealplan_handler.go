@@ -1,11 +1,10 @@
 package api
 
 import (
-	"errors"
 	"time"
 
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/types"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
@@ -47,11 +46,6 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	var from, to *time.Time
 	if fromStr != "" {
 		if t, err := time.Parse("2006-01-02", fromStr); err == nil {
@@ -65,7 +59,7 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	mealPlans, total, err := h.mealPlanService.List(user.HouseholdID, from, to, p.Offset(), p.Limit)
+	mealPlans, total, err := h.mealPlanService.List(tokenData.HouseholdID, from, to, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -102,11 +96,11 @@ type MealPlanForm struct {
 func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 	var form MealPlanForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	if err := validate.Struct(form); err != nil {
-		return sErrors.BadRequestVal(err)
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -114,13 +108,8 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
 	mealPlan := &domain.MealPlan{
-		HouseholdID: user.HouseholdID,
+		HouseholdID: tokenData.HouseholdID,
 		Date:        form.Date,
 		MealType:    form.MealType,
 		RecipeID:    form.RecipeID,
@@ -161,12 +150,12 @@ type UpdateMealPlanForm struct {
 func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid meal plan id")
+		return sentinels.BadRequest("invalid meal plan id")
 	}
 
 	var form UpdateMealPlanForm
 	if err := c.Bind().Body(&form); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -174,21 +163,9 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
+	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
-	}
-
-	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("meal plan not found")
-		}
-		return err
-	}
-
-	if mealPlan.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("meal plan does not belong to your household")
 	}
 
 	if form.Date != nil {
@@ -231,7 +208,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return sErrors.BadRequest("invalid meal plan id")
+		return sentinels.BadRequest("invalid meal plan id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -239,24 +216,7 @@ func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(tokenData.ID)
-	if err != nil {
-		return err
-	}
-
-	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrRecordNotFound) {
-			return sErrors.NotFound("meal plan not found")
-		}
-		return err
-	}
-
-	if mealPlan.HouseholdID != user.HouseholdID {
-		return sErrors.Forbidden("meal plan does not belong to your household")
-	}
-
-	if err := h.mealPlanService.Delete(id); err != nil {
+	if err := h.mealPlanService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 

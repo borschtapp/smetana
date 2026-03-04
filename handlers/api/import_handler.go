@@ -1,11 +1,10 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"borscht.app/smetana/domain"
-	sErrors "borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/pkg/sentinels"
 	"borscht.app/smetana/pkg/utils"
 	"github.com/gofiber/fiber/v3"
 )
@@ -40,7 +39,11 @@ type ImportRequest struct {
 func (h *ImportHandler) Import(c fiber.Ctx) error {
 	var request ImportRequest
 	if err := c.Bind().Body(&request); err != nil {
-		return sErrors.BadRequest(err.Error())
+		return sentinels.BadRequest(err.Error())
+	}
+
+	if err := validate.Struct(request); err != nil {
+		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -48,35 +51,8 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	// Check if recipe already exists by URL
-	recipeByUrl, err := h.recipeService.ByUrl(request.URL)
-	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
-		return err
-	}
-	if recipeByUrl != nil {
-		if !request.Update {
-			// Recipe exists, just add to user's recipes
-			if err := h.recipeService.UserSave(tokenData.ID, recipeByUrl.ID); err != nil {
-				return err
-			}
-			return c.JSON(recipeByUrl)
-		} else {
-			// TODO: the recipe should not be deleted, but updated instead, only if user has permission to do that. If not, create a duplicate
-			// Delete existing to re-import
-			if err := h.recipeService.Delete(recipeByUrl.ID); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Import recipe from URL
-	recipe, err := h.recipeService.ImportFromURL(request.URL)
+	recipe, err := h.recipeService.ImportForUser(request.URL, tokenData.ID, request.Update)
 	if err != nil {
-		return err
-	}
-
-	// Add to user's recipes
-	if err := h.recipeService.UserSave(tokenData.ID, recipe.ID); err != nil {
 		return err
 	}
 

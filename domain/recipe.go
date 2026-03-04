@@ -277,6 +277,7 @@ type RecipeService interface {
 	CreateInstruction(instruction *RecipeInstruction) error
 	UpdateInstruction(instruction *RecipeInstruction) error
 	DeleteInstruction(id uuid.UUID) error
+	ImportForUser(url string, userID uuid.UUID, forceUpdate bool) (*Recipe, error)
 	ImportFromURL(url string) (*Recipe, error)
 	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)
 }
