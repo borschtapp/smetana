@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/sentinels"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -51,7 +51,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ImportForUser(request.URL, tokenData.ID, request.Update)
+	recipe, err := h.recipeService.ImportFromURL(request.URL, tokenData.ID, request.Update)
 	if err != nil {
 		return err
 	}

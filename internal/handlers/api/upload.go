@@ -9,7 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type UploadHandler struct {

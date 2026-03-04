@@ -5,8 +5,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"borscht.app/smetana/pkg/sentinels"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 )
 
 type UserHandler struct {

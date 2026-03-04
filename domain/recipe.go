@@ -3,8 +3,8 @@ package domain
 import (
 	"time"
 
-	"borscht.app/smetana/pkg/types"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 	"github.com/borschtapp/krip"
 	"github.com/borschtapp/krip/model"
 	kUtils "github.com/borschtapp/krip/utils"

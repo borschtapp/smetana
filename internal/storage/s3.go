@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	fiberS3 "github.com/gofiber/storage/s3/v2"

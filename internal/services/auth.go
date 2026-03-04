@@ -12,17 +12,17 @@ import (
 	"golang.org/x/oauth2"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/utils"
 )
 
-type OIDCService struct {
+type AuthService struct {
 	provider     *oidc.Provider
 	oauth2Config *oauth2.Config
 	verifier     *oidc.IDTokenVerifier
 	userService  domain.UserService
 }
 
-func NewOIDCService(userService domain.UserService) (*OIDCService, error) {
+func NewAuthService(userService domain.UserService) (*AuthService, error) {
 	providerURL := utils.Getenv("OIDC_PROVIDER", "")
 	clientID := utils.Getenv("OIDC_CLIENT_ID", "")
 	clientSecret := utils.Getenv("OIDC_CLIENT_SECRET", "")
@@ -48,7 +48,7 @@ func NewOIDCService(userService domain.UserService) (*OIDCService, error) {
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 
-	return &OIDCService{
+	return &AuthService{
 		provider:     provider,
 		oauth2Config: conf,
 		verifier:     verifier,
@@ -56,11 +56,11 @@ func NewOIDCService(userService domain.UserService) (*OIDCService, error) {
 	}, nil
 }
 
-func (s *OIDCService) LoginURL(state string) string {
+func (s *AuthService) LoginURL(state string) string {
 	return s.oauth2Config.AuthCodeURL(state)
 }
 
-func (s *OIDCService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
+func (s *AuthService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
 	oauth2Token, err := s.oauth2Config.Exchange(ctx, code)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to exchange token: %v", err)
@@ -80,7 +80,7 @@ func (s *OIDCService) Exchange(ctx context.Context, code string) (*oauth2.Token,
 }
 
 // FindOrRegisterOIDCUser finds a user by email (with Household preloaded) or creates one via JIT provisioning.
-func (s *OIDCService) FindOrRegisterOIDCUser(email, name string) (*domain.User, error) {
+func (s *AuthService) FindOrRegisterOIDCUser(email, name string) (*domain.User, error) {
 	user, err := s.userService.ByEmailWithHousehold(email)
 	if err == nil {
 		return user, nil

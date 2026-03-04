@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/utils"
 )
 
 type databaseEnvVars struct {

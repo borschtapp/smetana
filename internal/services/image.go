@@ -15,8 +15,8 @@ import (
 	"github.com/doyensec/safeurl"
 	_ "golang.org/x/image/webp"
 
-	"borscht.app/smetana/pkg/storage"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/utils"
 )
 
 type ImageService struct {

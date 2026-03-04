@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/sentinels"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 	"github.com/gofiber/fiber/v3"
 )
 

@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"borscht.app/smetana/pkg/storage"
+	"borscht.app/smetana/internal/storage"
 )
 
 type UploadedImage struct {

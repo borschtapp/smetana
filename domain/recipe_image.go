@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"borscht.app/smetana/pkg/storage"
+	"borscht.app/smetana/internal/storage"
 	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"gorm.io/gorm"

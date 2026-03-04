@@ -20,13 +20,13 @@ import (
 	"github.com/joho/godotenv"
 
 	_ "borscht.app/smetana/docs"
-	"borscht.app/smetana/handlers"
-	"borscht.app/smetana/pkg/configs"
-	"borscht.app/smetana/pkg/database"
-	"borscht.app/smetana/pkg/routes"
-	"borscht.app/smetana/pkg/services"
-	"borscht.app/smetana/pkg/storage"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/configs"
+	"borscht.app/smetana/internal/database"
+	"borscht.app/smetana/internal/handlers"
+	"borscht.app/smetana/internal/routes"
+	"borscht.app/smetana/internal/services"
+	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/utils"
 )
 
 // @title Smetana API

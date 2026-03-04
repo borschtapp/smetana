@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/configs"
+	"borscht.app/smetana/internal/configs"
 )
 
 func Connect() (*gorm.DB, error) {

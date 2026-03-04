@@ -6,7 +6,7 @@ import (
 	jwtware "github.com/gofiber/contrib/v3/jwt"
 	"github.com/gofiber/fiber/v3"
 
-	"borscht.app/smetana/pkg/sentinels"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 // Protected func for specify routes group with JWT authentication.

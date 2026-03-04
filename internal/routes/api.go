@@ -1,16 +1,16 @@
 package routes
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/handlers/api"
-	"borscht.app/smetana/pkg/middlewares"
-	"borscht.app/smetana/pkg/repositories"
-	"borscht.app/smetana/pkg/services"
+	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/handlers/api"
+	"borscht.app/smetana/internal/middlewares"
+	"borscht.app/smetana/internal/repositories"
+	"borscht.app/smetana/internal/services"
 )
 
 func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db *gorm.DB) {
@@ -33,7 +33,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	feedService := services.NewFeedService(feedRepo, recipeRepo, recipeService)
 
 	userService := services.NewUserService(userRepo)
-	oidcService, err := services.NewOIDCService(userService)
+	oidcService, err := services.NewAuthService(userService)
 	if err != nil {
 		log.Warnf("OIDC service not initialized: %v", err)
 	}

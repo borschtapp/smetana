@@ -10,18 +10,18 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/sentinels"
-	"borscht.app/smetana/pkg/utils"
+	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 )
 
 var validate = validator.New()
 
 type AuthHandler struct {
-	oidcService domain.OIDCService
+	oidcService domain.AuthService
 	userService domain.UserService
 }
 
-func NewAuthHandler(oidcService domain.OIDCService, userService domain.UserService) *AuthHandler {
+func NewAuthHandler(oidcService domain.AuthService, userService domain.UserService) *AuthHandler {
 	return &AuthHandler{
 		oidcService: oidcService,
 		userService: userService,
@@ -214,7 +214,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 // @Router /api/v1/auth/oidc/login [get]
 func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 	if h.oidcService == nil {
-		return sentinels.NotImplemented("OIDC service not configured")
+		return sentinels.NotImplemented("OIDC services not configured")
 	}
 
 	state := utils.GenerateRandomString(32)
@@ -241,7 +241,7 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 // @Router /api/v1/auth/oidc/callback [get]
 func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	if h.oidcService == nil {
-		return sentinels.NotImplemented("OIDC service not configured")
+		return sentinels.NotImplemented("OIDC services not configured")
 	}
 
 	state := c.Query("state")

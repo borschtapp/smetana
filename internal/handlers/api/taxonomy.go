@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/pkg/types"
+	"borscht.app/smetana/internal/types"
 )
 
 type TaxonomyHandler struct {
