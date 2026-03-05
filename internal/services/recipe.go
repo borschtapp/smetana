@@ -325,7 +325,10 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 
 	for _, img := range recipe.Images {
 		if img.DownloadUrl != nil {
-			s.repo.UpdateImage(img)
+			err := s.repo.UpdateImage(img)
+			if err != nil {
+				log.Warnf("failed to update image: %v", err)
+			}
 		}
 	}
 }
