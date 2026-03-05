@@ -1,12 +1,12 @@
 package repositories
 
 import (
-	"errors"
 	"time"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type MealPlanRepository struct {
@@ -20,10 +20,7 @@ func NewMealPlanRepository(db *gorm.DB) *MealPlanRepository {
 func (r *MealPlanRepository) ByIdWithRecipes(id uuid.UUID) (*domain.MealPlan, error) {
 	var mealPlan domain.MealPlan
 	if err := r.db.Preload("Recipe").First(&mealPlan, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &mealPlan, nil
 }

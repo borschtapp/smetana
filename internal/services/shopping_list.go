@@ -1,7 +1,6 @@
 package services
 
 import (
-	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
@@ -32,17 +31,7 @@ func (s *ShoppingListService) List(householdID uuid.UUID, offset, limit int) ([]
 
 func (s *ShoppingListService) Create(item *domain.ShoppingList, householdID uuid.UUID) error {
 	item.HouseholdID = householdID
-	if err := s.repo.Create(item); err != nil {
-		return err
-	}
-	if item.UnitID != nil {
-		if fetched, err := s.repo.ByID(item.ID); err != nil {
-			log.Warnf("failed to reload shopping list item %s after write: %v", item.ID, err)
-		} else {
-			item.Unit = fetched.Unit
-		}
-	}
-	return nil
+	return s.repo.Create(item)
 }
 
 func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid.UUID) error {
@@ -53,17 +42,7 @@ func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid
 	if existing.HouseholdID != householdID {
 		return domain.ErrForbidden
 	}
-	if err := s.repo.Update(item); err != nil {
-		return err
-	}
-	if item.UnitID != nil {
-		if fetched, err := s.repo.ByID(item.ID); err != nil {
-			log.Warnf("failed to reload shopping list item %s after write: %v", item.ID, err)
-		} else {
-			item.Unit = fetched.Unit
-		}
-	}
-	return nil
+	return s.repo.Update(item)
 }
 
 func (s *ShoppingListService) Delete(id uuid.UUID, householdID uuid.UUID) error {

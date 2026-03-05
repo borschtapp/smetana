@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -20,10 +18,7 @@ func NewHouseholdRepository(db *gorm.DB) *HouseholdRepository {
 func (r *HouseholdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &household, nil
 }

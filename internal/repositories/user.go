@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -20,10 +18,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 func (r *UserRepository) ByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.First(&user, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &user, nil
 }
@@ -31,10 +26,7 @@ func (r *UserRepository) ByID(id uuid.UUID) (*domain.User, error) {
 func (r *UserRepository) ByEmail(email string) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.Where(&domain.User{Email: email}).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &user, nil
 }
@@ -42,23 +34,19 @@ func (r *UserRepository) ByEmail(email string) (*domain.User, error) {
 func (r *UserRepository) ByEmailWithHousehold(email string) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.Where(&domain.User{Email: email}).Preload("Household").First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
-
 	return &user, nil
 }
 
 func (r *UserRepository) Create(user *domain.User) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+	return mapErr(r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user.Household).Error; err != nil {
 			return err
 		}
 		user.HouseholdID = user.Household.ID
 		return tx.Create(user).Error
-	})
+	}))
 }
 
 func (r *UserRepository) Update(user *domain.User) error {
@@ -71,12 +59,8 @@ func (r *UserRepository) Delete(id uuid.UUID) error {
 
 func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.UserToken, error) {
 	var userToken domain.UserToken
-	err := r.db.Joins("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+	if err := r.db.Preload("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error; err != nil {
+		return nil, mapErr(err)
 	}
 	return &userToken, nil
 }

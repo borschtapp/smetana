@@ -33,7 +33,7 @@ func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageSer
 	}
 }
 
-func (s *RecipeService) ByID(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
+func (s *RecipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	recipe, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -135,8 +135,8 @@ func (s *RecipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 	return newRecipe, nil
 }
 
-func (s *RecipeService) Delete(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(id, userID, householdID); err != nil {
+func (s *RecipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(id, householdID); err != nil {
 		return err
 	}
 	return s.repo.Delete(id)
@@ -154,43 +154,43 @@ func (s *RecipeService) UserSearch(userID uuid.UUID, householdID uuid.UUID, q st
 	return s.repo.UserSearch(userID, householdID, q, taxonomies, cuisine, offset, limit)
 }
 
-func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(ingredient.RecipeID, userID, householdID); err != nil {
+func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateIngredient(ingredient)
 }
 
-func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(ingredient.RecipeID, userID, householdID); err != nil {
+func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateIngredient(ingredient)
 }
 
-func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(recipeID, userID, householdID); err != nil {
+func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.DeleteIngredient(id)
 }
 
-func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(instruction.RecipeID, userID, householdID); err != nil {
+func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
+	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateInstruction(instruction)
 }
 
-func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(instruction.RecipeID, userID, householdID); err != nil {
+func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
+	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateInstruction(instruction)
 }
 
-func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(recipeID, userID, householdID); err != nil {
+func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.DeleteInstruction(id)

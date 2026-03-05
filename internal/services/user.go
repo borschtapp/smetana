@@ -1,8 +1,6 @@
 package services
 
 import (
-	"strings"
-
 	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 )
@@ -47,13 +45,7 @@ func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 // Create provisions a personal household then persists the user in a single transaction.
 func (s *UserService) Create(user *domain.User) error {
 	user.Household = &domain.Household{Name: user.Name + "'s Household"}
-	if err := s.repo.Create(user); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			return domain.ErrAlreadyExists
-		}
-		return err
-	}
-	return nil
+	return s.repo.Create(user)
 }
 
 // FindRefreshToken retrieves a refresh token with its associated user.

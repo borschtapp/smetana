@@ -7,11 +7,12 @@ import (
 )
 
 type CollectionService struct {
-	repo domain.CollectionRepository
+	repo          domain.CollectionRepository
+	recipeService domain.RecipeService
 }
 
-func NewCollectionService(repo domain.CollectionRepository) *CollectionService {
-	return &CollectionService{repo: repo}
+func NewCollectionService(repo domain.CollectionRepository, recipeService domain.RecipeService) *CollectionService {
+	return &CollectionService{repo: repo, recipeService: recipeService}
 }
 
 func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
@@ -75,6 +76,12 @@ func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID
 	}
 	if collection.HouseholdID != householdID {
 		return domain.ErrForbidden
+	}
+
+	// Validate permission to access the recipe
+	_, err = s.recipeService.ByID(recipeID, householdID)
+	if err != nil {
+		return err
 	}
 	return s.repo.AddRecipe(collection, recipeID)
 }

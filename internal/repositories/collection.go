@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -20,10 +18,7 @@ func NewCollectionRepository(db *gorm.DB) *CollectionRepository {
 func (r *CollectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.First(&collection, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &collection, nil
 }
@@ -31,10 +26,7 @@ func (r *CollectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 func (r *CollectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.Preload("Recipes").First(&collection, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &collection, nil
 }
@@ -59,7 +51,7 @@ func (r *CollectionRepository) Create(collection *domain.Collection) error {
 }
 
 func (r *CollectionRepository) Update(collection *domain.Collection) error {
-	return r.db.Model(collection).Updates(collection).Error
+	return r.db.Model(collection).Select("name", "description").Updates(collection).Error
 }
 
 func (r *CollectionRepository) Delete(id uuid.UUID) error {

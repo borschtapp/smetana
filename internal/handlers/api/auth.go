@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
+
+// dummyHash is a hash used for password comparison when the requested email does not exist
+var dummyHash, _ = utils.HashPassword("dummy-password-for-timing-protection")
 
 var validate = validator.New()
 
@@ -54,12 +58,17 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	}
 
 	user, err := h.userService.ByEmail(requestBody.Email)
-	if err != nil {
+	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
 		return err
 	}
 
-	if !utils.ValidatePassword(user.Password, requestBody.Password) {
-		return sentinels.BadRequest("wrong user email address or password")
+	// to prevent timing attacks that distinguish "email not found" from "wrong password" via response latency
+	hashToCheck := dummyHash
+	if user != nil {
+		hashToCheck = user.Password
+	}
+	if !utils.ValidatePassword(hashToCheck, requestBody.Password) || user == nil {
+		return sentinels.Unauthorized("invalid email or password")
 	}
 
 	if tokens, err := h.issueTokens(*user); err == nil {
@@ -161,6 +170,7 @@ type RegisterForm struct {
 // @Param user body RegisterForm true "User registration data"
 // @Success 201 {object} AuthResponse
 // @Failure 400 {object} domain.Error
+// @Failure 409 {object} domain.Error
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var requestBody RegisterForm
@@ -170,10 +180,6 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 
 	if err := validate.Struct(requestBody); err != nil {
 		return sentinels.BadRequestVal(err)
-	}
-
-	if _, err := h.userService.ByEmail(requestBody.Email); err == nil {
-		return sentinels.BadRequest("user with this email already exists")
 	}
 
 	hash, err := utils.HashPassword(requestBody.Password)
@@ -269,6 +275,10 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		return sentinels.InternalServerError("Failed to parse claims")
+	}
+
+	if !claims.Verified {
+		return sentinels.BadRequest("Email address not verified by identity provider")
 	}
 
 	user, err := h.oidcService.FindOrRegisterOIDCUser(claims.Email, claims.Name)

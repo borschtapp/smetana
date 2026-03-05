@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -26,10 +24,7 @@ func (r *RecipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 			return db.Joins("Food").Joins("Unit")
 		}).
 		First(&recipe, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &recipe, nil
 }
@@ -42,10 +37,7 @@ func (r *RecipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 			return db.Joins("Food").Joins("Unit")
 		}).
 		First(&recipe).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &recipe, nil
 }
@@ -74,7 +66,7 @@ func (r *RecipeRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.Recipe{}, id).Error
 }
 
-func (r *RecipeRepository) UserSave(userID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+func (r *RecipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
 	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&domain.RecipeSaved{
 		UserID:      userID,
 		RecipeID:    recipeID,
@@ -88,6 +80,10 @@ func (r *RecipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, househ
 	}
 	var recipes []domain.Recipe
 	err := r.db.
+		Preload(clause.Associations).
+		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
+			return db.Joins("Food").Joins("Unit")
+		}).
 		Where("parent_id IN ? AND household_id = ?", parentIDs, householdID).
 		Find(&recipes).Error
 	if err != nil {

@@ -18,13 +18,12 @@ func (e *Error) Error() string {
 
 func (e *Error) Is(target error) bool {
 	var t *Error
-	ok := errors.As(target, &t)
-	if !ok {
+	if !errors.As(target, &t) {
 		return false
 	}
 	return e.Status == t.Status
 }
 
-var ErrRecordNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
 var ErrForbidden = &Error{Status: fiber.StatusForbidden, Message: "Access denied"}
+var ErrRecordNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
 var ErrAlreadyExists = &Error{Status: fiber.StatusConflict, Message: "The entity already exists"}

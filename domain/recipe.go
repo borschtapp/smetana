@@ -268,22 +268,22 @@ type RecipeRepository interface {
 }
 
 type RecipeService interface {
-	ByID(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
+	ByID(id uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
-	Delete(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
+	Delete(id uuid.UUID, householdID uuid.UUID) error
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
 	UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
-	CreateIngredient(ingredient *RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error
-	UpdateIngredient(ingredient *RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error
-	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
+	CreateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
+	UpdateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
+	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
-	CreateInstruction(instruction *RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error
-	UpdateInstruction(instruction *RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error
-	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
+	CreateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
+	UpdateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
+	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
 	ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)

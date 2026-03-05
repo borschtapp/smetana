@@ -14,15 +14,17 @@ func BadRequest(m string) *domain.Error {
 }
 
 func BadRequestVal(err error) *domain.Error {
-	// Define fields map.
-	fields := map[string]string{}
-
-	// Make error message for each invalid field.
-	for _, err := range err.(validator.ValidationErrors) {
-		fields[err.Field()] = fmt.Sprintf("Field '%s' validation failed: %v", err.Tag(), err.Error())
+	validationErrors, ok := err.(validator.ValidationErrors)
+	if !ok {
+		return &domain.Error{Status: fiber.StatusBadRequest, Message: err.Error()}
 	}
 
-	return &domain.Error{Status: fiber.StatusBadRequest, Message: err.Error(), Fields: &fields}
+	fields := map[string]string{}
+	for _, e := range validationErrors {
+		fields[e.Field()] = fmt.Sprintf("Field '%s' validation failed: %v", e.Tag(), e.Error())
+	}
+
+	return &domain.Error{Status: fiber.StatusBadRequest, Message: "Request validation failed", Fields: &fields}
 }
 
 func BadRequestField(field string, reason string) *domain.Error {

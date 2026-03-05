@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -20,10 +18,7 @@ func NewShoppingListRepository(db *gorm.DB) *ShoppingListRepository {
 func (r *ShoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
 	var item domain.ShoppingList
 	if err := r.db.Preload("Unit").First(&item, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &item, nil
 }
@@ -44,11 +39,17 @@ func (r *ShoppingListRepository) List(householdID uuid.UUID, offset, limit int) 
 }
 
 func (r *ShoppingListRepository) Create(item *domain.ShoppingList) error {
-	return r.db.Create(item).Error
+	if err := r.db.Create(item).Error; err != nil {
+		return err
+	}
+	if item.UnitID != nil {
+		return r.db.Preload("Unit").First(item, item.ID).Error
+	}
+	return nil
 }
 
 func (r *ShoppingListRepository) Update(item *domain.ShoppingList) error {
-	return r.db.Model(item).Updates(item).Error
+	return r.db.Model(item).Select("product", "quantity", "unit_id", "is_bought").Updates(item).Error
 }
 
 func (r *ShoppingListRepository) Delete(id uuid.UUID) error {

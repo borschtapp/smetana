@@ -1,8 +1,6 @@
 package repositories
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -20,10 +18,7 @@ func NewFeedRepository(db *gorm.DB) *FeedRepository {
 func (r *FeedRepository) ByUrl(url string) (*domain.Feed, error) {
 	var feed domain.Feed
 	if err := r.db.Where("url = ?", url).First(&feed).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrRecordNotFound
-		}
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return &feed, nil
 }
@@ -90,7 +85,8 @@ func (r *FeedRepository) Create(feed *domain.Feed) error {
 }
 
 func (r *FeedRepository) Update(feed *domain.Feed) error {
-	return r.db.Model(feed).Updates(feed).Error
+	// Explicitly select mutable columns so that zero-value fields like are persisted correctly
+	return r.db.Model(feed).Select("active", "error_count", "retrieved", "name").Updates(feed).Error
 }
 
 func (r *FeedRepository) Delete(id uuid.UUID) error {
