@@ -12,7 +12,11 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY docs ./docs/
+COPY domain ./domain/
+COPY internal ./internal/
+COPY *.go .
+
 RUN go build -o main .
 
 FROM alpine:latest AS release
