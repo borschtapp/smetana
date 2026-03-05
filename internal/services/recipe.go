@@ -4,12 +4,13 @@ import (
 	"errors"
 	"sync"
 
-	"borscht.app/smetana/domain"
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
 	"github.com/borschtapp/krip/model"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
 )
 
 type RecipeService struct {
@@ -32,92 +33,164 @@ func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageSer
 	}
 }
 
-func (s *RecipeService) ById(id uuid.UUID, userID uuid.UUID) (*domain.Recipe, error) {
-	recipe, err := s.repo.ById(id)
+func (s *RecipeService) ByID(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
+	recipe, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
-	canAccess, err := s.repo.IsUserSaved(userID, id)
-	if err != nil {
-		return nil, err
+	// Anonymous are publicly readable
+	if recipe.HouseholdID == nil {
+		return recipe, nil
 	}
-	if !canAccess {
-		return nil, domain.ErrForbidden
+	// Household-owned: same household has full access
+	if *recipe.HouseholdID == householdID {
+		return recipe, nil
 	}
-	return recipe, nil
+
+	return nil, domain.ErrForbidden
 }
 
-func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID) error {
+func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
+	recipe.HouseholdID = &householdID
+	recipe.UserID = &userID
 	if err := s.repo.Create(recipe); err != nil {
 		return err
 	}
-	return s.UserSave(userID, recipe.ID)
+	return s.UserSave(recipe.ID, userID, householdID)
 }
 
-func (s *RecipeService) Update(recipe *domain.Recipe, userID uuid.UUID) error {
+func (s *RecipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
+	existing, err := s.repo.ByID(recipe.ID)
+	if err != nil {
+		return err
+	}
+
+	// Copy-on-write: if it doesn't belong to household yet, clone it into the household first
+	if existing.HouseholdID == nil {
+		cloned, err := s.cloneToHousehold(existing, userID, householdID)
+		if err != nil {
+			return err
+		}
+
+		// Apply the incoming patch fields onto the clone
+		recipe.ID = cloned.ID
+		recipe.HouseholdID = cloned.HouseholdID
+		recipe.ParentID = cloned.ParentID
+		recipe.UserID = cloned.UserID
+	}
 	return s.repo.Update(recipe)
 }
 
-func (s *RecipeService) Delete(id uuid.UUID, userID uuid.UUID) error {
-	if _, err := s.ById(id, userID); err != nil {
+// cloneToHousehold clones a global recipe into the given household. Make sure to preload all relevant associations
+func (s *RecipeService) cloneToHousehold(global *domain.Recipe, userID, householdID uuid.UUID) (*domain.Recipe, error) {
+	clone := *global
+	clone.ID = uuid.Nil // BeforeCreate hook will assign a new UUID
+	clone.HouseholdID = &householdID
+	clone.UserID = &userID
+	clone.ParentID = &global.ID
+
+	clone.Images = nil // images are shared (same remote URLs) — don't duplicate storage
+	clone.Collections = nil
+	clone.Taxonomies = global.Taxonomies // keep taxonomy associations (many2many OK to share)
+	clone.Publisher = global.Publisher
+	clone.Feed = nil
+
+	clone.Ingredients = make([]*domain.RecipeIngredient, len(global.Ingredients))
+	for i, ing := range global.Ingredients {
+		copy_ := *ing
+		copy_.ID = uuid.Nil
+		copy_.RecipeID = uuid.Nil // will be set by GORM after Create
+		copy_.Recipe = nil
+		copy_.Food = ing.Food
+		copy_.Unit = ing.Unit
+		clone.Ingredients[i] = &copy_
+	}
+	clone.Instructions = make([]*domain.RecipeInstruction, len(global.Instructions))
+	for i, ins := range global.Instructions {
+		copy_ := *ins
+		copy_.ID = uuid.Nil
+		copy_.RecipeID = uuid.Nil
+		copy_.Recipe = nil
+		copy_.ParentID = nil // instruction parent is within same recipe
+		copy_.Parent = nil
+		clone.Instructions[i] = &copy_
+	}
+
+	var newRecipe *domain.Recipe
+	err := s.repo.Transaction(func(txRepo domain.RecipeRepository) error {
+		if err := txRepo.Create(&clone); err != nil {
+			return err
+		}
+		// Migrate household pointers: RecipeSaved, MealPlan, CollectionRecipes
+		if err := txRepo.ReplaceRecipePointers(global.ID, clone.ID, householdID); err != nil {
+			return err
+		}
+		newRecipe = &clone
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return newRecipe, nil
+}
+
+func (s *RecipeService) Delete(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(id, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.Delete(id)
 }
 
-func (s *RecipeService) UserSave(userID uuid.UUID, recipeID uuid.UUID) error {
-	user, err := s.userRepo.ById(userID)
-	if err != nil {
-		return err
-	}
-	return s.repo.UserSave(userID, recipeID, user.HouseholdID)
+func (s *RecipeService) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+	return s.repo.UserSave(recipeID, userID, householdID)
 }
 
-func (s *RecipeService) UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error {
-	return s.repo.UserUnsave(userID, recipeID)
+func (s *RecipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
+	return s.repo.UserUnsave(recipeID, userID)
 }
 
-func (s *RecipeService) UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
-	return s.repo.UserSearch(userID, q, taxonomies, cuisine, offset, limit)
+func (s *RecipeService) UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
+	return s.repo.UserSearch(userID, householdID, q, taxonomies, cuisine, offset, limit)
 }
 
-func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID) error {
-	if _, err := s.ById(ingredient.RecipeID, userID); err != nil {
+func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(ingredient.RecipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateIngredient(ingredient)
 }
 
-func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID) error {
-	if _, err := s.ById(ingredient.RecipeID, userID); err != nil {
+func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(ingredient.RecipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateIngredient(ingredient)
 }
 
-func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error {
-	if _, err := s.ById(recipeID, userID); err != nil {
+func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(recipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.DeleteIngredient(id)
 }
 
-func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID) error {
-	if _, err := s.ById(instruction.RecipeID, userID); err != nil {
+func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(instruction.RecipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateInstruction(instruction)
 }
 
-func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID) error {
-	if _, err := s.ById(instruction.RecipeID, userID); err != nil {
+func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(instruction.RecipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateInstruction(instruction)
 }
 
-func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error {
-	if _, err := s.ById(recipeID, userID); err != nil {
+func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ByID(recipeID, userID, householdID); err != nil {
 		return err
 	}
 	return s.repo.DeleteInstruction(id)
@@ -125,14 +198,14 @@ func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, user
 
 // ImportFromURL imports a recipe from URL and saves it for the given user.
 // If the recipe already exists: saves it for the user (unless forceUpdate=true, in which case it is re-imported).
-func (s *RecipeService) ImportFromURL(url string, userID uuid.UUID, forceUpdate bool) (*domain.Recipe, error) {
+func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
 		return nil, err
 	}
 	if existing != nil {
 		if !forceUpdate {
-			if err := s.UserSave(userID, existing.ID); err != nil {
+			if err := s.UserSave(existing.ID, userID, householdID); err != nil {
 				return nil, err
 			}
 			return existing, nil
@@ -151,7 +224,7 @@ func (s *RecipeService) ImportFromURL(url string, userID uuid.UUID, forceUpdate 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.UserSave(userID, recipe.ID); err != nil {
+	if err := s.UserSave(recipe.ID, userID, householdID); err != nil {
 		return nil, err
 	}
 	return recipe, nil
@@ -169,7 +242,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 		}
 	}
 
-	s.ParseAndEnrichIngredients(recipe.Ingredients, kripRecipe.Language)
+	s.parseAndEnrichIngredients(recipe.Ingredients, kripRecipe.Language)
 
 	if err := s.repo.Import(recipe); err != nil {
 		return nil, err
@@ -180,7 +253,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 	return recipe, nil
 }
 
-func (s *RecipeService) ParseAndEnrichIngredients(ingredients []*domain.RecipeIngredient, language string) {
+func (s *RecipeService) parseAndEnrichIngredients(ingredients []*domain.RecipeIngredient, language string) {
 	for _, ingredient := range ingredients {
 		parsed, err := kapusta.ParseIngredient(ingredient.RawText, language)
 		if err != nil || parsed == nil {

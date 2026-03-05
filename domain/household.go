@@ -10,6 +10,7 @@ type Household struct {
 	Name string    `json:"name"`
 
 	Members      []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
+	Feeds        []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
 	Collections  []*Collection   `gorm:"foreignKey:HouseholdID" json:"collections,omitempty"`
 	ShoppingList []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
 }
@@ -24,7 +25,7 @@ func (h *Household) BeforeCreate(tx *gorm.DB) error {
 }
 
 type HouseholdRepository interface {
-	ById(id uuid.UUID) (*Household, error)
+	ByID(id uuid.UUID) (*Household, error)
 	Create(household *Household) error
 	Update(household *Household) error
 
@@ -32,8 +33,7 @@ type HouseholdRepository interface {
 }
 
 type HouseholdService interface {
-	ById(id uuid.UUID, requesterHouseholdID uuid.UUID) (*Household, error)
-	Create(household *Household) error
+	ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*Household, error)
 	Update(household *Household, requesterHouseholdID uuid.UUID) error
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)

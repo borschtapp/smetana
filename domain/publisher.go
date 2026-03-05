@@ -23,6 +23,7 @@ type Publisher struct {
 	RemoteImage *string `json:"-" gorm:"-"`
 
 	Recipes []*Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Feeds   []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (p *Publisher) BeforeCreate(tx *gorm.DB) error {
@@ -38,7 +39,7 @@ func (p *Publisher) FilePath() string {
 	return "publisher/" + strings.ReplaceAll(utils.CreateTag(p.Name), " ", "_")
 }
 
-func NewPublisherFromKrip(org *krip.Organization) *Publisher {
+func FromKripPublisher(org *krip.Organization) *Publisher {
 	model := &Publisher{}
 	model.Name = org.Name
 	if len(org.Description) != 0 {

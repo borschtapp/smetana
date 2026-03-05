@@ -8,19 +8,19 @@ import (
 )
 
 type Feed struct {
-	ID            uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	Url           string    `gorm:"uniqueIndex" json:"url"`
-	Name          string    `json:"name"`
-	WebsiteUrl    string    `json:"website_url"`
-	Description   string    `json:"description"`
-	LastFetchedAt time.Time `json:"last_fetched_at"`
-	ErrorCount    int       `json:"error_count"`
-	Active        bool      `json:"active"`
-	Created       time.Time `gorm:"autoCreateTime" json:"created"`
-	Updated       time.Time `gorm:"autoUpdateTime" json:"updated"`
+	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	Active      bool      `json:"active"`
+	PublisherID uuid.UUID `gorm:"type:char(36)" json:"-"`
+	Url         string    `gorm:"uniqueIndex" json:"url"`
+	Name        string    `json:"name"`
+	ErrorCount  int       `json:"error_count"`
+	Retrieved   time.Time `json:"retrieved"` // last successful retrieval time
+	Created     time.Time `gorm:"autoCreateTime" json:"created"`
+	Updated     time.Time `gorm:"autoUpdateTime" json:"updated"`
 
-	Users   []*User   `gorm:"many2many:feed_subscriptions;" json:"users,omitempty"`
-	Recipes []*Recipe `json:"recipes,omitempty"`
+	Publisher  *Publisher   `json:"publisher,omitempty"`
+	Households []*Household `gorm:"many2many:feed_subscriptions;" json:"households,omitempty"`
+	Recipes    []*Recipe    `json:"recipes,omitempty"`
 }
 
 func (f *Feed) BeforeCreate(tx *gorm.DB) error {
@@ -37,21 +37,23 @@ func (f *Feed) BeforeCreate(tx *gorm.DB) error {
 
 type FeedRepository interface {
 	ByUrl(url string) (*Feed, error)
-	List(userID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	List(householdID uuid.UUID, offset, limit int) ([]Feed, int64, error)
 	ListActive() ([]Feed, error)
 	Create(recipe *Feed) error
 	Update(recipe *Feed) error
 	Delete(id uuid.UUID) error
 
-	Stream(userID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
-	AddFeed(userID uuid.UUID, feed *Feed) error
-	DeleteFeed(userID uuid.UUID, feedID uuid.UUID) error
+	AddFeed(householdID uuid.UUID, feed *Feed) error
+	DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error
+
+	Stream(householdID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
 }
 
 type FeedService interface {
-	Subscribe(userID uuid.UUID, url string) (*Feed, error)
-	Unsubscribe(userID uuid.UUID, feedID uuid.UUID) error
-	List(userID uuid.UUID, offset, limit int) ([]Feed, int64, error)
-	Stream(userID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
+	List(householdID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	Subscribe(householdID uuid.UUID, url string) (*Feed, error)
+	Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
+
+	Stream(householdID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
 	FetchUpdates() error
 }

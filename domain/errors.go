@@ -1,8 +1,13 @@
 package domain
 
+import (
+	"errors"
+
+	"github.com/gofiber/fiber/v3"
+)
+
 type Error struct {
 	Status  int                `json:"status"`
-	Code    string             `json:"code"`
 	Message string             `json:"message"`
 	Fields  *map[string]string `json:"fields,omitempty"`
 }
@@ -11,6 +16,15 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
-var ErrRecordNotFound = &Error{Status: 404, Code: "not-found", Message: "The requested entity does not exist"}
-var ErrForbidden = &Error{Status: 403, Code: "forbidden", Message: "Access denied"}
-var ErrAlreadyExists = &Error{Status: 409, Code: "conflict", Message: "The entity already exists"}
+func (e *Error) Is(target error) bool {
+	var t *Error
+	ok := errors.As(target, &t)
+	if !ok {
+		return false
+	}
+	return e.Status == t.Status
+}
+
+var ErrRecordNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
+var ErrForbidden = &Error{Status: fiber.StatusForbidden, Message: "Access denied"}
+var ErrAlreadyExists = &Error{Status: fiber.StatusConflict, Message: "The entity already exists"}

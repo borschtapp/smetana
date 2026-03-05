@@ -1,8 +1,9 @@
 package services
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
 )
 
 type HouseholdService struct {
@@ -14,15 +15,11 @@ func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRe
 	return &HouseholdService{repo: repo, userRepo: userRepo}
 }
 
-func (s *HouseholdService) ById(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
+func (s *HouseholdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
 	if id != requesterHouseholdID {
 		return nil, domain.ErrForbidden
 	}
-	return s.repo.ById(id)
-}
-
-func (s *HouseholdService) Create(household *domain.Household) error {
-	return s.repo.Create(household)
+	return s.repo.ByID(id)
 }
 
 func (s *HouseholdService) Update(household *domain.Household, requesterHouseholdID uuid.UUID) error {
@@ -48,6 +45,9 @@ func (s *HouseholdService) AddMember(householdID uuid.UUID, requesterHouseholdID
 	if err != nil {
 		return nil, err
 	}
+	if target.HouseholdID == householdID {
+		return target, nil
+	}
 	target.HouseholdID = householdID
 	if err := s.userRepo.Update(target); err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterHousehol
 	if householdID != requesterHouseholdID {
 		return domain.ErrForbidden
 	}
-	target, err := s.userRepo.ById(targetUserID)
+	target, err := s.userRepo.ByID(targetUserID)
 	if err != nil {
 		return err
 	}

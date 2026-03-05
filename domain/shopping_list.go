@@ -31,7 +31,7 @@ func (s *ShoppingList) BeforeCreate(tx *gorm.DB) error {
 }
 
 type ShoppingListRepository interface {
-	ById(id uuid.UUID) (*ShoppingList, error)
+	ByID(id uuid.UUID) (*ShoppingList, error)
 	List(householdID uuid.UUID, offset, limit int) ([]ShoppingList, int64, error)
 	Create(item *ShoppingList) error
 	Update(item *ShoppingList) error
@@ -39,9 +39,9 @@ type ShoppingListRepository interface {
 }
 
 type ShoppingListService interface {
-	ById(id uuid.UUID, householdID uuid.UUID) (*ShoppingList, error)
+	ByID(id uuid.UUID, householdID uuid.UUID) (*ShoppingList, error)
 	List(householdID uuid.UUID, offset, limit int) ([]ShoppingList, int64, error)
-	Create(item *ShoppingList) error
+	Create(item *ShoppingList, householdID uuid.UUID) error
 	Update(item *ShoppingList, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 }

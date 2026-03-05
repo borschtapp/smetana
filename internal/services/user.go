@@ -15,11 +15,11 @@ func NewUserService(repo domain.UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) ById(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
+func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
 	if id != requesterID {
 		return nil, domain.ErrForbidden
 	}
-	return s.repo.ById(id)
+	return s.repo.ByID(id)
 }
 
 func (s *UserService) ByEmail(email string) (*domain.User, error) {

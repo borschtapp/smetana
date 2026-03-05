@@ -7,7 +7,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
-	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -142,9 +141,9 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 		} else {
 			return err
 		}
-	} else {
-		return sentinels.Unauthorized("unauthorized, your session was ended earlier")
 	}
+
+	return sentinels.Unauthorized("unauthorized, your session was ended earlier")
 }
 
 type RegisterForm struct {
@@ -188,7 +187,6 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 	}
 
 	user := domain.User{
-		ID:       uuid.New(),
 		Email:    requestBody.Email,
 		Password: hash,
 		Name:     name,

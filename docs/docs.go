@@ -623,7 +623,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "ByIdWithRecipes all feeds the user is subscribed to.",
+                "description": "ByIDWithRecipes all feeds the user is subscribed to.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2742,12 +2742,6 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
-                "feeds": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Feed"
-                    }
-                },
                 "household": {
                     "$ref": "#/definitions/domain.Household"
                 },
@@ -3045,15 +3039,15 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.Recipe"
                     }
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
         "domain.Error": {
             "type": "object",
             "properties": {
-                "code": {
-                    "type": "string"
-                },
                 "fields": {
                     "type": "object",
                     "additionalProperties": {
@@ -3077,20 +3071,23 @@ const docTemplate = `{
                 "created": {
                     "type": "string"
                 },
-                "description": {
-                    "type": "string"
-                },
                 "error_count": {
                     "type": "integer"
+                },
+                "households": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Household"
+                    }
                 },
                 "id": {
                     "type": "string"
                 },
-                "last_fetched_at": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
+                },
+                "publisher": {
+                    "$ref": "#/definitions/domain.Publisher"
                 },
                 "recipes": {
                     "type": "array",
@@ -3098,19 +3095,14 @@ const docTemplate = `{
                         "$ref": "#/definitions/domain.Recipe"
                     }
                 },
+                "retrieved": {
+                    "description": "last successful retrieval time",
+                    "type": "string"
+                },
                 "updated": {
                     "type": "string"
                 },
                 "url": {
-                    "type": "string"
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.User"
-                    }
-                },
-                "website_url": {
                     "type": "string"
                 }
             }
@@ -3148,6 +3140,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.Collection"
+                    }
+                },
+                "feeds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Feed"
                     }
                 },
                 "id": {
@@ -3338,6 +3336,9 @@ const docTemplate = `{
                 "feed_id": {
                     "type": "string"
                 },
+                "household_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3377,6 +3378,9 @@ const docTemplate = `{
                 "nutrition": {
                     "$ref": "#/definitions/domain.Nutrition"
                 },
+                "parent_id": {
+                    "type": "string"
+                },
                 "prep_time": {
                     "type": "integer",
                     "example": 900
@@ -3409,6 +3413,9 @@ const docTemplate = `{
                     "format": "date-time"
                 },
                 "url": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 },
                 "video": {
@@ -3617,12 +3624,6 @@ const docTemplate = `{
                 },
                 "email": {
                     "type": "string"
-                },
-                "feeds": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Feed"
-                    }
                 },
                 "household": {
                     "$ref": "#/definitions/domain.Household"

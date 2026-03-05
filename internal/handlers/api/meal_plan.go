@@ -3,12 +3,13 @@ package api
 import (
 	"time"
 
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type MealPlanHandler struct {
@@ -107,15 +108,14 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 	}
 
 	mealPlan := &domain.MealPlan{
-		HouseholdID: tokenData.HouseholdID,
-		Date:        form.Date,
-		MealType:    form.MealType,
-		RecipeID:    form.RecipeID,
-		Servings:    form.Servings,
-		Note:        form.Note,
+		Date:     form.Date,
+		MealType: form.MealType,
+		RecipeID: form.RecipeID,
+		Servings: form.Servings,
+		Note:     form.Note,
 	}
 
-	if err := h.mealPlanService.Create(mealPlan); err != nil {
+	if err := h.mealPlanService.Create(mealPlan, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -161,7 +161,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	mealPlan, err := h.mealPlanService.ByIdWithRecipes(id, tokenData.HouseholdID)
+	mealPlan, err := h.mealPlanService.ByIDWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

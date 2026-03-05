@@ -1,8 +1,9 @@
 package services
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
 )
 
 type CollectionService struct {
@@ -13,8 +14,8 @@ func NewCollectionService(repo domain.CollectionRepository) *CollectionService {
 	return &CollectionService{repo: repo}
 }
 
-func (s *CollectionService) ById(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
-	collection, err := s.repo.ById(id)
+func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
+	collection, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +25,7 @@ func (s *CollectionService) ById(id uuid.UUID, householdID uuid.UUID) (*domain.C
 	return collection, nil
 }
 
-func (s *CollectionService) ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
+func (s *CollectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
 	collection, err := s.repo.ByIdWithRecipes(id)
 	if err != nil {
 		return nil, err
@@ -39,12 +40,14 @@ func (s *CollectionService) List(householdID uuid.UUID, offset, limit int) ([]do
 	return s.repo.List(householdID, offset, limit)
 }
 
-func (s *CollectionService) Create(collection *domain.Collection) error {
+func (s *CollectionService) Create(collection *domain.Collection, userID uuid.UUID, householdID uuid.UUID) error {
+	collection.HouseholdID = householdID
+	collection.UserID = userID
 	return s.repo.Create(collection)
 }
 
 func (s *CollectionService) Update(collection *domain.Collection, householdID uuid.UUID) error {
-	existing, err := s.repo.ById(collection.ID)
+	existing, err := s.repo.ByID(collection.ID)
 	if err != nil {
 		return err
 	}
@@ -55,7 +58,7 @@ func (s *CollectionService) Update(collection *domain.Collection, householdID uu
 }
 
 func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
-	collection, err := s.repo.ById(id)
+	collection, err := s.repo.ByID(id)
 	if err != nil {
 		return err
 	}
@@ -66,7 +69,7 @@ func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 }
 
 func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
-	collection, err := s.repo.ById(collectionID)
+	collection, err := s.repo.ByID(collectionID)
 	if err != nil {
 		return err
 	}
@@ -77,7 +80,7 @@ func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID
 }
 
 func (s *CollectionService) RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
-	collection, err := s.repo.ById(collectionID)
+	collection, err := s.repo.ByID(collectionID)
 	if err != nil {
 		return err
 	}

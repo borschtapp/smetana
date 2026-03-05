@@ -14,8 +14,11 @@ import (
 
 type Recipe struct {
 	ID          uuid.UUID       `gorm:"type:char(36);primaryKey" json:"id"`
+	ParentID    *uuid.UUID      `gorm:"type:char(36);index" json:"parent_id,omitempty"`
+	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"household_id,omitempty"`
+	UserID      *uuid.UUID      `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Url         *string         `gorm:"-" json:"url,omitempty"`
-	IsBasedOn   *string         `gorm:"uniqueIndex" json:"is_based_on,omitempty"`
+	IsBasedOn   *string         `gorm:"index" json:"is_based_on,omitempty"`
 	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
 	Language    *string         `json:"language,omitempty" example:"en"`
@@ -203,7 +206,7 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 		}
 	}
 	if kripRecipe.Publisher != nil {
-		recipe.Publisher = NewPublisherFromKrip(kripRecipe.Publisher)
+		recipe.Publisher = FromKripPublisher(kripRecipe.Publisher)
 	}
 	if kripRecipe.DateModified != nil {
 		recipe.Published = kripRecipe.DateModified
@@ -237,17 +240,17 @@ func (r *Recipe) BeforeCreate(tx *gorm.DB) error {
 }
 
 type RecipeRepository interface {
-	ById(id uuid.UUID) (*Recipe, error)
+	ByID(id uuid.UUID) (*Recipe, error)
 	ByUrl(url string) (*Recipe, error)
+	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]Recipe, error)
 	Create(recipe *Recipe) error
 	Import(recipe *Recipe) error
 	Update(recipe *Recipe) error
 	Delete(id uuid.UUID) error
 
-	IsUserSaved(userID uuid.UUID, recipeID uuid.UUID) (bool, error)
-	UserSave(userID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
-	UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error
-	UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
+	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
+	UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
 	CreateImages(images []*RecipeImage) error
 	UpdateImage(img *RecipeImage) error
@@ -259,26 +262,29 @@ type RecipeRepository interface {
 	CreateInstruction(instruction *RecipeInstruction) error
 	UpdateInstruction(instruction *RecipeInstruction) error
 	DeleteInstruction(id uuid.UUID) error
+
+	Transaction(fn func(txRepo RecipeRepository) error) error
+	ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error
 }
 
 type RecipeService interface {
-	ById(id uuid.UUID, userID uuid.UUID) (*Recipe, error)
-	Create(recipe *Recipe, userID uuid.UUID) error
-	Update(recipe *Recipe, userID uuid.UUID) error
-	Delete(id uuid.UUID, userID uuid.UUID) error
+	ByID(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
+	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
+	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
+	Delete(id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 
-	UserSave(userID uuid.UUID, recipeID uuid.UUID) error
-	UserUnsave(userID uuid.UUID, recipeID uuid.UUID) error
-	UserSearch(userID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
+	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
+	UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
-	CreateIngredient(ingredient *RecipeIngredient, userID uuid.UUID) error
-	UpdateIngredient(ingredient *RecipeIngredient, userID uuid.UUID) error
-	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error
+	CreateIngredient(ingredient *RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error
+	UpdateIngredient(ingredient *RecipeIngredient, userID uuid.UUID, householdID uuid.UUID) error
+	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 
-	CreateInstruction(instruction *RecipeInstruction, userID uuid.UUID) error
-	UpdateInstruction(instruction *RecipeInstruction, userID uuid.UUID) error
-	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID) error
+	CreateInstruction(instruction *RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error
+	UpdateInstruction(instruction *RecipeInstruction, userID uuid.UUID, householdID uuid.UUID) error
+	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 
-	ImportFromURL(url string, userID uuid.UUID, forceUpdate bool) (*Recipe, error)
+	ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)
 }

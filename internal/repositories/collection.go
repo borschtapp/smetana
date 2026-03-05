@@ -3,9 +3,10 @@ package repositories
 import (
 	"errors"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type CollectionRepository struct {
@@ -16,7 +17,7 @@ func NewCollectionRepository(db *gorm.DB) *CollectionRepository {
 	return &CollectionRepository{db: db}
 }
 
-func (r *CollectionRepository) ById(id uuid.UUID) (*domain.Collection, error) {
+func (r *CollectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.First(&collection, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 
 	"borscht.app/smetana/domain"
@@ -90,14 +88,13 @@ func (s *AuthService) FindOrRegisterOIDCUser(email, name string) (*domain.User, 
 		return nil, err
 	}
 
-	newUser := domain.User{
-		ID:      uuid.New(),
-		Email:   email,
-		Name:    name,
-		Created: time.Now(),
+	if name == "" {
+		name = strings.Split(email, "@")[0]
 	}
-	if newUser.Name == "" {
-		newUser.Name = strings.Split(email, "@")[0]
+
+	newUser := domain.User{
+		Email: email,
+		Name:  name,
 	}
 
 	if err := s.userService.Create(&newUser); err != nil {

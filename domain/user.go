@@ -20,7 +20,6 @@ type User struct {
 
 	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Feeds     []*Feed      `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
 	Recipes   []*Recipe    `gorm:"many2many:recipe_saved;" json:"recipes,omitempty"`
 }
 
@@ -34,7 +33,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 }
 
 type UserRepository interface {
-	ById(id uuid.UUID) (*User, error)
+	ByID(id uuid.UUID) (*User, error)
 	ByEmail(email string) (*User, error)
 	ByEmailWithHousehold(email string) (*User, error)
 	Create(user *User) error
@@ -47,7 +46,7 @@ type UserRepository interface {
 }
 
 type UserService interface {
-	ById(id uuid.UUID, requesterID uuid.UUID) (*User, error)
+	ByID(id uuid.UUID, requesterID uuid.UUID) (*User, error)
 	ByEmail(email string) (*User, error)
 	ByEmailWithHousehold(email string) (*User, error)
 	Update(user *User, requesterID uuid.UUID) error

@@ -1,12 +1,13 @@
 package api
 
 import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type HouseholdHandler struct {
@@ -41,7 +42,7 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.ById(id, tokenData.HouseholdID)
+	household, err := h.householdService.ByID(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.ById(id, tokenData.HouseholdID)
+	household, err := h.householdService.ByID(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

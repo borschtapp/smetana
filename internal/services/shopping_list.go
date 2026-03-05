@@ -1,9 +1,10 @@
 package services
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
 )
 
 type ShoppingListService struct {
@@ -14,8 +15,8 @@ func NewShoppingListService(repo domain.ShoppingListRepository) *ShoppingListSer
 	return &ShoppingListService{repo: repo}
 }
 
-func (s *ShoppingListService) ById(id uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
-	item, err := s.repo.ById(id)
+func (s *ShoppingListService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+	item, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -29,12 +30,13 @@ func (s *ShoppingListService) List(householdID uuid.UUID, offset, limit int) ([]
 	return s.repo.List(householdID, offset, limit)
 }
 
-func (s *ShoppingListService) Create(item *domain.ShoppingList) error {
+func (s *ShoppingListService) Create(item *domain.ShoppingList, householdID uuid.UUID) error {
+	item.HouseholdID = householdID
 	if err := s.repo.Create(item); err != nil {
 		return err
 	}
 	if item.UnitID != nil {
-		if fetched, err := s.repo.ById(item.ID); err != nil {
+		if fetched, err := s.repo.ByID(item.ID); err != nil {
 			log.Warnf("failed to reload shopping list item %s after write: %v", item.ID, err)
 		} else {
 			item.Unit = fetched.Unit
@@ -44,7 +46,7 @@ func (s *ShoppingListService) Create(item *domain.ShoppingList) error {
 }
 
 func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid.UUID) error {
-	existing, err := s.repo.ById(item.ID)
+	existing, err := s.repo.ByID(item.ID)
 	if err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid
 		return err
 	}
 	if item.UnitID != nil {
-		if fetched, err := s.repo.ById(item.ID); err != nil {
+		if fetched, err := s.repo.ByID(item.ID); err != nil {
 			log.Warnf("failed to reload shopping list item %s after write: %v", item.ID, err)
 		} else {
 			item.Unit = fetched.Unit
@@ -65,7 +67,7 @@ func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid
 }
 
 func (s *ShoppingListService) Delete(id uuid.UUID, householdID uuid.UUID) error {
-	item, err := s.repo.ById(id)
+	item, err := s.repo.ByID(id)
 	if err != nil {
 		return err
 	}

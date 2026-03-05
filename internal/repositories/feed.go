@@ -3,9 +3,10 @@ package repositories
 import (
 	"errors"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type FeedRepository struct {
@@ -35,11 +36,11 @@ func (r *FeedRepository) ListActive() ([]domain.Feed, error) {
 	return feeds, nil
 }
 
-func (r *FeedRepository) List(userID uuid.UUID, offset, limit int) ([]domain.Feed, int64, error) {
+func (r *FeedRepository) List(householdID uuid.UUID, offset, limit int) ([]domain.Feed, int64, error) {
 	var feeds []domain.Feed
 	baseQuery := r.db.
 		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
-		Where("feed_subscriptions.user_id = ?", userID)
+		Where("feed_subscriptions.household_id = ?", householdID)
 
 	var total int64
 	if err := baseQuery.Model(&domain.Feed{}).Count(&total).Error; err != nil {
@@ -53,13 +54,13 @@ func (r *FeedRepository) List(userID uuid.UUID, offset, limit int) ([]domain.Fee
 	return feeds, total, err
 }
 
-func (r *FeedRepository) Stream(userID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
+func (r *FeedRepository) Stream(householdID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
 	var recipes []domain.Recipe
 
 	baseQuery := r.db.
 		Joins("JOIN feeds ON feeds.id = recipes.feed_id").
 		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
-		Where("feed_subscriptions.user_id = ?", userID)
+		Where("feed_subscriptions.household_id = ?", householdID)
 
 	var total int64
 	if err := baseQuery.Model(&domain.Recipe{}).Count(&total).Error; err != nil {
@@ -76,12 +77,12 @@ func (r *FeedRepository) Stream(userID uuid.UUID, offset, limit int) ([]domain.R
 	return recipes, total, err
 }
 
-func (r *FeedRepository) AddFeed(userID uuid.UUID, feed *domain.Feed) error {
-	return r.db.Model(&domain.User{ID: userID}).Association("Feeds").Append(feed)
+func (r *FeedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
+	return r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed)
 }
 
-func (r *FeedRepository) DeleteFeed(userID uuid.UUID, feedID uuid.UUID) error {
-	return r.db.Model(&domain.User{ID: userID}).Association("Feeds").Delete(&domain.Feed{ID: feedID})
+func (r *FeedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error {
+	return r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Delete(&domain.Feed{ID: feedID})
 }
 
 func (r *FeedRepository) Create(feed *domain.Feed) error {

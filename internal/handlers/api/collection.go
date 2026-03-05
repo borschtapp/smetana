@@ -1,12 +1,13 @@
 package api
 
 import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type CollectionHandler struct {
@@ -85,12 +86,11 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 	}
 
 	collection := &domain.Collection{
-		HouseholdID: tokenData.HouseholdID,
 		Name:        form.Name,
 		Description: form.Description,
 	}
 
-	if err := h.collectionService.Create(collection); err != nil {
+	if err := h.collectionService.Create(collection, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	collection, err := h.collectionService.ByIdWithRecipes(id, tokenData.HouseholdID)
+	collection, err := h.collectionService.ByIDWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	collection, err := h.collectionService.ById(id, tokenData.HouseholdID)
+	collection, err := h.collectionService.ByID(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

@@ -3,12 +3,13 @@ package api
 import (
 	"strings"
 
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type RecipeHandler struct {
@@ -50,7 +51,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 
 	p := types.GetPagination(c)
 
-	recipes, total, err := h.recipeService.UserSearch(tokenData.ID, q, taxonomies, cuisine, p.Offset(), p.Limit)
+	recipes, total, err := h.recipeService.UserSearch(tokenData.ID, tokenData.HouseholdID, q, taxonomies, cuisine, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ById(id, tokenData.ID)
+	recipe, err := h.recipeService.ByID(id, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.Create(recipe, tokenData.ID); err != nil {
+	if err := h.recipeService.Create(recipe, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -151,18 +152,13 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	// Verify access before accepting the update body
-	if _, err := h.recipeService.ById(id, tokenData.ID); err != nil {
-		return err
-	}
-
 	var recipe domain.Recipe
 	if err := c.Bind().Body(&recipe); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
 	recipe.ID = id
 
-	if err := h.recipeService.Update(&recipe, tokenData.ID); err != nil {
+	if err := h.recipeService.Update(&recipe, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.JSON(recipe)
@@ -192,7 +188,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.Delete(id, tokenData.ID); err != nil {
+	if err := h.recipeService.Delete(id, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -213,7 +209,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return err
+		return sentinels.BadRequest("invalid recipe id")
 	}
 
 	tokenData, err := utils.ExtractTokenMetadata(c)
@@ -221,7 +217,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.UserSave(tokenData.ID, id); err != nil {
+	if err := h.recipeService.UserSave(id, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusCreated)
@@ -250,7 +246,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.UserUnsave(tokenData.ID, id); err != nil {
+	if err := h.recipeService.UserUnsave(id, tokenData.ID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -287,7 +283,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	}
 	ingredient.RecipeID = recipeID
 
-	if err := h.recipeService.CreateIngredient(ingredient, tokenData.ID); err != nil {
+	if err := h.recipeService.CreateIngredient(ingredient, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(ingredient)
@@ -332,7 +328,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	ingredient.ID = ingredientID
 	ingredient.RecipeID = recipeID
 
-	if err := h.recipeService.UpdateIngredient(ingredient, tokenData.ID); err != nil {
+	if err := h.recipeService.UpdateIngredient(ingredient, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.JSON(ingredient)
@@ -368,7 +364,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.DeleteIngredient(ingredientID, recipeID, tokenData.ID); err != nil {
+	if err := h.recipeService.DeleteIngredient(ingredientID, recipeID, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -405,7 +401,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	}
 	instruction.RecipeID = recipeID
 
-	if err := h.recipeService.CreateInstruction(instruction, tokenData.ID); err != nil {
+	if err := h.recipeService.CreateInstruction(instruction, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(instruction)
@@ -450,7 +446,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	instruction.ID = instructionID
 	instruction.RecipeID = recipeID
 
-	if err := h.recipeService.UpdateInstruction(instruction, tokenData.ID); err != nil {
+	if err := h.recipeService.UpdateInstruction(instruction, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.JSON(instruction)
@@ -486,7 +482,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.DeleteInstruction(instructionID, recipeID, tokenData.ID); err != nil {
+	if err := h.recipeService.DeleteInstruction(instructionID, recipeID, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

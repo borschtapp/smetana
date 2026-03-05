@@ -3,9 +3,10 @@ package services
 import (
 	"time"
 
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
 )
 
 type MealPlanService struct {
@@ -16,7 +17,7 @@ func NewMealPlanService(repo domain.MealPlanRepository) *MealPlanService {
 	return &MealPlanService{repo: repo}
 }
 
-func (s *MealPlanService) ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.MealPlan, error) {
+func (s *MealPlanService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.MealPlan, error) {
 	mealPlan, err := s.repo.ByIdWithRecipes(id)
 	if err != nil {
 		return nil, err
@@ -31,7 +32,8 @@ func (s *MealPlanService) List(householdID uuid.UUID, from, to *time.Time, offse
 	return s.repo.List(householdID, from, to, offset, limit)
 }
 
-func (s *MealPlanService) Create(mealPlan *domain.MealPlan) error {
+func (s *MealPlanService) Create(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
+	mealPlan.HouseholdID = householdID
 	if err := s.repo.Create(mealPlan); err != nil {
 		return err
 	}

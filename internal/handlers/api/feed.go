@@ -1,12 +1,13 @@
 package api
 
 import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type FeedHandler struct {
@@ -48,7 +49,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	feed, err := h.feedService.Subscribe(claims.ID, req.Url)
+	feed, err := h.feedService.Subscribe(claims.HouseholdID, req.Url)
 	if err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
@@ -80,7 +81,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.feedService.Unsubscribe(claims.ID, id); err != nil {
+	if err := h.feedService.Unsubscribe(claims.HouseholdID, id); err != nil {
 		return err
 	}
 
@@ -89,7 +90,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 
 // ListSubscriptions godoc
 // @Summary List subscriptions
-// @Description ByIdWithRecipes all feeds the user is subscribed to.
+// @Description ByIDWithRecipes all feeds the user is subscribed to.
 // @Tags feeds
 // @Accept json
 // @Produce json
@@ -106,7 +107,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	feeds, total, err := h.feedService.List(claims.ID, p.Offset(), p.Limit)
+	feeds, total, err := h.feedService.List(claims.HouseholdID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}
@@ -138,7 +139,7 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	recipes, total, err := h.feedService.Stream(claims.ID, p.Offset(), p.Limit)
+	recipes, total, err := h.feedService.Stream(claims.HouseholdID, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}

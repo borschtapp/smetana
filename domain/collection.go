@@ -10,6 +10,7 @@ import (
 type Collection struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"household_id"`
+	UserID      uuid.UUID `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Name        string    `json:"name"`
 	Description string    `json:"description,omitempty"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
@@ -29,23 +30,25 @@ func (c *Collection) BeforeCreate(tx *gorm.DB) error {
 }
 
 type CollectionRepository interface {
-	ById(id uuid.UUID) (*Collection, error)
+	ByID(id uuid.UUID) (*Collection, error)
 	ByIdWithRecipes(id uuid.UUID) (*Collection, error)
 	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
 	Create(collection *Collection) error
 	Update(collection *Collection) error
 	Delete(id uuid.UUID) error
+
 	AddRecipe(collection *Collection, recipeID uuid.UUID) error
 	RemoveRecipe(collection *Collection, recipeID uuid.UUID) error
 }
 
 type CollectionService interface {
-	ById(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
-	ByIdWithRecipes(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
+	ByID(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
+	ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
 	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
-	Create(collection *Collection) error
+	Create(collection *Collection, userID uuid.UUID, householdID uuid.UUID) error
 	Update(collection *Collection, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
+
 	AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 	RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 }

@@ -1,12 +1,13 @@
 package api
 
 import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
 )
 
 type ShoppingListHandler struct {
@@ -86,13 +87,12 @@ func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
 	}
 
 	item := &domain.ShoppingList{
-		HouseholdID: tokenData.HouseholdID,
-		Product:     form.Name,
-		Quantity:    form.Quantity,
-		UnitID:      form.UnitID,
+		Product:  form.Name,
+		Quantity: form.Quantity,
+		UnitID:   form.UnitID,
 	}
 
-	if err := h.shoppingListService.Create(item); err != nil {
+	if err := h.shoppingListService.Create(item, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -136,7 +136,7 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 		return err
 	}
 
-	item, err := h.shoppingListService.ById(id, tokenData.HouseholdID)
+	item, err := h.shoppingListService.ByID(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

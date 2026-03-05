@@ -3,9 +3,10 @@ package repositories
 import (
 	"errors"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type HouseholdRepository struct {
@@ -16,7 +17,7 @@ func NewHouseholdRepository(db *gorm.DB) *HouseholdRepository {
 	return &HouseholdRepository{db: db}
 }
 
-func (r *HouseholdRepository) ById(id uuid.UUID) (*domain.Household, error) {
+func (r *HouseholdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

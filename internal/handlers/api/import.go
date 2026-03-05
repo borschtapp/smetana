@@ -3,10 +3,11 @@ package api
 import (
 	"net/http"
 
+	"github.com/gofiber/fiber/v3"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
-	"github.com/gofiber/fiber/v3"
 )
 
 type ImportHandler struct {
@@ -51,7 +52,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ImportFromURL(request.URL, tokenData.ID, request.Update)
+	recipe, err := h.recipeService.ImportFromURL(request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

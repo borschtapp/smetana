@@ -1,16 +1,16 @@
 package sentinels
 
 import (
-	"errors"
 	"fmt"
 
-	"borscht.app/smetana/domain"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+
+	"borscht.app/smetana/domain"
 )
 
 func BadRequest(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusBadRequest, Code: "bad-request", Message: m}
+	return &domain.Error{Status: fiber.StatusBadRequest, Message: m}
 }
 
 func BadRequestVal(err error) *domain.Error {
@@ -22,7 +22,7 @@ func BadRequestVal(err error) *domain.Error {
 		fields[err.Field()] = fmt.Sprintf("Field '%s' validation failed: %v", err.Tag(), err.Error())
 	}
 
-	return &domain.Error{Status: fiber.StatusBadRequest, Code: "bad-request", Message: err.Error(), Fields: &fields}
+	return &domain.Error{Status: fiber.StatusBadRequest, Message: err.Error(), Fields: &fields}
 }
 
 func BadRequestField(field string, reason string) *domain.Error {
@@ -32,33 +32,25 @@ func BadRequestField(field string, reason string) *domain.Error {
 	// Add field and reason to fail.
 	fields[field] = fmt.Sprintf("Field '%s' validation failed: %v", field, reason)
 
-	return &domain.Error{Status: fiber.StatusBadRequest, Code: "bad-request", Message: "Failed to validate request body", Fields: &fields}
+	return &domain.Error{Status: fiber.StatusBadRequest, Message: "Failed to validate request body", Fields: &fields}
 }
 
 func Unauthorized(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusUnauthorized, Code: "unauthorized", Message: m}
+	return &domain.Error{Status: fiber.StatusUnauthorized, Message: m}
 }
 
 func Forbidden(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusForbidden, Code: "forbidden", Message: m}
+	return &domain.Error{Status: fiber.StatusForbidden, Message: m}
 }
 
 func NotFound(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusNotFound, Code: "not-found", Message: m}
-}
-
-func IsNotFound(err error) bool {
-	var e *domain.Error
-	if errors.As(err, &e) {
-		return e.Status == fiber.StatusNotFound
-	}
-	return false
+	return &domain.Error{Status: fiber.StatusNotFound, Message: m}
 }
 
 func NotImplemented(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusNotImplemented, Code: "not-implemented", Message: m}
+	return &domain.Error{Status: fiber.StatusNotImplemented, Message: m}
 }
 
 func InternalServerError(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusInternalServerError, Code: "internal-server-error", Message: m}
+	return &domain.Error{Status: fiber.StatusInternalServerError, Message: m}
 }

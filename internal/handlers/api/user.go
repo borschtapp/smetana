@@ -1,10 +1,10 @@
 package api
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
@@ -42,7 +42,7 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(id, tokenData.ID)
+	user, err := h.userService.ByID(id, tokenData.ID)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.ById(id, tokenData.ID)
+	user, err := h.userService.ByID(id, tokenData.ID)
 	if err != nil {
 		return err
 	}

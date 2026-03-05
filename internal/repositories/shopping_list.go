@@ -3,9 +3,10 @@ package repositories
 import (
 	"errors"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type ShoppingListRepository struct {
@@ -16,7 +17,7 @@ func NewShoppingListRepository(db *gorm.DB) *ShoppingListRepository {
 	return &ShoppingListRepository{db: db}
 }
 
-func (r *ShoppingListRepository) ById(id uuid.UUID) (*domain.ShoppingList, error) {
+func (r *ShoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
 	var item domain.ShoppingList
 	if err := r.db.Preload("Unit").First(&item, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

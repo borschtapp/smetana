@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
+	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 )
 
@@ -58,11 +58,14 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	}
 
 	// Generate random filename
-	ext := filepath.Ext(file.Filename)
-	filename := uuid.New().String() + ext
-	path := "uploads/" + filename
+	filenameUuid, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
 
-	// Save
+	ext := filepath.Ext(file.Filename)
+	path := "uploads/" + filenameUuid.String() + ext
+
 	uploaded, err := h.imageService.SaveImageData(path, data, contentType)
 	if err != nil {
 		return sentinels.InternalServerError("Failed to save image: " + err.Error())

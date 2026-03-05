@@ -3,9 +3,10 @@ package repositories
 import (
 	"errors"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/domain"
 )
 
 type UserRepository struct {
@@ -16,7 +17,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) ById(id uuid.UUID) (*domain.User, error) {
+func (r *UserRepository) ByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.First(&user, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -72,6 +73,9 @@ func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.U
 	var userToken domain.UserToken
 	err := r.db.Joins("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrRecordNotFound
+		}
 		return nil, err
 	}
 	return &userToken, nil
