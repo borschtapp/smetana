@@ -34,22 +34,22 @@ func (ri *RecipeInstruction) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
-func FromKripHowToStep(howToSection *krip.HowToStep) *RecipeInstruction {
+func FromKripHowToStep(item *krip.HowToStep) *RecipeInstruction {
 	model := &RecipeInstruction{}
-	if len(howToSection.Name) != 0 {
-		model.Title = &howToSection.Name
+	if len(item.Name) != 0 {
+		model.Title = &item.Name
 	}
-	if len(howToSection.Text) != 0 {
-		model.Text = howToSection.Text
+	if len(item.Text) != 0 {
+		model.Text = item.Text
 	}
-	if len(howToSection.Url) != 0 {
-		model.Url = &howToSection.Url
+	if len(item.Url) != 0 {
+		model.Url = &item.Url
 	}
-	if len(howToSection.Image) != 0 {
-		model.Image = &howToSection.Image
+	if len(item.Image) != 0 {
+		model.Image = &item.Image
 	}
-	if len(howToSection.Video) != 0 {
-		model.Video = &howToSection.Video
+	if len(item.Video) != 0 {
+		model.Video = &item.Video
 	}
 	return model
 }

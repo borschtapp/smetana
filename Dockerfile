@@ -24,10 +24,16 @@ FROM alpine:latest AS release
 # Install runtime dependencies (certificates, timezone, init)
 RUN apk add --no-cache ca-certificates tzdata dumb-init
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 WORKDIR /app
 COPY --from=builder /build/main .
 RUN mkdir -p /app/data
+RUN chown -R appuser:appgroup /app/data
 
 EXPOSE 3000
+USER appuser
+
 HEALTHCHECK CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/_health || exit 1
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "./main"]
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["./main"]

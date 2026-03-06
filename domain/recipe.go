@@ -50,18 +50,17 @@ type Recipe struct {
 }
 
 type Nutrition struct {
-	Calories    float64 `json:"calories,omitempty" example:"450.5"`       // The number of calories.
-	ServingSize string  `json:"serving_size,omitempty" example:"1 plate"` // The serving size, in terms of the number of volume or mass.
-
-	Fats        float64 `json:"fat,omitempty" example:"15.2"`          // The number of grams of fat.
-	FatSat      float64 `json:"fat_saturated,omitempty" example:"5.1"` // The number of grams of saturated fat.
-	FatTrans    float64 `json:"fat_trans,omitempty" example:"0.1"`     // The number of grams of trans fat.
-	Cholesterol float64 `json:"cholesterol,omitempty" example:"35.0"`  // The number of milligrams of cholesterol.
-	Sodium      float64 `json:"sodium,omitempty" example:"250.0"`      // The number of milligrams of sodium.
-	Carbs       float64 `json:"carbs,omitempty" example:"60.0"`        // The number of grams of carbohydrates.
-	CarbSugar   float64 `json:"carbs_sugar,omitempty" example:"10.0"`  // The number of grams of sugar.
-	CarbFiber   float64 `json:"carbs_fiber,omitempty" example:"4.5"`   // The number of grams of fiber.
-	Protein     float64 `json:"protein,omitempty" example:"22.0"`      // The number of grams of protein.
+	ServingSize string   `json:"serving_size,omitempty" example:"1 plate"` // The serving size, in terms of the number of volume or mass.
+	Calories    *float64 `json:"calories,omitempty" example:"450.5"`       // The number of calories.
+	Fats        *float64 `json:"fat,omitempty" example:"15.2"`             // The number of grams of fat.
+	FatSat      *float64 `json:"fat_saturated,omitempty" example:"5.1"`    // The number of grams of saturated fat.
+	FatTrans    *float64 `json:"fat_trans,omitempty" example:"0.1"`        // The number of grams of trans fat.
+	Cholesterol *float64 `json:"cholesterol,omitempty" example:"35.0"`     // The number of milligrams of cholesterol.
+	Sodium      *float64 `json:"sodium,omitempty" example:"250.0"`         // The number of milligrams of sodium.
+	Carbs       *float64 `json:"carbs,omitempty" example:"60.0"`           // The number of grams of carbohydrates.
+	CarbSugar   *float64 `json:"carbs_sugar,omitempty" example:"10.0"`     // The number of grams of sugar.
+	CarbFiber   *float64 `json:"carbs_fiber,omitempty" example:"4.5"`      // The number of grams of fiber.
+	Protein     *float64 `json:"protein,omitempty" example:"22.0"`         // The number of grams of protein.
 }
 
 type Rating struct {
@@ -165,19 +164,10 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 			recipe.Yield = &yield
 		}
 	}
-	if len(kripRecipe.Ingredients) > 0 {
-		for _, str := range kripRecipe.Ingredients {
-			textCopy := str
-			recipe.Ingredients = append(recipe.Ingredients, &RecipeIngredient{RawText: textCopy})
-		}
-	}
-	if len(kripRecipe.Equipment) > 0 {
-		recipe.Equipment = &kripRecipe.Equipment
-	}
 	if kripRecipe.Nutrition != nil {
 		recipe.Nutrition = &Nutrition{
-			Calories:    kripRecipe.Nutrition.Calories,
 			ServingSize: kripRecipe.Nutrition.ServingSize,
+			Calories:    kripRecipe.Nutrition.Calories,
 			Carbs:       kripRecipe.Nutrition.CarbohydrateContent,
 			CarbFiber:   kripRecipe.Nutrition.FiberContent,
 			CarbSugar:   kripRecipe.Nutrition.SugarContent,
@@ -213,15 +203,28 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	} else if kripRecipe.DatePublished != nil {
 		recipe.Published = kripRecipe.DatePublished
 	}
-	if len(kripRecipe.Instructions) > 0 {
-		for i := range kripRecipe.Instructions {
-			instruction := FromKripHowToStep(&kripRecipe.Instructions[i].HowToStep)
-			recipe.Instructions = append(recipe.Instructions, instruction)
 
-			if len(kripRecipe.Instructions[i].Steps) != 0 {
-				for _, step := range kripRecipe.Instructions[i].Steps {
-					instruction := FromKripHowToStep(step)
-					recipe.Instructions = append(recipe.Instructions, instruction)
+	if len(kripRecipe.Ingredients) > 0 {
+		for _, item := range kripRecipe.Ingredients {
+			recipe.Ingredients = append(recipe.Ingredients, FromKripPropertyValue(item))
+		}
+	}
+
+	if len(kripRecipe.Equipment) > 0 {
+		equipment := make([]string, len(kripRecipe.Equipment))
+		for _, eq := range kripRecipe.Equipment {
+			equipment = append(equipment, eq.Name)
+		}
+		recipe.Equipment = &equipment
+	}
+
+	if len(kripRecipe.Instructions) > 0 {
+		for _, item := range kripRecipe.Instructions {
+			recipe.Instructions = append(recipe.Instructions, FromKripHowToStep(&item.HowToStep))
+
+			if len(item.Steps) != 0 {
+				for _, step := range item.Steps {
+					recipe.Instructions = append(recipe.Instructions, FromKripHowToStep(step))
 				}
 			}
 		}
