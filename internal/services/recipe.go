@@ -248,9 +248,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 		return nil, err
 	}
 
-	// Run image downloads in the background so the client gets the recipe immediately
-	go s.processRecipeImages(recipe)
-
+	s.processRecipeImages(recipe)
 	return recipe, nil
 }
 
