@@ -96,7 +96,7 @@ func (r *RecipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) erro
 	return r.db.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error
 }
 
-func (r *RecipeRepository) UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
+func (r *RecipeRepository) UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
 	var recipes []domain.Recipe
 
 	baseQuery := r.db.Model(&domain.Recipe{}).

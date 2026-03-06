@@ -23,7 +23,7 @@ type RecipeImage struct {
 	Recipe *Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
-func (i *RecipeImage) BeforeCreate(tx *gorm.DB) error {
+func (i *RecipeImage) BeforeCreate(_ *gorm.DB) error {
 	if i.ID == uuid.Nil {
 		var err error
 		i.ID, err = uuid.NewV7()

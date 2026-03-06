@@ -26,7 +26,7 @@ type Publisher struct {
 	Feeds   []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
-func (p *Publisher) BeforeCreate(tx *gorm.DB) error {
+func (p *Publisher) BeforeCreate(_ *gorm.DB) error {
 	if p.ID == uuid.Nil {
 		var err error
 		p.ID, err = uuid.NewV7()

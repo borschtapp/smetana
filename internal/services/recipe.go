@@ -150,8 +150,8 @@ func (s *RecipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return s.repo.UserUnsave(recipeID, userID)
 }
 
-func (s *RecipeService) UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
-	return s.repo.UserSearch(userID, householdID, q, taxonomies, cuisine, offset, limit)
+func (s *RecipeService) UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
+	return s.repo.UserSearch(householdID, q, taxonomies, cuisine, offset, limit)
 }
 
 func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {

@@ -23,7 +23,7 @@ func (f Food) TableName() string {
 	return "food"
 }
 
-func (f *Food) BeforeCreate(tx *gorm.DB) error {
+func (f *Food) BeforeCreate(_ *gorm.DB) error {
 	if f.ID == uuid.Nil {
 		var err error
 		f.ID, err = uuid.NewV7()

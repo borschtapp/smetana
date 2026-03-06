@@ -47,7 +47,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // Value implements the driver.Valuer interface for database storage
 // Stores as nanoseconds (int64) for consistency with Go's time.Duration
 func (d Duration) Value() (driver.Value, error) {
-	return int64(time.Duration(d)), nil
+	return int64(d), nil
 }
 
 // Scan implements the sql.Scanner interface for database retrieval
@@ -59,14 +59,14 @@ func (d *Duration) Scan(value interface{}) error {
 
 	switch v := value.(type) {
 	case int64:
-		*d = Duration(time.Duration(v))
+		*d = Duration(v)
 		return nil
 	case []byte:
 		var i int64
 		if _, err := fmt.Sscan(string(v), &i); err != nil {
 			return err
 		}
-		*d = Duration(time.Duration(i))
+		*d = Duration(i)
 		return nil
 	default:
 		return fmt.Errorf("cannot scan %T into Duration", value)

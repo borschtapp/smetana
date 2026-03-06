@@ -24,7 +24,7 @@ type RecipeIngredient struct {
 	Food   *Food   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"food,omitempty"`
 }
 
-func (ri *RecipeIngredient) BeforeCreate(tx *gorm.DB) error {
+func (ri *RecipeIngredient) BeforeCreate(_ *gorm.DB) error {
 	if ri.ID == uuid.Nil {
 		var err error
 		ri.ID, err = uuid.NewV7()

@@ -15,7 +15,7 @@ type Unit struct {
 	Taxonomies []*Taxonomy `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
 }
 
-func (u *Unit) BeforeCreate(tx *gorm.DB) error {
+func (u *Unit) BeforeCreate(_ *gorm.DB) error {
 	if u.ID == uuid.Nil {
 		var err error
 		u.ID, err = uuid.NewV7()

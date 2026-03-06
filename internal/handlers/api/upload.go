@@ -2,10 +2,12 @@ package api
 
 import (
 	"io"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
@@ -44,7 +46,12 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	if err != nil {
 		return sentinels.BadRequest("Failed to open file")
 	}
-	defer src.Close()
+	defer func(src multipart.File) {
+		err := src.Close()
+		if err != nil {
+			log.Warnf("Failed to close file %s, err: %s", src, err)
+		}
+	}(src)
 
 	data, err := io.ReadAll(src)
 	if err != nil {

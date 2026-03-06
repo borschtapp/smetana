@@ -21,7 +21,7 @@ type ShoppingList struct {
 	Unit      *Unit      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"unit,omitempty"`
 }
 
-func (s *ShoppingList) BeforeCreate(tx *gorm.DB) error {
+func (s *ShoppingList) BeforeCreate(_ *gorm.DB) error {
 	if s.ID == uuid.Nil {
 		var err error
 		s.ID, err = uuid.NewV7()

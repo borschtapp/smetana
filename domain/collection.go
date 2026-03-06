@@ -20,7 +20,7 @@ type Collection struct {
 	Recipes   []*Recipe  `gorm:"many2many:collection_recipes;" json:"recipes,omitempty"`
 }
 
-func (c *Collection) BeforeCreate(tx *gorm.DB) error {
+func (c *Collection) BeforeCreate(_ *gorm.DB) error {
 	if c.ID == uuid.Nil {
 		var err error
 		c.ID, err = uuid.NewV7()

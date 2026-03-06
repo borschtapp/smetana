@@ -8,8 +8,6 @@ import (
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
-
-	kUtils "github.com/borschtapp/krip/utils"
 )
 
 var transformer = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
@@ -39,8 +37,4 @@ func CreateTag(name string) string {
 	}
 
 	return strings.ToLower(clearNonAlphanumeric(name))
-}
-
-func CreateHostnameTag(url string) string {
-	return kUtils.Hostname(url)
 }

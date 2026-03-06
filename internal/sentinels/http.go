@@ -1,6 +1,7 @@
 package sentinels
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
@@ -14,8 +15,8 @@ func BadRequest(m string) *domain.Error {
 }
 
 func BadRequestVal(err error) *domain.Error {
-	validationErrors, ok := err.(validator.ValidationErrors)
-	if !ok {
+	var validationErrors validator.ValidationErrors
+	if !errors.As(err, &validationErrors) {
 		return &domain.Error{Status: fiber.StatusBadRequest, Message: err.Error()}
 	}
 
@@ -39,14 +40,6 @@ func BadRequestField(field string, reason string) *domain.Error {
 
 func Unauthorized(m string) *domain.Error {
 	return &domain.Error{Status: fiber.StatusUnauthorized, Message: m}
-}
-
-func Forbidden(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusForbidden, Message: m}
-}
-
-func NotFound(m string) *domain.Error {
-	return &domain.Error{Status: fiber.StatusNotFound, Message: m}
 }
 
 func NotImplemented(m string) *domain.Error {

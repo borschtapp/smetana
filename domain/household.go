@@ -15,7 +15,7 @@ type Household struct {
 	ShoppingList []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
 }
 
-func (h *Household) BeforeCreate(tx *gorm.DB) error {
+func (h *Household) BeforeCreate(_ *gorm.DB) error {
 	if h.ID == uuid.Nil {
 		var err error
 		h.ID, err = uuid.NewV7()

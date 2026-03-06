@@ -22,7 +22,7 @@ type MealPlan struct {
 	Recipe    *Recipe    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipe,omitempty"`
 }
 
-func (mp *MealPlan) BeforeCreate(tx *gorm.DB) error {
+func (mp *MealPlan) BeforeCreate(_ *gorm.DB) error {
 	if mp.ID == uuid.Nil {
 		var err error
 		mp.ID, err = uuid.NewV7()

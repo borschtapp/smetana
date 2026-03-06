@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/gofiber/fiber/v3/log"
 )
 
 type LocalStorage struct {
@@ -44,7 +46,12 @@ func (s *LocalStorage) Save(path string, content io.Reader, size int64, contentT
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Warnf("Failed to close file %s, err: %s", fullPath, err)
+		}
+	}(file)
 
 	_, err = io.Copy(file, content)
 	return err

@@ -51,7 +51,7 @@ func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 
 	p := types.GetPagination(c)
 
-	recipes, total, err := h.recipeService.UserSearch(tokenData.ID, tokenData.HouseholdID, q, taxonomies, cuisine, p.Offset(), p.Limit)
+	recipes, total, err := h.recipeService.UserSearch(tokenData.HouseholdID, q, taxonomies, cuisine, p.Offset(), p.Limit)
 	if err != nil {
 		return err
 	}

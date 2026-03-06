@@ -25,7 +25,7 @@ type RecipeInstruction struct {
 	Parent *RecipeInstruction `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"parent,omitempty"`
 }
 
-func (ri *RecipeInstruction) BeforeCreate(tx *gorm.DB) error {
+func (ri *RecipeInstruction) BeforeCreate(_ *gorm.DB) error {
 	if ri.ID == uuid.Nil {
 		var err error
 		ri.ID, err = uuid.NewV7()

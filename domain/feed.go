@@ -23,7 +23,7 @@ type Feed struct {
 	Recipes    []*Recipe    `json:"recipes,omitempty"`
 }
 
-func (f *Feed) BeforeCreate(tx *gorm.DB) error {
+func (f *Feed) BeforeCreate(_ *gorm.DB) error {
 	if f.ID == uuid.Nil {
 		var err error
 		f.ID, err = uuid.NewV7()

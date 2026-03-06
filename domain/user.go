@@ -23,7 +23,7 @@ type User struct {
 	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
 }
 
-func (u *User) BeforeCreate(tx *gorm.DB) error {
+func (u *User) BeforeCreate(_ *gorm.DB) error {
 	if u.ID == uuid.Nil {
 		var err error
 		u.ID, err = uuid.NewV7()

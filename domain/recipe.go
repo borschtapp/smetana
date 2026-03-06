@@ -86,12 +86,12 @@ type Video struct {
 }
 
 func FromKripAuthor(person *krip.Person) *Author {
-	model := &Author{}
-	model.Name = person.Name
-	model.Description = person.Description
-	model.Url = person.Url
-	model.Image = person.Image
-	return model
+	author := &Author{}
+	author.Name = person.Name
+	author.Description = person.Description
+	author.Url = person.Url
+	author.Image = person.Image
+	return author
 }
 
 func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
@@ -230,7 +230,7 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	return recipe
 }
 
-func (r *Recipe) BeforeCreate(tx *gorm.DB) error {
+func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
 	if r.ID == uuid.Nil {
 		var err error
 		r.ID, err = uuid.NewV7()
@@ -250,7 +250,7 @@ type RecipeRepository interface {
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
-	UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+	UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
 	CreateImages(images []*RecipeImage) error
 	UpdateImage(img *RecipeImage) error
@@ -275,7 +275,7 @@ type RecipeService interface {
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
-	UserSearch(userID uuid.UUID, householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
+	UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
 	CreateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
 	UpdateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
