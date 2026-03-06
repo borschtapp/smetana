@@ -18,3 +18,7 @@ type RecipeSaved struct {
 	Recipe    *Recipe    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Household *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
+
+func (rs RecipeSaved) TableName() string {
+	return "recipes_saved"
+}

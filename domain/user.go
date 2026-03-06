@@ -20,7 +20,7 @@ type User struct {
 
 	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Recipes   []*Recipe    `gorm:"many2many:recipe_saved;" json:"recipes,omitempty"`
+	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

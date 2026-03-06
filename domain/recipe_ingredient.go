@@ -10,7 +10,7 @@ import (
 type RecipeIngredient struct {
 	ID       uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	RecipeID uuid.UUID  `gorm:"type:char(36);index" json:"-"`
-	Amount   *float64   `json:"amount"`
+	Amount   *float64   `json:"amount,omitempty"`
 	UnitID   *uuid.UUID `gorm:"type:char(36);index" json:"unit_id,omitempty"`
 	FoodID   *uuid.UUID `gorm:"type:char(36);index" json:"food_id,omitempty"`
 	Kind     string     `gorm:"default:'main'" json:"kind"` // "main", "secondary", "essential"

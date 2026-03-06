@@ -100,8 +100,8 @@ func (r *RecipeRepository) UserSearch(userID uuid.UUID, householdID uuid.UUID, q
 	var recipes []domain.Recipe
 
 	baseQuery := r.db.Model(&domain.Recipe{}).
-		Joins("JOIN recipe_saved ON recipe_saved.recipe_id = recipes.id").
-		Where("recipe_saved.household_id = ?", householdID)
+		Joins("JOIN recipes_saved ON recipes_saved.recipe_id = recipes.id").
+		Where("recipes_saved.household_id = ?", householdID)
 
 	if q != "" {
 		baseQuery = baseQuery.Where("recipes.name LIKE ? OR recipes.description LIKE ?", "%"+q+"%", "%"+q+"%")
@@ -171,7 +171,7 @@ func (r *RecipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) e
 
 func (r *RecipeRepository) ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error {
 	// 1. RecipeSaved
-	if err := r.db.Table("recipe_saved").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
+	if err := r.db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
 		return err
 	}
 	// 2. MealPlan

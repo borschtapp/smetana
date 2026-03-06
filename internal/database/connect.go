@@ -19,17 +19,17 @@ func Connect() (*gorm.DB, error) {
 
 func Migrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
+		&domain.Household{},
 		&domain.User{},
 		&domain.UserToken{},
-		&domain.Recipe{},
-		&domain.RecipeImage{},
-		&domain.RecipeInstruction{},
-		&domain.RecipeIngredient{},
 		&domain.Publisher{},
 		&domain.Unit{},
 		&domain.Food{},
 		&domain.Taxonomy{},
-		&domain.Household{},
+		&domain.Recipe{},
+		&domain.RecipeImage{},
+		&domain.RecipeInstruction{},
+		&domain.RecipeIngredient{},
 		&domain.RecipeSaved{},
 		&domain.MealPlan{},
 		&domain.Collection{},

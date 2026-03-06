@@ -229,6 +229,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/domain.Error"
                         }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Error"
+                        }
                     }
                 }
             }
