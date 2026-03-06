@@ -1,10 +1,6 @@
 package api
 
 import (
-	"errors"
-	"strings"
-	"time"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
@@ -14,21 +10,20 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-// dummyHash is a hash used for password comparison when the requested email does not exist
-var dummyHash, _ = utils.HashPassword("dummy-password-for-timing-protection")
-
 var validate = validator.New()
 
 type AuthHandler struct {
-	oidcService domain.AuthService
-	userService domain.UserService
+	authService domain.AuthService
+	oidcService domain.OIDCService
 }
 
-func NewAuthHandler(oidcService domain.AuthService, userService domain.UserService) *AuthHandler {
-	return &AuthHandler{
-		oidcService: oidcService,
-		userService: userService,
-	}
+func NewAuthHandler(authService domain.AuthService, oidcService domain.OIDCService) *AuthHandler {
+	return &AuthHandler{authService: authService, oidcService: oidcService}
+}
+
+type AuthResponse struct {
+	domain.User
+	domain.AuthTokens
 }
 
 type LoginForm struct {
@@ -48,61 +43,23 @@ type LoginForm struct {
 // @Failure 401 {object} domain.Error
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c fiber.Ctx) error {
-	var requestBody LoginForm
-	if err := c.Bind().Body(&requestBody); err != nil {
+	var body LoginForm
+	if err := c.Bind().Body(&body); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
-
-	if err := validate.Struct(requestBody); err != nil {
+	if err := validate.Struct(body); err != nil {
 		return sentinels.BadRequestVal(err)
 	}
 
-	user, err := h.userService.ByEmail(requestBody.Email)
-	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
-		return err
-	}
-
-	// to prevent timing attacks that distinguish "email not found" from "wrong password" via response latency
-	hashToCheck := dummyHash
-	if user != nil {
-		hashToCheck = user.Password
-	}
-	if !utils.ValidatePassword(hashToCheck, requestBody.Password) || user == nil {
-		return sentinels.Unauthorized("invalid email or password")
-	}
-
-	if tokens, err := h.issueTokens(*user); err == nil {
-		return c.JSON(tokens)
-	} else {
-		return err
-	}
-}
-
-type AuthResponse struct {
-	domain.User
-	utils.Tokens
-}
-
-func (h *AuthHandler) issueTokens(user domain.User) (*AuthResponse, error) {
-	tokens, err := utils.GenerateNewTokens(user.ID, user.HouseholdID)
+	user, err := h.authService.Login(body.Email, body.Password)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	expiresIn := time.Minute * time.Duration(utils.GetenvInt("JWT_REFRESH_EXPIRE_MINUTES", 10080))
-
-	token := &domain.UserToken{
-		UserID:  user.ID,
-		Type:    "refresh",
-		Token:   tokens.Refresh,
-		Expires: time.Now().Add(expiresIn),
+	tokens, err := h.authService.IssueTokens(*user)
+	if err != nil {
+		return err
 	}
-
-	if err := h.userService.CreateRefreshToken(token); err != nil {
-		return nil, err
-	}
-
-	return &AuthResponse{User: user, Tokens: *tokens}, nil
+	return c.JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }
 
 type RenewForm struct {
@@ -121,38 +78,19 @@ type RenewForm struct {
 // @Failure 401 {object} domain.Error
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
-	var requestBody RenewForm
-	if err := c.Bind().Body(&requestBody); err != nil {
+	var body RenewForm
+	if err := c.Bind().Body(&body); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
-
-	if err := validate.Struct(requestBody); err != nil {
+	if err := validate.Struct(body); err != nil {
 		return sentinels.BadRequestVal(err)
 	}
 
-	userToken, err := h.userService.FindRefreshToken(requestBody.RefreshToken)
+	user, tokens, err := h.authService.RotateRefreshToken(body.RefreshToken)
 	if err != nil {
-		return sentinels.Unauthorized("Invalid refresh token")
+		return err
 	}
-
-	if time.Now().Before(userToken.Expires) {
-		user := userToken.User
-		if user == nil {
-			return sentinels.Unauthorized("User not found for this token")
-		}
-
-		if err := h.userService.DeleteRefreshToken(userToken.Token); err != nil {
-			return err
-		}
-
-		if tokens, err := h.issueTokens(*user); err == nil {
-			return c.JSON(tokens)
-		} else {
-			return err
-		}
-	}
-
-	return sentinels.Unauthorized("unauthorized, your session was ended earlier")
+	return c.JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }
 
 type RegisterForm struct {
@@ -173,41 +111,23 @@ type RegisterForm struct {
 // @Failure 409 {object} domain.Error
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
-	var requestBody RegisterForm
-	if err := c.Bind().Body(&requestBody); err != nil {
+	var body RegisterForm
+	if err := c.Bind().Body(&body); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
-
-	if err := validate.Struct(requestBody); err != nil {
+	if err := validate.Struct(body); err != nil {
 		return sentinels.BadRequestVal(err)
 	}
 
-	hash, err := utils.HashPassword(requestBody.Password)
+	user, err := h.authService.Register(body.Name, body.Email, body.Password)
 	if err != nil {
-		return sentinels.InternalServerError("Failed to hash password")
-	}
-
-	name := requestBody.Name
-	if name == "" {
-		name = strings.Split(requestBody.Email, "@")[0]
-	}
-
-	user := domain.User{
-		Email:    requestBody.Email,
-		Password: hash,
-		Name:     name,
-		Created:  time.Now(),
-	}
-
-	if err := h.userService.Create(&user); err != nil {
 		return err
 	}
-
-	if tokens, err := h.issueTokens(user); err == nil {
-		return c.Status(fiber.StatusCreated).JSON(tokens)
-	} else {
+	tokens, err := h.authService.IssueTokens(*user)
+	if err != nil {
 		return err
 	}
+	return c.Status(fiber.StatusCreated).JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }
 
 // OIDCLogin godoc
@@ -276,19 +196,17 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 	if err := idToken.Claims(&claims); err != nil {
 		return sentinels.InternalServerError("Failed to parse claims")
 	}
-
 	if !claims.Verified {
 		return sentinels.BadRequest("Email address not verified by identity provider")
 	}
 
-	user, err := h.oidcService.FindOrRegisterOIDCUser(claims.Email, claims.Name)
+	user, err := h.oidcService.Authorize(claims.Email, claims.Name)
 	if err != nil {
 		return err
 	}
-
-	if tokens, err := h.issueTokens(*user); err == nil {
-		return c.JSON(tokens)
-	} else {
+	tokens, err := h.authService.IssueTokens(*user)
+	if err != nil {
 		return err
 	}
+	return c.JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }

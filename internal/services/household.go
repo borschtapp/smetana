@@ -11,7 +11,7 @@ type HouseholdService struct {
 	userRepo domain.UserRepository
 }
 
-func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRepository) *HouseholdService {
+func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRepository) domain.HouseholdService {
 	return &HouseholdService{repo: repo, userRepo: userRepo}
 }
 

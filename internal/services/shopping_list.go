@@ -10,7 +10,7 @@ type ShoppingListService struct {
 	repo domain.ShoppingListRepository
 }
 
-func NewShoppingListService(repo domain.ShoppingListRepository) *ShoppingListService {
+func NewShoppingListService(repo domain.ShoppingListRepository) domain.ShoppingListService {
 	return &ShoppingListService{repo: repo}
 }
 

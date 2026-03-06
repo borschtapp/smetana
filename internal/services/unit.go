@@ -8,7 +8,7 @@ type UnitService struct {
 	repo domain.UnitRepository
 }
 
-func NewUnitService(repo domain.UnitRepository) *UnitService {
+func NewUnitService(repo domain.UnitRepository) domain.UnitService {
 	return &UnitService{repo: repo}
 }
 

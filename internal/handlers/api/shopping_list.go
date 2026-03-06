@@ -1,13 +1,13 @@
 package api
 
 import (
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type ShoppingListHandler struct {
@@ -33,7 +33,7 @@ func NewShoppingListHandler(shoppingListService domain.ShoppingListService) *Sho
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist [get]
 func (h *ShoppingListHandler) GetShoppingList(c fiber.Ctx) error {
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (h *ShoppingListHandler) DeleteShoppingListItem(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid item id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

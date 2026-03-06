@@ -3,13 +3,13 @@ package api
 import (
 	"strings"
 
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type RecipeHandler struct {
@@ -36,7 +36,7 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [get]
 func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [post]
 func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid ingredient id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -365,7 +365,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid ingredient id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid instruction id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -483,7 +483,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid instruction id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

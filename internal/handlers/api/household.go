@@ -1,22 +1,21 @@
 package api
 
 import (
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type HouseholdHandler struct {
 	householdService domain.HouseholdService
-	userService      domain.UserService
 }
 
-func NewHouseholdHandler(householdService domain.HouseholdService, userService domain.UserService) *HouseholdHandler {
-	return &HouseholdHandler{householdService: householdService, userService: userService}
+func NewHouseholdHandler(householdService domain.HouseholdService) *HouseholdHandler {
+	return &HouseholdHandler{householdService: householdService}
 }
 
 // GetHousehold godoc
@@ -37,7 +36,7 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid household id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -83,7 +82,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -121,7 +120,7 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid household id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -175,7 +174,7 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -214,7 +213,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid user id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

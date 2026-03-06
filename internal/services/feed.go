@@ -20,7 +20,7 @@ type FeedService struct {
 	recipeService domain.RecipeService
 }
 
-func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, service domain.RecipeService) *FeedService {
+func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, service domain.RecipeService) domain.FeedService {
 	return &FeedService{repo: repo, publisherRepo: pubRepo, recipeRepo: recipeRepo, recipeService: service}
 }
 

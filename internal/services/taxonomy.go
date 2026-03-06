@@ -8,7 +8,7 @@ type TaxonomyService struct {
 	repo domain.TaxonomyRepository
 }
 
-func NewTaxonomyService(repo domain.TaxonomyRepository) *TaxonomyService {
+func NewTaxonomyService(repo domain.TaxonomyRepository) domain.TaxonomyService {
 	return &TaxonomyService{repo: repo}
 }
 

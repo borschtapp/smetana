@@ -1,13 +1,13 @@
 package api
 
 import (
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type CollectionHandler struct {
@@ -33,7 +33,7 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [get]
 func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid collection id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid recipe id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid collection id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

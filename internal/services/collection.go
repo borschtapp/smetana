@@ -11,7 +11,7 @@ type CollectionService struct {
 	recipeService domain.RecipeService
 }
 
-func NewCollectionService(repo domain.CollectionRepository, recipeService domain.RecipeService) *CollectionService {
+func NewCollectionService(repo domain.CollectionRepository, recipeService domain.RecipeService) domain.CollectionService {
 	return &CollectionService{repo: repo, recipeService: recipeService}
 }
 

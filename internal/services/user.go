@@ -9,7 +9,7 @@ type UserService struct {
 	repo domain.UserRepository
 }
 
-func NewUserService(repo domain.UserRepository) *UserService {
+func NewUserService(repo domain.UserRepository) domain.UserService {
 	return &UserService{repo: repo}
 }
 
@@ -20,19 +20,22 @@ func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 	return s.repo.ByID(id)
 }
 
-func (s *UserService) ByEmail(email string) (*domain.User, error) {
-	return s.repo.ByEmail(email)
-}
-
-func (s *UserService) ByEmailWithHousehold(email string) (*domain.User, error) {
-	return s.repo.ByEmailWithHousehold(email)
-}
-
-func (s *UserService) Update(user *domain.User, requesterID uuid.UUID) error {
-	if user.ID != requesterID {
-		return domain.ErrForbidden
+// Update fetches the user, applies the non-nil patches, and persists the result.
+func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email *string) (*domain.User, error) {
+	if id != requesterID {
+		return nil, domain.ErrForbidden
 	}
-	return s.repo.Update(user)
+	user, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if name != nil {
+		user.Name = *name
+	}
+	if email != nil {
+		user.Email = *email
+	}
+	return user, s.repo.Update(user)
 }
 
 func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
@@ -40,25 +43,4 @@ func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 		return domain.ErrForbidden
 	}
 	return s.repo.Delete(id)
-}
-
-// Create provisions a personal household then persists the user in a single transaction.
-func (s *UserService) Create(user *domain.User) error {
-	user.Household = &domain.Household{Name: user.Name + "'s Household"}
-	return s.repo.Create(user)
-}
-
-// FindRefreshToken retrieves a refresh token with its associated user.
-func (s *UserService) FindRefreshToken(tokenStr string) (*domain.UserToken, error) {
-	return s.repo.FindToken(tokenStr, "refresh")
-}
-
-// CreateRefreshToken persists a new refresh token for a user.
-func (s *UserService) CreateRefreshToken(token *domain.UserToken) error {
-	return s.repo.CreateToken(token)
-}
-
-// DeleteRefreshToken permanently removes a refresh token.
-func (s *UserService) DeleteRefreshToken(tokenStr string) error {
-	return s.repo.DeleteToken(tokenStr)
 }

@@ -22,7 +22,7 @@ type RecipeService struct {
 	userRepo         domain.UserRepository
 }
 
-func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, userRepo domain.UserRepository) *RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, userRepo domain.UserRepository) domain.RecipeService {
 	return &RecipeService{
 		repo:             repo,
 		imageService:     imageService,

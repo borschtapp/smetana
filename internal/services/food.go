@@ -8,7 +8,7 @@ type FoodService struct {
 	repo domain.FoodRepository
 }
 
-func NewFoodService(repo domain.FoodRepository) *FoodService {
+func NewFoodService(repo domain.FoodRepository) domain.FoodService {
 	return &FoodService{repo: repo}
 }
 

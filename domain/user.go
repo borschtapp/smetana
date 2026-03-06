@@ -47,13 +47,6 @@ type UserRepository interface {
 
 type UserService interface {
 	ByID(id uuid.UUID, requesterID uuid.UUID) (*User, error)
-	ByEmail(email string) (*User, error)
-	ByEmailWithHousehold(email string) (*User, error)
-	Update(user *User, requesterID uuid.UUID) error
+	Update(id uuid.UUID, requesterID uuid.UUID, name, email *string) (*User, error)
 	Delete(id uuid.UUID, requesterID uuid.UUID) error
-	Create(user *User) error
-
-	FindRefreshToken(tokenStr string) (*UserToken, error)
-	CreateRefreshToken(token *UserToken) error
-	DeleteRefreshToken(tokenStr string) error
 }

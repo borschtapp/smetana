@@ -3,13 +3,13 @@ package api
 import (
 	"time"
 
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type MealPlanHandler struct {
@@ -40,7 +40,7 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid meal plan id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

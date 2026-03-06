@@ -33,12 +33,13 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService)
 
 	userService := services.NewUserService(userRepo)
-	oidcService, err := services.NewAuthService(userService)
+	authService := services.NewAuthService(userRepo)
+	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
 		log.Warnf("OIDC service not initialized: %v", err)
 	}
 
-	authHandler := api.NewAuthHandler(oidcService, userService)
+	authHandler := api.NewAuthHandler(authService, oidcService)
 	authGroup := router.Group("/auth", limiter.New()) // enforce always-on limiter
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/register", authHandler.Register)
@@ -58,7 +59,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	usersGroup.Delete("/:id", userHandler.DeleteUser)
 
 	householdService := services.NewHouseholdService(householdRepo, userRepo)
-	householdHandler := api.NewHouseholdHandler(householdService, userService)
+	householdHandler := api.NewHouseholdHandler(householdService)
 	householdsGroup := router.Group("/households", middlewares.Protected())
 	householdsGroup.Get("/:id", householdHandler.GetHousehold)
 	householdsGroup.Patch("/:id", householdHandler.UpdateHousehold)

@@ -6,7 +6,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
-	"borscht.app/smetana/internal/utils"
+	"borscht.app/smetana/internal/tokens"
 )
 
 type UserHandler struct {
@@ -14,9 +14,7 @@ type UserHandler struct {
 }
 
 func NewUserHandler(userService domain.UserService) *UserHandler {
-	return &UserHandler{
-		userService: userService,
-	}
+	return &UserHandler{userService: userService}
 }
 
 // GetUser godoc
@@ -37,7 +35,7 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid user id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -74,33 +72,21 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid user id")
 	}
 
-	var requestBody UpdateUserForm
-	if err := c.Bind().Body(&requestBody); err != nil {
+	var body UpdateUserForm
+	if err := c.Bind().Body(&body); err != nil {
 		return err
 	}
-
-	if err := validate.Struct(requestBody); err != nil {
+	if err := validate.Struct(body); err != nil {
 		return sentinels.BadRequestVal(err)
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
 
-	user, err := h.userService.ByID(id, tokenData.ID)
+	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email)
 	if err != nil {
-		return err
-	}
-
-	if requestBody.Name != nil {
-		user.Name = *requestBody.Name
-	}
-	if requestBody.Email != nil {
-		user.Email = *requestBody.Email
-	}
-
-	if err := h.userService.Update(user, tokenData.ID); err != nil {
 		return err
 	}
 	return c.JSON(user)
@@ -124,7 +110,7 @@ func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid user id")
 	}
 
-	tokenData, err := utils.ExtractTokenMetadata(c)
+	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ type MealPlanService struct {
 	repo domain.MealPlanRepository
 }
 
-func NewMealPlanService(repo domain.MealPlanRepository) *MealPlanService {
+func NewMealPlanService(repo domain.MealPlanRepository) domain.MealPlanService {
 	return &MealPlanService{repo: repo}
 }
 

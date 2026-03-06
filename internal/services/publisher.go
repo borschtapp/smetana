@@ -10,7 +10,7 @@ type PublisherService struct {
 	imageService domain.ImageService
 }
 
-func NewPublisherService(repo domain.PublisherRepository, imageService domain.ImageService) *PublisherService {
+func NewPublisherService(repo domain.PublisherRepository, imageService domain.ImageService) domain.PublisherService {
 	return &PublisherService{repo: repo, imageService: imageService}
 }
 

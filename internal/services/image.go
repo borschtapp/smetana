@@ -28,7 +28,7 @@ type ImageService struct {
 	storage    storage.FileStorage
 }
 
-func NewImageService(s storage.FileStorage) *ImageService {
+func NewImageService(s storage.FileStorage) domain.ImageService {
 	client := safeurl.Client(
 		safeurl.GetConfigBuilder().
 			SetTimeout(imageDownloadTimeout).

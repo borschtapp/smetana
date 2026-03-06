@@ -1,13 +1,13 @@
 package api
 
 import (
+	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type FeedHandler struct {
@@ -44,7 +44,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 		return sentinels.BadRequestVal(err)
 	}
 
-	claims, err := utils.ExtractTokenMetadata(c)
+	claims, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 		return sentinels.BadRequest("invalid feed id")
 	}
 
-	claims, err := utils.ExtractTokenMetadata(c)
+	claims, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds [get]
 func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
-	claims, err := utils.ExtractTokenMetadata(c)
+	claims, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds/stream [get]
 func (h *FeedHandler) ListStream(c fiber.Ctx) error {
-	claims, err := utils.ExtractTokenMetadata(c)
+	claims, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}

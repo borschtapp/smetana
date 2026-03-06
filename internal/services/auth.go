@@ -1,107 +1,109 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/coreos/go-oidc/v3/oidc"
-	"golang.org/x/oauth2"
+	"time"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/configs"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/utils"
 )
 
 type AuthService struct {
-	provider     *oidc.Provider
-	oauth2Config *oauth2.Config
-	verifier     *oidc.IDTokenVerifier
-	userService  domain.UserService
+	userRepo  domain.UserRepository
+	dummyHash string
 }
 
-func NewAuthService(userService domain.UserService) (*AuthService, error) {
-	providerURL := utils.Getenv("OIDC_PROVIDER", "")
-	clientID := utils.Getenv("OIDC_CLIENT_ID", "")
-	clientSecret := utils.Getenv("OIDC_CLIENT_SECRET", "")
-	redirectURL := utils.Getenv("OIDC_REDIRECT_URL", "")
-
-	if providerURL == "" || clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("OIDC configuration missing")
-	}
-
-	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, providerURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query provider: %v", err)
-	}
-
-	conf := &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		RedirectURL:  redirectURL,
-		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
-	}
-
-	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
-
-	return &AuthService{
-		provider:     provider,
-		oauth2Config: conf,
-		verifier:     verifier,
-		userService:  userService,
-	}, nil
+func NewAuthService(userRepo domain.UserRepository) domain.AuthService {
+	// Pre-compute a hash so the login path always runs bcrypt regardless of
+	// whether the email exists — prevents timing-based user enumeration.
+	hash, _ := utils.HashPassword("dummy-password-for-timing-protection")
+	return &AuthService{userRepo: userRepo, dummyHash: hash}
 }
 
-func (s *AuthService) LoginURL(state string) string {
-	return s.oauth2Config.AuthCodeURL(state)
-}
-
-func (s *AuthService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
-	oauth2Token, err := s.oauth2Config.Exchange(ctx, code)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to exchange token: %v", err)
-	}
-
-	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-	if !ok {
-		return nil, nil, fmt.Errorf("no id_token field in oauth2 token")
-	}
-
-	idToken, err := s.verifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to verify ID Token: %v", err)
-	}
-
-	return oauth2Token, idToken, nil
-}
-
-// FindOrRegisterOIDCUser finds a user by email (with Household preloaded) or creates one via JIT provisioning.
-func (s *AuthService) FindOrRegisterOIDCUser(email, name string) (*domain.User, error) {
-	user, err := s.userService.ByEmailWithHousehold(email)
-	if err == nil {
-		return user, nil
-	}
-
-	if !errors.Is(err, domain.ErrRecordNotFound) {
+// Login validates credentials and returns the matching user.
+func (s *AuthService) Login(email, password string) (*domain.User, error) {
+	user, err := s.userRepo.ByEmail(email)
+	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
 		return nil, err
 	}
 
+	hashToCheck := s.dummyHash
+	if user != nil {
+		hashToCheck = user.Password
+	}
+
+	if !utils.ValidatePassword(hashToCheck, password) || user == nil {
+		return nil, domain.ErrUnauthorized
+	}
+	return user, nil
+}
+
+// Register creates a new user with a personal household.
+func (s *AuthService) Register(name, email, password string) (*domain.User, error) {
+	hash, err := utils.HashPassword(password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
 	if name == "" {
 		name = strings.Split(email, "@")[0]
 	}
-
-	newUser := domain.User{
-		Email: email,
-		Name:  name,
+	user := &domain.User{
+		Email:     email,
+		Password:  hash,
+		Name:      name,
+		Household: &domain.Household{Name: name + "'s Household"},
 	}
-
-	if err := s.userService.Create(&newUser); err != nil {
-		if errors.Is(err, domain.ErrAlreadyExists) {
-			return s.userService.ByEmailWithHousehold(email)
-		}
+	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
 	}
-	return &newUser, nil
+	return user, nil
+}
+
+// IssueTokens generates a new access+refresh token pair and persists the refresh token.
+func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) {
+	generatedTokens, err := tokens.GenerateNew(user.ID, user.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+
+	expiresIn := time.Minute * time.Duration(configs.JwtRefreshExpireMinutes())
+	token := &domain.UserToken{
+		UserID:  user.ID,
+		Type:    "refresh",
+		Token:   generatedTokens.Refresh,
+		Expires: time.Now().Add(expiresIn),
+	}
+
+	if err := s.userRepo.CreateToken(token); err != nil {
+		return nil, err
+	}
+	return generatedTokens, nil
+}
+
+// RotateRefreshToken validates a refresh token, invalidates it, and issues a new pair.
+func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
+	userToken, err := s.userRepo.FindToken(tokenStr, "refresh")
+	if err != nil {
+		return nil, nil, domain.ErrUnauthorized
+	}
+	if !time.Now().Before(userToken.Expires) {
+		return nil, nil, domain.ErrUnauthorized
+	}
+	user := userToken.User
+	if user == nil {
+		return nil, nil, domain.ErrUnauthorized
+	}
+
+	if err := s.userRepo.DeleteToken(userToken.Token); err != nil {
+		return nil, nil, err
+	}
+	generatedTokens, err := s.IssueTokens(*user)
+	if err != nil {
+		return nil, nil, err
+	}
+	return user, generatedTokens, nil
 }
