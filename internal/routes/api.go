@@ -67,7 +67,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	householdsGroup.Post("/:id/members", householdHandler.AddHouseholdMember)
 	householdsGroup.Delete("/:id/members/:userId", householdHandler.RemoveHouseholdMember)
 
-	collectionService := services.NewCollectionService(collectionRepo, recipeService)
+	collectionService := services.NewCollectionService(collectionRepo, recipeRepo)
 	collectionHandler := api.NewCollectionHandler(collectionService)
 	collectionsGroup := router.Group("/collections", middlewares.Protected())
 	collectionsGroup.Get("/", collectionHandler.GetCollections)
@@ -75,6 +75,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	collectionsGroup.Get("/:id", collectionHandler.GetCollection)
 	collectionsGroup.Patch("/:id", collectionHandler.UpdateCollection)
 	collectionsGroup.Delete("/:id", collectionHandler.DeleteCollection)
+	collectionsGroup.Get("/:id/recipes", collectionHandler.ListRecipes)
 	collectionsGroup.Post("/:id/recipes/:recipeId", collectionHandler.AddRecipeToCollection)
 	collectionsGroup.Delete("/:id/recipes/:recipeId", collectionHandler.RemoveRecipeFromCollection)
 

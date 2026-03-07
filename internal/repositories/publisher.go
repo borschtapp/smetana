@@ -2,11 +2,15 @@ package repositories
 
 import (
 	"errors"
+	"slices"
+	"strings"
 
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type PublisherRepository struct {
@@ -17,14 +21,52 @@ func NewPublisherRepository(db *gorm.DB) domain.PublisherRepository {
 	return &PublisherRepository{db: db}
 }
 
-func (r *PublisherRepository) List(offset, limit int) ([]domain.Publisher, int64, error) {
-	var total int64
-	if err := r.db.Model(&domain.Publisher{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
+	var publishers []domain.Publisher
+
+	q := r.db.Model(&domain.Publisher{})
+
+	if opts.SearchQuery != "" {
+		q = q.Where("name LIKE ?", "%"+opts.SearchQuery+"%")
 	}
 
-	var publishers []domain.Publisher
-	if err := r.db.Model(&domain.Publisher{}).Offset(offset).Limit(limit).Find(&publishers).Error; err != nil {
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	} else if total == 0 {
+		return nil, 0, nil
+	}
+
+	if len(opts.Preload) != 0 {
+		if slices.Contains(opts.Preload, "feeds") {
+			q = q.Preload("Feeds")
+		}
+
+		if slices.Contains(opts.Preload, "recipes:5") {
+			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created DESC").Limit(5)
+			})
+		}
+
+		if slices.Contains(opts.Preload, "recipes.images") {
+			q = q.Preload("Recipes.Images")
+		}
+
+		if slices.Contains(opts.Preload, "total_recipes") {
+			q = q.Select(`publishers.*, (
+					SELECT COUNT(*) FROM recipes
+					WHERE recipes.publisher_id = publishers.id
+				) AS total_recipes`)
+		}
+	}
+
+	q = q.Offset(opts.Offset).Limit(opts.Limit)
+	q = q.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: opts.Sort},
+		Desc:   strings.EqualFold(opts.Order, "DESC"),
+	})
+
+	if err := q.Find(&publishers).Error; err != nil {
 		return nil, 0, err
 	}
 	return publishers, total, nil

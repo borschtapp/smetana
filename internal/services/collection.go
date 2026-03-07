@@ -8,12 +8,12 @@ import (
 )
 
 type CollectionService struct {
-	repo          domain.CollectionRepository
-	recipeService domain.RecipeService
+	repo       domain.CollectionRepository
+	recipeRepo domain.RecipeRepository
 }
 
-func NewCollectionService(repo domain.CollectionRepository, recipeService domain.RecipeService) domain.CollectionService {
-	return &CollectionService{repo: repo, recipeService: recipeService}
+func NewCollectionService(repo domain.CollectionRepository, recipeRepo domain.RecipeRepository) domain.CollectionService {
+	return &CollectionService{repo: repo, recipeRepo: recipeRepo}
 }
 
 func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
@@ -38,8 +38,8 @@ func (s *CollectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID)
 	return collection, nil
 }
 
-func (s *CollectionService) List(householdID uuid.UUID, offset, limit int) ([]domain.Collection, int64, error) {
-	return s.repo.List(householdID, offset, limit)
+func (s *CollectionService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
+	return s.repo.Search(householdID, opts)
 }
 
 func (s *CollectionService) Create(collection *domain.Collection, userID uuid.UUID, householdID uuid.UUID) error {
@@ -80,9 +80,12 @@ func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID
 	}
 
 	// Validate permission to access the recipe
-	_, err = s.recipeService.ByID(recipeID, householdID)
+	recipe, err := s.recipeRepo.ByID(recipeID)
 	if err != nil {
 		return err
+	}
+	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
+		return sentinels.ErrForbidden
 	}
 	return s.repo.AddRecipe(collection, recipeID)
 }

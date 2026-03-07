@@ -94,7 +94,12 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 // @Tags feeds
 // @Accept json
 // @Produce json
+// @Param q query string false "Text search"
+// @Param preload query string false "Comma-separated extras to include: publisher, recipes:5, recipes.images and total_recipes"
+// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Feed]
 // @Failure 401 {object} sentinels.Error
@@ -106,8 +111,12 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 		return err
 	}
 
-	p := types.GetPagination(c)
-	feeds, total, err := h.feedService.List(claims.HouseholdID, p.Offset, p.Limit)
+	opts, err := types.GetSearchOptions(c)
+	if err != nil {
+		return err
+	}
+
+	feeds, total, err := h.feedService.Search(claims.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
@@ -116,7 +125,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 		Data: feeds,
 		Meta: types.Meta{
 			Total: int(total),
-			Page:  p.Page,
+			Page:  opts.Page,
 		},
 	})
 }
@@ -126,6 +135,10 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 // @Tags feeds
 // @Accept json
 // @Produce json
+// @Param q query string false "Text search"
+// @Param preload query string false "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved"
+// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
 // @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
@@ -139,8 +152,12 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 		return err
 	}
 
-	p := types.GetPagination(c)
-	recipes, total, err := h.feedService.Stream(claims.HouseholdID, p.Offset, p.Limit)
+	opts, err := types.GetSearchOptions(c)
+	if err != nil {
+		return err
+	}
+
+	recipes, total, err := h.feedService.Stream(claims.ID, claims.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
@@ -149,7 +166,7 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 		Data: recipes,
 		Meta: types.Meta{
 			Total: int(total),
-			Page:  p.Page,
+			Page:  opts.Page,
 		},
 	})
 }

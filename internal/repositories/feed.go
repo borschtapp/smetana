@@ -1,10 +1,15 @@
 package repositories
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type FeedRepository struct {
@@ -31,45 +36,57 @@ func (r *FeedRepository) ListActive() ([]domain.Feed, error) {
 	return feeds, nil
 }
 
-func (r *FeedRepository) List(householdID uuid.UUID, offset, limit int) ([]domain.Feed, int64, error) {
+func (r *FeedRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
 	var feeds []domain.Feed
-	baseQuery := r.db.
+
+	q := r.db.Model(&domain.Feed{}).
 		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
 		Where("feed_subscriptions.household_id = ?", householdID)
 
-	var total int64
-	if err := baseQuery.Model(&domain.Feed{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+	if opts.SearchQuery != "" {
+		q = q.Where("feeds.name LIKE ?", "%"+opts.SearchQuery+"%")
 	}
 
-	err := baseQuery.
-		Offset(offset).
-		Limit(limit).
-		Find(&feeds).Error
-	return feeds, total, err
-}
-
-func (r *FeedRepository) Stream(householdID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
-	var recipes []domain.Recipe
-
-	baseQuery := r.db.
-		Joins("JOIN feeds ON feeds.id = recipes.feed_id").
-		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
-		Where("feed_subscriptions.household_id = ?", householdID)
-
 	var total int64
-	if err := baseQuery.Model(&domain.Recipe{}).Count(&total).Error; err != nil {
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
+	} else if total == 0 {
+		return nil, 0, nil
 	}
 
-	err := baseQuery.
-		Preload("Images").
-		Order("recipes.created DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&recipes).Error
+	if len(opts.Preload) != 0 {
+		if slices.Contains(opts.Preload, "publisher") {
+			q = q.Preload("Publisher")
+		}
 
-	return recipes, total, err
+		if slices.Contains(opts.Preload, "recipes:5") {
+			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created DESC").Limit(5)
+			})
+		}
+
+		if slices.Contains(opts.Preload, "recipes.images") {
+			q = q.Preload("Recipes.Images")
+		}
+
+		if slices.Contains(opts.Preload, "total_recipes") {
+			q = q.Select(`feeds.*, (
+					SELECT COUNT(*) FROM recipes
+					WHERE recipes.feed_id = feeds.id
+				) AS total_recipes`)
+		}
+	}
+
+	q = q.Offset(opts.Offset).Limit(opts.Limit)
+	q = q.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: opts.Sort},
+		Desc:   strings.EqualFold(opts.Order, "DESC"),
+	})
+
+	if err := q.Find(&feeds).Error; err != nil {
+		return nil, 0, err
+	}
+	return feeds, total, nil
 }
 
 func (r *FeedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {

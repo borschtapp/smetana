@@ -243,11 +243,22 @@ func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
+type RecipeSearchOptions struct {
+	types.SearchOptions
+
+	// below are mutually exclusive options:
+	// - if FromFeeds is true, only search recipes from feeds the household is subscribed to
+	// - if CollectionID is provided, only search recipes from that collection (assume the caller has already validated access to the collection)
+	// - otherwise, search all recipes saved by the household
+	FromFeeds    bool
+	CollectionID uuid.UUID
+}
+
 type RecipeRepository interface {
 	ByID(id uuid.UUID) (*Recipe, error)
 	ByUrl(url string) (*Recipe, error)
 	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]Recipe, error)
-	Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
+	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe) error
 	Import(recipe *Recipe) error
 	Update(recipe *Recipe) error

@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/internal/types"
 )
 
 type Collection struct {
@@ -16,8 +18,9 @@ type Collection struct {
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
 
-	Household *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
-	Recipes   []*Recipe  `gorm:"many2many:collection_recipes;" json:"recipes,omitempty"`
+	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Household    *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
+	Recipes      []*Recipe  `gorm:"many2many:collection_recipes;" json:"recipes,omitempty"`
 }
 
 func (c *Collection) BeforeCreate(_ *gorm.DB) error {
@@ -32,7 +35,7 @@ func (c *Collection) BeforeCreate(_ *gorm.DB) error {
 type CollectionRepository interface {
 	ByID(id uuid.UUID) (*Collection, error)
 	ByIdWithRecipes(id uuid.UUID) (*Collection, error)
-	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Collection, int64, error)
 	Create(collection *Collection) error
 	Update(collection *Collection) error
 	Delete(id uuid.UUID) error
@@ -44,7 +47,7 @@ type CollectionRepository interface {
 type CollectionService interface {
 	ByID(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
 	ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*Collection, error)
-	List(householdID uuid.UUID, offset, limit int) ([]Collection, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Collection, int64, error)
 	Create(collection *Collection, userID uuid.UUID, householdID uuid.UUID) error
 	Update(collection *Collection, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error

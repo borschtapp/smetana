@@ -12,6 +12,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/types"
 )
 
 type FeedService struct {
@@ -25,12 +26,12 @@ func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherReposito
 	return &FeedService{repo: repo, publisherRepo: pubRepo, recipeRepo: recipeRepo, recipeService: service}
 }
 
-func (s *FeedService) List(householdID uuid.UUID, offset, limit int) ([]domain.Feed, int64, error) {
-	return s.repo.List(householdID, offset, limit)
+func (s *FeedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
+	return s.repo.Search(householdID, opts)
 }
 
-func (s *FeedService) Stream(householdID uuid.UUID, offset, limit int) ([]domain.Recipe, int64, error) {
-	recipes, total, err := s.repo.Stream(householdID, offset, limit)
+func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+	recipes, total, err := s.recipeRepo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
 	if err != nil || len(recipes) == 0 {
 		return recipes, total, err
 	}

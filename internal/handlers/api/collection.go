@@ -26,6 +26,10 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Tags collections
 // @Accept */*
 // @Produce json
+// @Param q query string false "Text search"
+// @Param preload query string false "Comma-separated extras to include: recipes:5, recipes.images and total_recipes"
+// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
 // @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
@@ -39,8 +43,12 @@ func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 		return err
 	}
 
-	p := types.GetPagination(c)
-	collections, total, err := h.collectionService.List(tokenData.HouseholdID, p.Offset, p.Limit)
+	opts, err := types.GetSearchOptions(c)
+	if err != nil {
+		return err
+	}
+
+	collections, total, err := h.collectionService.Search(tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
@@ -49,7 +57,7 @@ func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 		Data: collections,
 		Meta: types.Meta{
 			Total: int(total),
-			Page:  p.Page,
+			Page:  opts.Page,
 		},
 	})
 }

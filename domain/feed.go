@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/internal/types"
 )
 
 type Feed struct {
@@ -18,9 +20,10 @@ type Feed struct {
 	Created     time.Time `gorm:"autoCreateTime" json:"created"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"updated"`
 
-	Publisher  *Publisher   `json:"publisher,omitempty"`
-	Households []*Household `gorm:"many2many:feed_subscriptions;" json:"households,omitempty"`
-	Recipes    []*Recipe    `json:"recipes,omitempty"`
+	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Publisher    *Publisher `json:"publisher,omitempty"`
+	Recipes      []*Recipe  `json:"recipes,omitempty"`
+	// Households []*Household `gorm:"many2many:feed_subscriptions;" json:"households,omitempty"`
 }
 
 func (f *Feed) BeforeCreate(_ *gorm.DB) error {
@@ -37,7 +40,7 @@ func (f *Feed) BeforeCreate(_ *gorm.DB) error {
 
 type FeedRepository interface {
 	ByUrl(url string) (*Feed, error)
-	List(householdID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Feed, int64, error)
 	ListActive() ([]Feed, error)
 	Create(recipe *Feed) error
 	Update(recipe *Feed) error
@@ -45,15 +48,13 @@ type FeedRepository interface {
 
 	AddFeed(householdID uuid.UUID, feed *Feed) error
 	DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error
-
-	Stream(householdID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
 }
 
 type FeedService interface {
-	List(householdID uuid.UUID, offset, limit int) ([]Feed, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Feed, int64, error)
 	Subscribe(householdID uuid.UUID, url string) (*Feed, error)
 	Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 
-	Stream(householdID uuid.UUID, offset, limit int) ([]Recipe, int64, error)
+	Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
 	FetchUpdates() error
 }

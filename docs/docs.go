@@ -259,9 +259,39 @@ const docTemplate = `{
                 "summary": "List user's collections.",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Text search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: recipes:5, recipes.images and total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, updated (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -642,9 +672,39 @@ const docTemplate = `{
                 "summary": "List subscriptions",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Text search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: publisher, recipes:5, recipes.images and total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, updated (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -738,9 +798,39 @@ const docTemplate = `{
                 "summary": "List a timeline of recipes from subscribed feeds.",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Text search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, updated (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -968,6 +1058,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Items per page",
                         "name": "limit",
                         "in": "query"
@@ -1163,6 +1259,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -1383,9 +1485,39 @@ const docTemplate = `{
                 "summary": "List all publishers.",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Text search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: feeds, recipes:5, recipes.images and total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -1449,12 +1581,6 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
                         "type": "string",
                         "description": "Sort by field: id, name, created, updated (default: id)",
                         "name": "sort",
@@ -1464,6 +1590,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Sort order: asc or desc (default: desc)",
                         "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
                         "in": "query"
                     },
                     {
@@ -2280,6 +2412,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Items per page",
                         "name": "limit",
                         "in": "query"
@@ -2505,6 +2643,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -3064,6 +3208,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/domain.Recipe"
                     }
                 },
+                "total_recipes": {
+                    "type": "integer"
+                },
                 "user_id": {
                     "type": "string"
                 }
@@ -3080,12 +3227,6 @@ const docTemplate = `{
                 },
                 "error_count": {
                     "type": "integer"
-                },
-                "households": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Household"
-                    }
                 },
                 "id": {
                     "type": "string"
@@ -3105,6 +3246,9 @@ const docTemplate = `{
                 "retrieved": {
                     "description": "last successful retrieval time",
                     "type": "string"
+                },
+                "total_recipes": {
+                    "type": "integer"
                 },
                 "updated": {
                     "type": "string"
@@ -3279,6 +3423,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "total_recipes": {
+                    "type": "integer"
                 },
                 "url": {
                     "type": "string"

@@ -1,10 +1,15 @@
 package repositories
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type CollectionRepository struct {
@@ -31,16 +36,49 @@ func (r *CollectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection
 	return &collection, nil
 }
 
-func (r *CollectionRepository) List(householdID uuid.UUID, offset, limit int) ([]domain.Collection, int64, error) {
-	query := r.db.Where("household_id = ?", householdID)
+func (r *CollectionRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
+	var collections []domain.Collection
 
-	var total int64
-	if err := query.Model(&domain.Collection{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+	q := r.db.Model(&domain.Collection{}).
+		Where("household_id = ?", householdID)
+
+	if opts.SearchQuery != "" {
+		q = q.Where("name LIKE ? OR description LIKE ?", "%"+opts.SearchQuery+"%", "%"+opts.SearchQuery+"%")
 	}
 
-	var collections []domain.Collection
-	if err := query.Offset(offset).Limit(limit).Find(&collections).Error; err != nil {
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	} else if total == 0 {
+		return collections, 0, nil
+	}
+
+	if len(opts.Preload) != 0 {
+		if slices.Contains(opts.Preload, "recipes:5") {
+			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created DESC").Limit(5)
+			})
+		}
+
+		if slices.Contains(opts.Preload, "recipes.images") {
+			q = q.Preload("Recipes.Images")
+		}
+
+		if slices.Contains(opts.Preload, "total_recipes") {
+			q = q.Select(`collections.*, (
+					SELECT COUNT(*) FROM collection_recipes
+					WHERE collection_recipes.collection_id = collections.id
+				) AS total_recipes`)
+		}
+	}
+
+	q = q.Offset(opts.Offset).Limit(opts.Limit)
+	q = q.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: opts.Sort},
+		Desc:   strings.EqualFold(opts.Order, "DESC"),
+	})
+
+	if err := q.Find(&collections).Error; err != nil {
 		return nil, 0, err
 	}
 	return collections, total, nil

@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -22,8 +23,9 @@ type Publisher struct {
 
 	RemoteImage *string `json:"-" gorm:"-"`
 
-	Recipes []*Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Feeds   []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	TotalRecipes *int64    `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Recipes      []*Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Feeds        []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (p *Publisher) BeforeCreate(_ *gorm.DB) error {
@@ -55,11 +57,11 @@ func FromKripPublisher(org *krip.Organization) *Publisher {
 }
 
 type PublisherRepository interface {
-	List(offset, limit int) ([]Publisher, int64, error)
+	Search(opts types.SearchOptions) ([]Publisher, int64, error)
 	FindOrCreate(pub *Publisher) error
 }
 
 type PublisherService interface {
-	List(offset, limit int) ([]Publisher, int64, error)
+	Search(opts types.SearchOptions) ([]Publisher, int64, error)
 	FindOrCreate(pub *Publisher) error
 }

@@ -53,7 +53,7 @@ func (s *RecipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recip
 }
 
 func (s *RecipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
-	return s.repo.Search(userID, householdID, opts)
+	return s.repo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts})
 }
 
 func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {

@@ -1,8 +1,10 @@
 package services
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/gofiber/fiber/v3/log"
+
+	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type PublisherService struct {
@@ -14,8 +16,8 @@ func NewPublisherService(repo domain.PublisherRepository, imageService domain.Im
 	return &PublisherService{repo: repo, imageService: imageService}
 }
 
-func (s *PublisherService) List(offset, limit int) ([]domain.Publisher, int64, error) {
-	return s.repo.List(offset, limit)
+func (s *PublisherService) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
+	return s.repo.Search(opts)
 }
 
 func (s *PublisherService) FindOrCreate(pub *domain.Publisher) error {

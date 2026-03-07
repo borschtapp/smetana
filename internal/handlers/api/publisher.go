@@ -21,6 +21,10 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Tags publishers
 // @Accept */*
 // @Produce json
+// @Param q query string false "Text search"
+// @Param preload query string false "Comma-separated extras to include: feeds, recipes:5, recipes.images and total_recipes"
+// @param sort query string false "Sort by field: id, name, created (default: id)"
+// @param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
 // @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
@@ -29,8 +33,12 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Security ApiKeyAuth
 // @Router /api/v1/publishers [get]
 func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
-	p := types.GetPagination(c)
-	publishers, total, err := h.publisherService.List(p.Offset, p.Limit)
+	opts, err := types.GetSearchOptions(c)
+	if err != nil {
+		return err
+	}
+
+	publishers, total, err := h.publisherService.Search(opts)
 	if err != nil {
 		return err
 	}
@@ -39,7 +47,7 @@ func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 		Data: publishers,
 		Meta: types.Meta{
 			Total: int(total),
-			Page:  p.Page,
+			Page:  opts.Page,
 		},
 	})
 }
