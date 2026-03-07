@@ -74,7 +74,7 @@ func (r *CollectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
 	q = q.Order(clause.OrderByColumn{
-		Column: clause.Column{Name: opts.Sort},
+		Column: clause.Column{Table: "collections", Name: opts.Sort},
 		Desc:   strings.EqualFold(opts.Order, "DESC"),
 	})
 

@@ -79,7 +79,7 @@ func (r *FeedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
 	q = q.Order(clause.OrderByColumn{
-		Column: clause.Column{Name: opts.Sort},
+		Column: clause.Column{Table: "feeds", Name: opts.Sort},
 		Desc:   strings.EqualFold(opts.Order, "DESC"),
 	})
 

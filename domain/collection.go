@@ -52,6 +52,7 @@ type CollectionService interface {
 	Update(collection *Collection, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 
+	ListRecipes(collectionID uuid.UUID, userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
 	AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 	RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 }

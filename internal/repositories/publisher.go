@@ -62,7 +62,7 @@ func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
 	q = q.Order(clause.OrderByColumn{
-		Column: clause.Column{Name: opts.Sort},
+		Column: clause.Column{Table: "publishers", Name: opts.Sort},
 		Desc:   strings.EqualFold(opts.Order, "DESC"),
 	})
 

@@ -130,7 +130,7 @@ func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 
 	// sorting
 	q = q.Order(clause.OrderByColumn{
-		Column: clause.Column{Name: opts.Sort},
+		Column: clause.Column{Table: "recipes", Name: opts.Sort},
 		Desc:   strings.EqualFold(opts.Order, "DESC"),
 	})
 

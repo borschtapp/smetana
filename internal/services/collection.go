@@ -5,6 +5,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/types"
 )
 
 type CollectionService struct {
@@ -68,6 +69,18 @@ func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 		return sentinels.ErrForbidden
 	}
 	return s.repo.Delete(id)
+}
+
+func (s *CollectionService) ListRecipes(collectionID uuid.UUID, userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+	existing, err := s.repo.ByID(collectionID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if existing.HouseholdID != householdID {
+		return nil, 0, sentinels.ErrForbidden
+	}
+
+	return s.recipeRepo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, CollectionID: collectionID})
 }
 
 func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {

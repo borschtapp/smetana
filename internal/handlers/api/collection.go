@@ -191,6 +191,53 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 	return c.JSON(collection)
 }
 
+// ListRecipes godoc
+// @Summary List recipes in a collection.
+// @Description Returns recipes in a collection with optional search, pagination and extras.
+// @Tags collections
+// @Accept json
+// @Produce json
+// @Param q query string false "Text search"
+// @Param preload query string false "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved"
+// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @param order query string false "Sort order: asc or desc (default: desc)"
+// @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} types.ListResponse[domain.Recipe]
+// @Failure 401 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/collections/{id}/recipes [get]
+func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return sentinels.BadRequest("invalid collection id")
+	}
+
+	claims, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	opts, err := types.GetSearchOptions(c)
+	if err != nil {
+		return err
+	}
+
+	recipes, total, err := h.collectionService.ListRecipes(id, claims.ID, claims.HouseholdID, opts)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(types.ListResponse[domain.Recipe]{
+		Data: recipes,
+		Meta: types.Meta{
+			Total: int(total),
+			Page:  opts.Page,
+		},
+	})
+}
+
 // AddRecipeToCollection godoc
 // @Summary Add a recipe to a collection.
 // @Tags collections
