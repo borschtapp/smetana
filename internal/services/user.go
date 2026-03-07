@@ -1,8 +1,10 @@
 package services
 
 import (
-	"borscht.app/smetana/domain"
 	"github.com/google/uuid"
+
+	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type UserService struct {
@@ -15,7 +17,7 @@ func NewUserService(repo domain.UserRepository) domain.UserService {
 
 func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
 	if id != requesterID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	return s.repo.ByID(id)
 }
@@ -23,7 +25,7 @@ func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 // Update fetches the user, applies the non-nil patches, and persists the result.
 func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email *string) (*domain.User, error) {
 	if id != requesterID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	user, err := s.repo.ByID(id)
 	if err != nil {
@@ -40,7 +42,7 @@ func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email *s
 
 func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 	if id != requesterID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Delete(id)
 }

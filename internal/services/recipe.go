@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/types"
 )
 
 type RecipeService struct {
@@ -47,7 +49,11 @@ func (s *RecipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recip
 		return recipe, nil
 	}
 
-	return nil, domain.ErrForbidden
+	return nil, sentinels.ErrForbidden
+}
+
+func (s *RecipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+	return s.repo.Search(userID, householdID, opts)
 }
 
 func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
@@ -150,10 +156,6 @@ func (s *RecipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return s.repo.UserUnsave(recipeID, userID)
 }
 
-func (s *RecipeService) UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
-	return s.repo.UserSearch(householdID, q, taxonomies, cuisine, offset, limit)
-}
-
 func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return err
@@ -200,7 +202,7 @@ func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 // If the recipe already exists: saves it for the user (unless forceUpdate=true, in which case it is re-imported).
 func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
-	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
 	}
 	if existing != nil {

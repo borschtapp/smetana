@@ -40,6 +40,7 @@ type Recipe struct {
 	Updated     time.Time       `gorm:"autoUpdateTime" json:"updated" swaggertype:"string" format:"date-time"`
 	Created     time.Time       `gorm:"autoCreateTime" json:"created" swaggertype:"string" format:"date-time"`
 
+	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
 	Publisher    *Publisher           `json:"publisher,omitempty"`
 	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"feed,omitempty"`
 	Images       []*RecipeImage       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
@@ -246,6 +247,7 @@ type RecipeRepository interface {
 	ByID(id uuid.UUID) (*Recipe, error)
 	ByUrl(url string) (*Recipe, error)
 	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]Recipe, error)
+	Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe) error
 	Import(recipe *Recipe) error
 	Update(recipe *Recipe) error
@@ -253,7 +255,6 @@ type RecipeRepository interface {
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
-	UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
 	CreateImages(images []*RecipeImage) error
 	UpdateImage(img *RecipeImage) error
@@ -272,13 +273,13 @@ type RecipeRepository interface {
 
 type RecipeService interface {
 	ByID(id uuid.UUID, householdID uuid.UUID) (*Recipe, error)
+	Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
-	UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]Recipe, int64, error)
 
 	CreateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
 	UpdateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error

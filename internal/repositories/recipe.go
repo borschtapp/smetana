@@ -1,6 +1,10 @@
 package repositories
 
 import (
+	"slices"
+	"strings"
+
+	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -12,7 +16,7 @@ type RecipeRepository struct {
 	db *gorm.DB
 }
 
-func NewRecipeRepository(db *gorm.DB) *RecipeRepository {
+func NewRecipeRepository(db *gorm.DB) domain.RecipeRepository {
 	return &RecipeRepository{db: db}
 }
 
@@ -40,6 +44,92 @@ func (r *RecipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 		return nil, mapErr(err)
 	}
 	return &recipe, nil
+}
+
+func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+	var recipes []domain.Recipe
+
+	// base filter, only show recipes saved by someone from the household
+	q := r.db.Model(&domain.Recipe{}).
+		Joins("JOIN recipes_saved ON recipes_saved.recipe_id = recipes.id").
+		Where("recipes_saved.household_id = ?", householdID)
+
+	// primitive search by name and description
+	if opts.SearchQuery != "" {
+		q = q.Where("recipes.name LIKE ? OR recipes.description LIKE ?", "%"+opts.SearchQuery+"%", "%"+opts.SearchQuery+"%")
+	}
+
+	// filter by taxonomies, if provided
+	if len(opts.Taxonomies) > 0 {
+		q = q.Joins("LEFT JOIN recipe_taxonomies ON recipe_taxonomies.recipe_id = recipes.id").
+			Where("recipe_taxonomies.taxonomy_id IN ?", opts.Taxonomies)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	} else if total == 0 {
+		return recipes, 0, nil
+	}
+
+	// preload relations
+	if len(opts.Preload) == 1 && opts.Preload[0] == "all" {
+		q = q.Preload(clause.Associations).
+			Preload("Ingredients.Food").Preload("Ingredients.Unit")
+	} else if len(opts.Preload) != 0 {
+		if slices.Contains(opts.Preload, "publisher") {
+			q = q.Preload("Publisher")
+		}
+
+		if slices.Contains(opts.Preload, "feed") {
+			q = q.Preload("Feed")
+		}
+
+		if slices.Contains(opts.Preload, "images") {
+			q = q.Preload("Images")
+		}
+
+		if slices.Contains(opts.Preload, "ingredients") {
+			q = q.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
+				return db.Joins("Food").Joins("Unit")
+			})
+		}
+
+		if slices.Contains(opts.Preload, "instructions") {
+			q = q.Preload("Instructions")
+		}
+
+		if slices.Contains(opts.Preload, "taxonomies") {
+			q = q.Preload("Taxonomies")
+		}
+
+		if slices.Contains(opts.Preload, "collections") {
+			q = q.Preload("Collections", "household_id = ?", householdID)
+		}
+
+		if slices.Contains(opts.Preload, "saved") {
+			q = q.Select(`recipes.*, EXISTS(
+					SELECT 1 FROM recipes_saved
+					WHERE recipes_saved.recipe_id = recipes.id
+					AND recipes_saved.user_id = ?
+				) AS is_saved`, userID)
+		}
+	}
+
+	// pagination
+	q = q.Offset(opts.Offset).Limit(opts.Limit)
+
+	// sorting
+	q = q.Order(clause.OrderByColumn{
+		Column: clause.Column{Name: opts.Sort},
+		Desc:   strings.EqualFold(opts.Order, "DESC"),
+	})
+
+	if err := q.Find(&recipes).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return recipes, total, nil
 }
 
 func (r *RecipeRepository) Create(recipe *domain.Recipe) error {
@@ -94,48 +184,6 @@ func (r *RecipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, househ
 
 func (r *RecipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return r.db.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error
-}
-
-func (r *RecipeRepository) UserSearch(householdID uuid.UUID, q string, taxonomies []string, cuisine string, offset, limit int) ([]domain.Recipe, int64, error) {
-	var recipes []domain.Recipe
-
-	baseQuery := r.db.Model(&domain.Recipe{}).
-		Joins("JOIN recipes_saved ON recipes_saved.recipe_id = recipes.id").
-		Where("recipes_saved.household_id = ?", householdID)
-
-	if q != "" {
-		baseQuery = baseQuery.Where("recipes.name LIKE ? OR recipes.description LIKE ?", "%"+q+"%", "%"+q+"%")
-	}
-
-	if cuisine != "" {
-		baseQuery = baseQuery.Joins("Left JOIN recipe_taxonomies as rt_cuisine ON rt_cuisine.recipe_id = recipes.id").
-			Joins("Left JOIN taxonomies as t_cuisine ON t_cuisine.id = rt_cuisine.taxonomy_id").
-			Where("t_cuisine.type = ? AND t_cuisine.slug = ?", "cuisine", cuisine)
-	}
-
-	if len(taxonomies) > 0 {
-		baseQuery = baseQuery.Joins("Left JOIN recipe_taxonomies as rt_tax ON rt_tax.recipe_id = recipes.id").
-			Joins("Left JOIN taxonomies as t_tax ON t_tax.id = rt_tax.taxonomy_id").
-			Where("t_tax.slug IN ?", taxonomies)
-	}
-
-	var total int64
-	if err := baseQuery.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	if err := baseQuery.
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		Order("recipes.updated DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&recipes).Error; err != nil {
-		return nil, 0, err
-	}
-	return recipes, total, nil
 }
 
 func (r *RecipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient) error {

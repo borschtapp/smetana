@@ -12,7 +12,7 @@ type FoodRepository struct {
 	db *gorm.DB
 }
 
-func NewFoodRepository(db *gorm.DB) *FoodRepository {
+func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
 	return &FoodRepository{db: db}
 }
 

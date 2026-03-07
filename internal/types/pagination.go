@@ -6,14 +6,16 @@ import (
 
 // Pagination represents common pagination parameters.
 type Pagination struct {
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
+	Page   int `json:"page"`
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
 }
 
 // GetPagination extracts pagination parameters from the request context.
-// Default values are page=1, limit=10. Maximum limit is 100.
+// Default values are page=1, offset=0, limit=10. Maximum limit is 100.
 func GetPagination(c fiber.Ctx) Pagination {
 	page := fiber.Query(c, "page", 1)
+	offset := fiber.Query(c, "offset", 0)
 	limit := fiber.Query(c, "limit", 10)
 
 	if page <= 0 {
@@ -26,13 +28,13 @@ func GetPagination(c fiber.Ctx) Pagination {
 		limit = 100
 	}
 
-	return Pagination{
-		Page:  page,
-		Limit: limit,
+	if page > 1 && offset == 0 {
+		offset = (page - 1) * limit
 	}
-}
 
-// Offset returns the starting record index for the current page and limit.
-func (p Pagination) Offset() int {
-	return (p.Page - 1) * p.Limit
+	return Pagination{
+		Page:   page,
+		Offset: offset,
+		Limit:  limit,
+	}
 }

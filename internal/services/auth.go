@@ -8,6 +8,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/configs"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/utils"
 )
@@ -27,7 +28,7 @@ func NewAuthService(userRepo domain.UserRepository) domain.AuthService {
 // Login validates credentials and returns the matching user.
 func (s *AuthService) Login(email, password string) (*domain.User, error) {
 	user, err := s.userRepo.ByEmail(email)
-	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -37,7 +38,7 @@ func (s *AuthService) Login(email, password string) (*domain.User, error) {
 	}
 
 	if !utils.ValidatePassword(hashToCheck, password) || user == nil {
-		return nil, domain.ErrUnauthorized
+		return nil, sentinels.ErrUnauthorized
 	}
 	return user, nil
 }
@@ -88,14 +89,14 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
 	userToken, err := s.userRepo.FindToken(tokenStr, "refresh")
 	if err != nil {
-		return nil, nil, domain.ErrUnauthorized
+		return nil, nil, sentinels.ErrUnauthorized
 	}
 	if !time.Now().Before(userToken.Expires) {
-		return nil, nil, domain.ErrUnauthorized
+		return nil, nil, sentinels.ErrUnauthorized
 	}
 	user := userToken.User
 	if user == nil {
-		return nil, nil, domain.ErrUnauthorized
+		return nil, nil, sentinels.ErrUnauthorized
 	}
 
 	if err := s.userRepo.DeleteToken(userToken.Token); err != nil {

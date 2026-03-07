@@ -13,7 +13,7 @@ type PublisherRepository struct {
 	db *gorm.DB
 }
 
-func NewPublisherRepository(db *gorm.DB) *PublisherRepository {
+func NewPublisherRepository(db *gorm.DB) domain.PublisherRepository {
 	return &PublisherRepository{db: db}
 }
 

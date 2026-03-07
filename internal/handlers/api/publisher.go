@@ -22,14 +22,15 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Accept */*
 // @Produce json
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Publisher]
-// @Failure 401 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/publishers [get]
 func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 	p := types.GetPagination(c)
-	publishers, total, err := h.publisherService.List(p.Offset(), p.Limit)
+	publishers, total, err := h.publisherService.List(p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}

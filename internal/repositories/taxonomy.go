@@ -9,7 +9,7 @@ type TaxonomyRepository struct {
 	db *gorm.DB
 }
 
-func NewTaxonomyRepository(db *gorm.DB) *TaxonomyRepository {
+func NewTaxonomyRepository(db *gorm.DB) domain.TaxonomyRepository {
 	return &TaxonomyRepository{db: db}
 }
 

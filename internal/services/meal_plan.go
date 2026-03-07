@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type MealPlanService struct {
@@ -23,7 +24,7 @@ func (s *MealPlanService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (
 		return nil, err
 	}
 	if mealPlan.HouseholdID != householdID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	return mealPlan, nil
 }
@@ -56,7 +57,7 @@ func (s *MealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUI
 	}
 
 	if existing.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 
 	if err := s.repo.Update(mealPlan); err != nil {
@@ -80,7 +81,7 @@ func (s *MealPlanService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 		return err
 	}
 	if mealPlan.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Delete(id)
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -19,14 +19,14 @@ func FiberConfig() fiber.Config {
 		ReadTimeout: time.Second * time.Duration(readTimeoutSecondsCount),
 
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
-			var se *domain.Error
+			var se *sentinels.Error
 
-			if e, ok := err.(*domain.Error); ok {
+			if e, ok := err.(*sentinels.Error); ok {
 				se = e
 			} else if e, ok := err.(*fiber.Error); ok {
-				se = &domain.Error{Status: e.Code, Message: e.Message}
+				se = &sentinels.Error{Status: e.Code, Message: e.Message}
 			} else {
-				se = &domain.Error{Status: fiber.StatusInternalServerError, Message: err.Error()}
+				se = &sentinels.Error{Status: fiber.StatusInternalServerError, Message: err.Error()}
 			}
 
 			return ctx.Status(se.Status).JSON(se)

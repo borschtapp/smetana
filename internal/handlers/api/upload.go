@@ -32,8 +32,8 @@ func NewUploadHandler(imageService domain.ImageService) *UploadHandler {
 // @Produce json
 // @Param file formData file true "Image file"
 // @Success 201 {object} domain.UploadedImage
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/uploads [post]
 func (h *UploadHandler) Upload(c fiber.Ctx) error {

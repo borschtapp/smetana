@@ -11,7 +11,7 @@ type CollectionRepository struct {
 	db *gorm.DB
 }
 
-func NewCollectionRepository(db *gorm.DB) *CollectionRepository {
+func NewCollectionRepository(db *gorm.DB) domain.CollectionRepository {
 	return &CollectionRepository{db: db}
 }
 

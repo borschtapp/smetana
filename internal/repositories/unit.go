@@ -12,7 +12,7 @@ type UnitRepository struct {
 	db *gorm.DB
 }
 
-func NewUnitRepository(db *gorm.DB) *UnitRepository {
+func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 	return &UnitRepository{db: db}
 }
 

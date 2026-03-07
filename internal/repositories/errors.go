@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 // mapErr translates GORM infrastructure errors into domain sentinel errors
@@ -14,9 +14,9 @@ func mapErr(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		return domain.ErrRecordNotFound
+		return sentinels.ErrRecordNotFound
 	case errors.Is(err, gorm.ErrDuplicatedKey):
-		return domain.ErrAlreadyExists
+		return sentinels.ErrAlreadyExists
 	default:
 		return err
 	}

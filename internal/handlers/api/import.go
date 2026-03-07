@@ -33,8 +33,8 @@ type ImportRequest struct {
 // @Produce json
 // @Param import body ImportRequest true "Import request"
 // @Success 201 {object} domain.Recipe
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/import [post]
 func (h *ImportHandler) Import(c fiber.Ctx) error {

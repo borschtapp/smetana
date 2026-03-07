@@ -27,9 +27,10 @@ func NewShoppingListHandler(shoppingListService domain.ShoppingListService) *Sho
 // @Accept */*
 // @Produce json
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
-// @Failure 401 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist [get]
 func (h *ShoppingListHandler) GetShoppingList(c fiber.Ctx) error {
@@ -39,7 +40,7 @@ func (h *ShoppingListHandler) GetShoppingList(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	items, total, err := h.shoppingListService.List(tokenData.HouseholdID, p.Offset(), p.Limit)
+	items, total, err := h.shoppingListService.List(tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
@@ -67,8 +68,8 @@ type ShoppingListForm struct {
 // @Produce json
 // @Param item body ShoppingListForm true "Shopping list item data"
 // @Success 201 {object} domain.ShoppingList
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist [post]
 func (h *ShoppingListHandler) CreateShoppingListItem(c fiber.Ctx) error {
@@ -114,10 +115,10 @@ type UpdateShoppingListForm struct {
 // @Param id path string true "Item ID"
 // @Param item body UpdateShoppingListForm true "Shopping list item data"
 // @Success 200 {object} domain.ShoppingList
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist/{id} [patch]
 func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
@@ -166,10 +167,10 @@ func (h *ShoppingListHandler) UpdateShoppingListItem(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Item ID"
 // @Success 204
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglist/{id} [delete]
 func (h *ShoppingListHandler) DeleteShoppingListItem(c fiber.Ctx) error {

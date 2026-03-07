@@ -27,9 +27,10 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Accept */*
 // @Produce json
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Collection]
-// @Failure 401 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [get]
 func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
@@ -39,7 +40,7 @@ func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	collections, total, err := h.collectionService.List(tokenData.HouseholdID, p.Offset(), p.Limit)
+	collections, total, err := h.collectionService.List(tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
@@ -66,8 +67,8 @@ type CollectionForm struct {
 // @Produce json
 // @Param collection body CollectionForm true "Collection data"
 // @Success 201 {object} domain.Collection
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [post]
 func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
@@ -104,9 +105,9 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Collection ID"
 // @Success 200 {object} domain.Collection
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [get]
 func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
@@ -142,10 +143,10 @@ type UpdateCollectionForm struct {
 // @Param id path string true "Collection ID"
 // @Param collection body UpdateCollectionForm true "Collection update data"
 // @Success 200 {object} domain.Collection
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [patch]
 func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
@@ -188,10 +189,10 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 // @Param id path string true "Collection ID"
 // @Param recipeId path string true "Recipe ID"
 // @Success 204
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id}/recipes/{recipeId} [post]
 func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
@@ -223,10 +224,10 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 // @Param id path string true "Collection ID"
 // @Param recipeId path string true "Recipe ID"
 // @Success 204
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id}/recipes/{recipeId} [delete]
 func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
@@ -260,9 +261,9 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Collection ID"
 // @Success 204
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [delete]
 func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {

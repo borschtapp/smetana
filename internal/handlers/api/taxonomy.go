@@ -23,16 +23,17 @@ func NewTaxonomyHandler(taxonomyService domain.TaxonomyService) *TaxonomyHandler
 // @Produce json
 // @Param type query string false "Filter by taxonomy type"
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Taxonomy]
-// @Failure 401 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/taxonomies [get]
 func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
 	taxonomyType := c.Query("type")
 
 	p := types.GetPagination(c)
-	taxonomies, total, err := h.taxonomyService.List(taxonomyType, p.Offset(), p.Limit)
+	taxonomies, total, err := h.taxonomyService.List(taxonomyType, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}

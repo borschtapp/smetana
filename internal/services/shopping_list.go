@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type ShoppingListService struct {
@@ -20,7 +21,7 @@ func (s *ShoppingListService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain
 		return nil, err
 	}
 	if item.HouseholdID != householdID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	return item, nil
 }
@@ -40,7 +41,7 @@ func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid
 		return err
 	}
 	if existing.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Update(item)
 }
@@ -51,7 +52,7 @@ func (s *ShoppingListService) Delete(id uuid.UUID, householdID uuid.UUID) error 
 		return err
 	}
 	if item.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Delete(id)
 }

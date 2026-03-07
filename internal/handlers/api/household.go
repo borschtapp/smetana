@@ -25,9 +25,9 @@ func NewHouseholdHandler(householdService domain.HouseholdService) *HouseholdHan
 // @Produce json
 // @Param id path string true "Household ID"
 // @Success 200 {object} domain.Household
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id} [get]
 func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
@@ -62,9 +62,9 @@ type UpdateHouseholdForm struct {
 // @Param id path string true "Household ID"
 // @Param household body UpdateHouseholdForm true "Household data"
 // @Success 200 {object} domain.Household
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id} [patch]
 func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
@@ -108,10 +108,11 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Household ID"
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.User]
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members [get]
 func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
@@ -126,7 +127,7 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	members, total, err := h.householdService.Members(id, tokenData.HouseholdID, p.Offset(), p.Limit)
+	members, total, err := h.householdService.Members(id, tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
@@ -153,10 +154,10 @@ type AddMemberForm struct {
 // @Param id path string true "Household ID"
 // @Param member body AddMemberForm true "Member data"
 // @Success 201 {object} domain.User
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members [post]
 func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
@@ -196,10 +197,10 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 // @Param id path string true "Household ID"
 // @Param userId path string true "User ID"
 // @Success 204
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members/{userId} [delete]
 func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {

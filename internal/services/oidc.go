@@ -10,6 +10,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -83,7 +84,7 @@ func (s *OIDCService) Authorize(email, name string) (*domain.User, error) {
 	if err == nil {
 		return user, nil
 	}
-	if !errors.Is(err, domain.ErrRecordNotFound) {
+	if !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -96,7 +97,7 @@ func (s *OIDCService) Authorize(email, name string) (*domain.User, error) {
 		Household: &domain.Household{Name: name + "'s Household"},
 	}
 	if err := s.userRepo.Create(newUser); err != nil {
-		if errors.Is(err, domain.ErrAlreadyExists) {
+		if errors.Is(err, sentinels.ErrAlreadyExists) {
 			return s.userRepo.ByEmailWithHousehold(email)
 		}
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type CollectionService struct {
@@ -21,7 +22,7 @@ func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.C
 		return nil, err
 	}
 	if collection.HouseholdID != householdID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	return collection, nil
 }
@@ -32,7 +33,7 @@ func (s *CollectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID)
 		return nil, err
 	}
 	if collection.HouseholdID != householdID {
-		return nil, domain.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 	return collection, nil
 }
@@ -53,7 +54,7 @@ func (s *CollectionService) Update(collection *domain.Collection, householdID uu
 		return err
 	}
 	if existing.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Update(collection)
 }
@@ -64,7 +65,7 @@ func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 		return err
 	}
 	if collection.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.Delete(id)
 }
@@ -75,7 +76,7 @@ func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID
 		return err
 	}
 	if collection.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 
 	// Validate permission to access the recipe
@@ -92,7 +93,7 @@ func (s *CollectionService) RemoveRecipe(collectionID uuid.UUID, recipeID uuid.U
 		return err
 	}
 	if collection.HouseholdID != householdID {
-		return domain.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	return s.repo.RemoveRecipe(collection, recipeID)
 }

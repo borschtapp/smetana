@@ -97,7 +97,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	importHandler := api.NewImportHandler(recipeService)
 	recipeHandler := api.NewRecipeHandler(recipeService)
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
-	recipesGroup.Get("/", recipeHandler.GetRecipes)
+	recipesGroup.Get("/", recipeHandler.Search)
 	recipesGroup.Post("/", recipeHandler.CreateRecipe)
 	recipesGroup.Post("/import", importHandler.Import)
 	recipesGroup.Get("/:id", recipeHandler.GetRecipe)

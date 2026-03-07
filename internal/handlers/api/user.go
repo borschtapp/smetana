@@ -24,9 +24,9 @@ func NewUserHandler(userService domain.UserService) *UserHandler {
 // @Produce json
 // @Param id path string true "User ID"
 // @Success 200 {object} domain.User
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [get]
 func (h *UserHandler) GetUser(c fiber.Ctx) error {
@@ -61,9 +61,9 @@ type UpdateUserForm struct {
 // @Param id path string true "User ID"
 // @Param user body UpdateUserForm true "User update data"
 // @Success 200 {object} domain.User
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [patch]
 func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
@@ -100,8 +100,8 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "User ID"
 // @Success 204
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [delete]
 func (h *UserHandler) DeleteUser(c fiber.Ctx) error {

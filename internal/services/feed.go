@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type FeedService struct {
@@ -66,11 +67,11 @@ func (s *FeedService) Stream(householdID uuid.UUID, offset, limit int) ([]domain
 
 func (s *FeedService) Subscribe(householdID uuid.UUID, url string) (*domain.Feed, error) {
 	feed, err := s.repo.ByUrl(url)
-	if err != nil && !errors.Is(err, domain.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	if errors.Is(err, domain.ErrRecordNotFound) {
+	if errors.Is(err, sentinels.ErrRecordNotFound) {
 		feed, err = s.createFeed(url)
 		if err != nil {
 			return nil, err

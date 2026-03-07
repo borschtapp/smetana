@@ -76,13 +76,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -121,13 +121,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -181,13 +181,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -227,13 +227,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -281,7 +281,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -324,13 +324,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -372,19 +372,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -422,19 +422,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -484,25 +484,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -542,25 +542,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -598,25 +598,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -664,7 +664,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -707,13 +707,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -760,7 +760,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -800,19 +800,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -854,19 +854,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -916,19 +916,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -983,13 +983,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1039,25 +1039,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1104,25 +1104,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1182,7 +1182,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1225,13 +1225,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1271,25 +1271,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1339,25 +1339,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1405,7 +1405,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1418,7 +1418,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Query user's recipes by text, tags, or cuisine. Supports full-text search on name/description. Taxonomies are comma-separated and used with OR logic.",
+                "description": "Query user's recipes by text, tags. Supports full-text search on name/description.",
                 "consumes": [
                     "*/*"
                 ],
@@ -1438,20 +1438,38 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated taxonomy labels",
+                        "description": "Comma-separated taxonomy IDs to filter by (using OR logic)",
                         "name": "taxonomies",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Cuisine filter (slug)",
-                        "name": "cuisine",
+                        "description": "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved",
+                        "name": "preload",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "Page number",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, updated (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
                         "in": "query"
                     },
                     {
@@ -1471,7 +1489,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1514,13 +1532,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1565,13 +1583,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1613,19 +1631,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1663,19 +1681,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1725,25 +1743,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1783,13 +1801,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1827,13 +1845,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1885,19 +1903,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -1944,19 +1962,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2013,25 +2031,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2083,19 +2101,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2142,19 +2160,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2211,25 +2229,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2277,7 +2295,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2320,13 +2338,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2366,25 +2384,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2434,25 +2452,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2506,7 +2524,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2549,13 +2567,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2597,19 +2615,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2647,13 +2665,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -2703,19 +2721,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/domain.Error"
+                            "$ref": "#/definitions/sentinels.Error"
                         }
                     }
                 }
@@ -3051,23 +3069,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Error": {
-            "type": "object",
-            "properties": {
-                "fields": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "integer"
-                }
-            }
-        },
         "domain.Feed": {
             "type": "object",
             "properties": {
@@ -3368,6 +3369,9 @@ const docTemplate = `{
                 },
                 "is_based_on": {
                     "type": "string"
+                },
+                "is_saved": {
+                    "type": "boolean"
                 },
                 "language": {
                     "type": "string",
@@ -3685,6 +3689,23 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "sentinels.Error": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
                 }
             }
         },

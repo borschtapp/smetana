@@ -39,8 +39,8 @@ type LoginForm struct {
 // @Produce json
 // @Param login body LoginForm true "Login credentials"
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var body LoginForm
@@ -74,8 +74,8 @@ type RenewForm struct {
 // @Produce json
 // @Param refresh body RenewForm true "Refresh token"
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	var body RenewForm
@@ -107,8 +107,8 @@ type RegisterForm struct {
 // @Produce json
 // @Param user body RegisterForm true "User registration data"
 // @Success 201 {object} AuthResponse
-// @Failure 400 {object} domain.Error
-// @Failure 409 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 409 {object} sentinels.Error
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var body RegisterForm
@@ -158,8 +158,8 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 // @Description Handles the callback from the identity provider and issues local tokens.
 // @Tags auth
 // @Success 200 {object} AuthResponse
-// @Failure 400 {object} domain.Error
-// @Failure 500 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 500 {object} sentinels.Error
 // @Param state query string true "CSRF State"
 // @Param code query string true "Auth Code"
 // @Router /api/v1/auth/oidc/callback [get]

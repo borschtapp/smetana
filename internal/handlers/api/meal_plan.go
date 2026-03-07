@@ -31,9 +31,10 @@ func NewMealPlanHandler(mealPlanService domain.MealPlanService) *MealPlanHandler
 // @Param from query string false "Start date (YYYY-MM-DD)"
 // @Param to query string false "End date (YYYY-MM-DD)"
 // @Param page query int false "Page number"
+// @param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
-// @Failure 401 {object} domain.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan [get]
 func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
@@ -58,7 +59,7 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	}
 
 	p := types.GetPagination(c)
-	mealPlans, total, err := h.mealPlanService.List(tokenData.HouseholdID, from, to, p.Offset(), p.Limit)
+	mealPlans, total, err := h.mealPlanService.List(tokenData.HouseholdID, from, to, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
@@ -88,8 +89,8 @@ type MealPlanForm struct {
 // @Produce json
 // @Param mealplan body MealPlanForm true "Meal plan data"
 // @Success 201 {object} domain.MealPlan
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan [post]
 func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
@@ -139,10 +140,10 @@ type UpdateMealPlanForm struct {
 // @Param id path string true "Meal Plan ID"
 // @Param mealplan body UpdateMealPlanForm true "Meal plan update data"
 // @Success 200 {object} domain.MealPlan
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [patch]
 func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
@@ -197,10 +198,10 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Meal Plan ID"
 // @Success 204
-// @Failure 400 {object} domain.Error
-// @Failure 401 {object} domain.Error
-// @Failure 403 {object} domain.Error
-// @Failure 404 {object} domain.Error
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [delete]
 func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {

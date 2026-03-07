@@ -11,7 +11,7 @@ type ShoppingListRepository struct {
 	db *gorm.DB
 }
 
-func NewShoppingListRepository(db *gorm.DB) *ShoppingListRepository {
+func NewShoppingListRepository(db *gorm.DB) domain.ShoppingListRepository {
 	return &ShoppingListRepository{db: db}
 }
 

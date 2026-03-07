@@ -11,7 +11,7 @@ type HouseholdRepository struct {
 	db *gorm.DB
 }
 
-func NewHouseholdRepository(db *gorm.DB) *HouseholdRepository {
+func NewHouseholdRepository(db *gorm.DB) domain.HouseholdRepository {
 	return &HouseholdRepository{db: db}
 }
 
