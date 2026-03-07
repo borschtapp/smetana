@@ -36,6 +36,10 @@ func BadRequestField(field string, reason string) *Error {
 	return &Error{Status: fiber.StatusBadRequest, Message: "Failed to validate request body", Fields: &fields}
 }
 
+func Forbidden(m string) *Error {
+	return &Error{Status: fiber.StatusForbidden, Message: m}
+}
+
 func Unauthorized(m string) *Error {
 	return &Error{Status: fiber.StatusUnauthorized, Message: m}
 }

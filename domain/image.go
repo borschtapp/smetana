@@ -13,4 +13,5 @@ type UploadedImage struct {
 type ImageService interface {
 	DownloadAndSaveImage(imageURL string, savePath string) (*UploadedImage, error)
 	SaveImageData(basePath string, data []byte, contentType string) (*UploadedImage, error)
+	DeleteImage(path storage.Path) error
 }

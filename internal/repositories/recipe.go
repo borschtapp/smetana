@@ -200,11 +200,11 @@ func (r *RecipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient)
 }
 
 func (r *RecipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
-	return r.db.Model(ingredient).Updates(ingredient).Error
+	return r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Updates(ingredient).Error
 }
 
-func (r *RecipeRepository) DeleteIngredient(id uuid.UUID) error {
-	return r.db.Delete(&domain.RecipeIngredient{}, id).Error
+func (r *RecipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
+	return r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error
 }
 
 func (r *RecipeRepository) CreateInstruction(instruction *domain.RecipeInstruction) error {
@@ -212,11 +212,11 @@ func (r *RecipeRepository) CreateInstruction(instruction *domain.RecipeInstructi
 }
 
 func (r *RecipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
-	return r.db.Model(instruction).Updates(instruction).Error
+	return r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Updates(instruction).Error
 }
 
-func (r *RecipeRepository) DeleteInstruction(id uuid.UUID) error {
-	return r.db.Delete(&domain.RecipeInstruction{}, id).Error
+func (r *RecipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error {
+	return r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID).Error
 }
 
 func (r *RecipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) error) error {

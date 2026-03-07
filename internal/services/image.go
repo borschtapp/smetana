@@ -71,6 +71,10 @@ func (s *ImageService) DownloadAndSaveImage(imageURL string, savePath string) (*
 	return s.SaveImageData(savePath, data, contentType)
 }
 
+func (s *ImageService) DeleteImage(path storage.Path) error {
+	return s.storage.Delete(string(path))
+}
+
 func (s *ImageService) SaveImageData(basePath string, data []byte, contentType string) (*domain.UploadedImage, error) {
 	fullPath := basePath
 	if filepath.Ext(basePath) == "" {

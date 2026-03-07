@@ -13,6 +13,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 )
 
 type RecipeService struct {
@@ -22,6 +23,7 @@ type RecipeService struct {
 	foodRepo         domain.FoodRepository
 	unitRepo         domain.UnitRepository
 	userRepo         domain.UserRepository
+	fetchConcurrency int
 }
 
 func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, userRepo domain.UserRepository) domain.RecipeService {
@@ -32,6 +34,7 @@ func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageSer
 		foodRepo:         foodRepo,
 		unitRepo:         unitRepo,
 		userRepo:         userRepo,
+		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
 	}
 }
 
@@ -142,10 +145,29 @@ func (s *RecipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 }
 
 func (s *RecipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ByID(id, householdID); err != nil {
+	existing, err := s.repo.ByID(id)
+	if err != nil {
 		return err
 	}
+	if existing.HouseholdID == nil || *existing.HouseholdID != householdID {
+		return sentinels.ErrForbidden
+	}
+
+	if existing.ParentID == nil {
+		s.deleteImages(existing.Images)
+	}
+
 	return s.repo.Delete(id)
+}
+
+func (s *RecipeService) deleteImages(images []*domain.RecipeImage) {
+	for _, img := range images {
+		if img.DownloadUrl != nil {
+			if err := s.imageService.DeleteImage(*img.DownloadUrl); err != nil {
+				log.Warnf("failed to delete image file %s: %v", *img.DownloadUrl, err)
+			}
+		}
+	}
 }
 
 func (s *RecipeService) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
@@ -174,7 +196,7 @@ func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, house
 	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
-	return s.repo.DeleteIngredient(id)
+	return s.repo.DeleteIngredient(id, recipeID)
 }
 
 func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
@@ -195,26 +217,20 @@ func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
-	return s.repo.DeleteInstruction(id)
+	return s.repo.DeleteInstruction(id, recipeID)
 }
 
 // ImportFromURL imports a recipe from URL and saves it for the given user.
-// If the recipe already exists: saves it for the user (unless forceUpdate=true, in which case it is re-imported).
 func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
 	}
 	if existing != nil {
-		if !forceUpdate {
-			if err := s.UserSave(existing.ID, userID, householdID); err != nil {
-				return nil, err
-			}
-			return existing, nil
-		}
-		if err := s.repo.Delete(existing.ID); err != nil {
+		if err := s.UserSave(existing.ID, userID, householdID); err != nil {
 			return nil, err
 		}
+		return existing, nil
 	}
 
 	kripRecipe, err := krip.ScrapeUrl(url)
@@ -301,7 +317,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 	}
 
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 5)
+	sem := make(chan struct{}, s.fetchConcurrency)
 
 	for _, image := range recipe.Images {
 		wg.Add(1)

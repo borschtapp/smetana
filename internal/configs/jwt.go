@@ -16,11 +16,6 @@ func JwtSecretExpireMinutes() int {
 	return utils.GetenvInt("JWT_SECRET_EXPIRE_MINUTES", 60)
 }
 
-// JwtRefreshKey returns the secret key for JWT refresh token generation.
-func JwtRefreshKey() []byte {
-	return []byte(os.Getenv("JWT_REFRESH_KEY"))
-}
-
 // JwtRefreshExpireMinutes returns the expiration time for JWT refresh token in minutes.
 func JwtRefreshExpireMinutes() int {
 	return utils.GetenvInt("JWT_REFRESH_EXPIRE_MINUTES", 10080) // 7 days

@@ -10,7 +10,7 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-var validate = validator.New()
+var validate = validator.New(validator.WithRequiredStructEnabled())
 
 type AuthHandler struct {
 	authService domain.AuthService

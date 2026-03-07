@@ -212,7 +212,7 @@ func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
 	}
 
 	if len(kripRecipe.Equipment) > 0 {
-		equipment := make([]string, len(kripRecipe.Equipment))
+		equipment := make([]string, 0, len(kripRecipe.Equipment))
 		for _, eq := range kripRecipe.Equipment {
 			equipment = append(equipment, eq.Name)
 		}
@@ -272,11 +272,11 @@ type RecipeRepository interface {
 
 	CreateIngredient(ingredient *RecipeIngredient) error
 	UpdateIngredient(ingredient *RecipeIngredient) error
-	DeleteIngredient(id uuid.UUID) error
+	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error
 
 	CreateInstruction(instruction *RecipeInstruction) error
 	UpdateInstruction(instruction *RecipeInstruction) error
-	DeleteInstruction(id uuid.UUID) error
+	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error
 
 	Transaction(fn func(txRepo RecipeRepository) error) error
 	ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error

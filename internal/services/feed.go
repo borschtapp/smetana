@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/borschtapp/krip"
@@ -13,17 +14,25 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 )
 
 type FeedService struct {
-	repo          domain.FeedRepository
-	publisherRepo domain.PublisherRepository
-	recipeRepo    domain.RecipeRepository
-	recipeService domain.RecipeService
+	repo             domain.FeedRepository
+	publisherRepo    domain.PublisherRepository
+	recipeRepo       domain.RecipeRepository
+	recipeService    domain.RecipeService
+	fetchConcurrency int
 }
 
 func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, service domain.RecipeService) domain.FeedService {
-	return &FeedService{repo: repo, publisherRepo: pubRepo, recipeRepo: recipeRepo, recipeService: service}
+	return &FeedService{
+		repo:             repo,
+		publisherRepo:    pubRepo,
+		recipeRepo:       recipeRepo,
+		recipeService:    service,
+		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
+	}
 }
 
 func (s *FeedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
@@ -126,9 +135,21 @@ func (s *FeedService) FetchUpdates() error {
 	}
 
 	log.Infof("Checking %d feeds for updates...", len(feeds))
-	for _, feed := range feeds {
-		s.processFeed(&feed)
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, s.fetchConcurrency)
+
+	for i := range feeds {
+		wg.Add(1)
+		go func(feed *domain.Feed) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			s.processFeed(feed)
+		}(&feeds[i])
 	}
+
+	wg.Wait()
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"slices"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
@@ -15,11 +16,13 @@ import (
 )
 
 type UploadHandler struct {
+	allowedTypes []string
 	imageService domain.ImageService
 }
 
 func NewUploadHandler(imageService domain.ImageService) *UploadHandler {
 	return &UploadHandler{
+		allowedTypes: []string{"image/jpeg", "image/png", "image/webp", "image/gif"},
 		imageService: imageService,
 	}
 }
@@ -58,10 +61,9 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 		return sentinels.BadRequest("Failed to read file")
 	}
 
-	// Detect content type
-	contentType := file.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = http.DetectContentType(data)
+	contentType := http.DetectContentType(data)
+	if !slices.Contains(h.allowedTypes, contentType) {
+		return sentinels.BadRequest("Only image files are allowed (jpeg, png, webp, gif)")
 	}
 
 	// Generate random filename

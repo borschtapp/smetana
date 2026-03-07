@@ -8,6 +8,6 @@ func ValidatePassword(hash string, password string) bool {
 }
 
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost+2)
 	return string(bytes), err
 }

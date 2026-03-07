@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
@@ -26,7 +27,8 @@ func FiberConfig() fiber.Config {
 			} else if e, ok := err.(*fiber.Error); ok {
 				se = &sentinels.Error{Status: e.Code, Message: e.Message}
 			} else {
-				se = &sentinels.Error{Status: fiber.StatusInternalServerError, Message: err.Error()}
+				log.Errorf("Unexpected error: %v", err)
+				se = &sentinels.Error{Status: fiber.StatusInternalServerError, Message: "An internal error occurred"}
 			}
 
 			return ctx.Status(se.Status).JSON(se)

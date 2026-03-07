@@ -1,8 +1,7 @@
 package tokens
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"errors"
 	"time"
 
 	"borscht.app/smetana/domain"
@@ -10,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/internal/configs"
+	"borscht.app/smetana/internal/utils"
 )
 
 // GenerateNew func for generate a new Access & Refresh tokens.
@@ -49,15 +49,9 @@ func generateNewAccessToken(id uuid.UUID, householdId uuid.UUID) (string, error)
 }
 
 func generateNewRefreshToken() (string, error) {
-	hash := sha256.New()
-	refresh := append(configs.JwtRefreshKey(), []byte(time.Now().String())...)
-
-	_, err := hash.Write(refresh)
-	if err != nil {
-		return "", err
+	token := utils.GenerateRandomString(32)
+	if token == "" {
+		return "", errors.New("failed to generate refresh token")
 	}
-
-	// Create a new refresh token (sha256 string with salt + expire time).
-	t := hex.EncodeToString(hash.Sum(nil))
-	return t, nil
+	return token, nil
 }
