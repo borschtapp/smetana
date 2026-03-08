@@ -267,6 +267,7 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 	}
 
 	s.processRecipeImages(recipe)
+	s.processInstructionImages(recipe)
 	return recipe, nil
 }
 
@@ -347,4 +348,34 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 			}
 		}
 	}
+}
+
+func (s *RecipeService) processInstructionImages(recipe *domain.Recipe) {
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, s.fetchConcurrency)
+
+	for _, instruction := range recipe.Instructions {
+		if instruction.Image == nil || *instruction.Image == "" {
+			continue
+		}
+		wg.Add(1)
+		go func(ins *domain.RecipeInstruction) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			remoteUrl := *ins.Image
+			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + ins.ID.String()
+			if info, err := s.imageService.DownloadAndSaveImage(remoteUrl, basePath); err != nil {
+				log.Warnf("failed to download instruction image: %v", err)
+			} else {
+				ins.DownloadUrl = &info.Path
+				if err := s.repo.UpdateInstruction(ins); err != nil {
+					log.Warnf("failed to update instruction image: %v", err)
+				}
+			}
+		}(instruction)
+	}
+
+	wg.Wait()
 }

@@ -36,7 +36,7 @@ func (ri *RecipeIngredient) BeforeCreate(_ *gorm.DB) error {
 
 func FromKripPropertyValue(item *krip.PropertyValue) *RecipeIngredient {
 	model := &RecipeIngredient{}
-	if len(item.Value) > 0 {
+	if len(item.Value) != 0 {
 		model.RawText = item.Value + " " + item.UnitText + " " + item.Name
 	} else {
 		model.RawText = item.Name
