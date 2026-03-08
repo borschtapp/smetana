@@ -1,13 +1,17 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Household struct {
-	ID   uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	Name string    `json:"name"`
+	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	Name    string    `json:"name"`
+	Updated time.Time `gorm:"autoUpdateTime" json:"-"`
+	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
 	Members      []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
 	Feeds        []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`

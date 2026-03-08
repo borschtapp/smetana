@@ -33,9 +33,14 @@ erDiagram
     %% Recipe Domain
     Recipe {
         uuid ID PK
+        uuid ParentID FK
+        uuid HouseholdID FK
+        uuid UserID FK
         string Name
         string Description
+        string Language
         string IsBasedOn
+        string Text
         uuid PublisherID FK
         uuid FeedID FK
         int Yield
@@ -81,6 +86,7 @@ erDiagram
     Collection {
         uuid ID PK
         uuid HouseholdID FK
+        uuid UserID FK
         string Name
         string Description
         time Updated
@@ -132,6 +138,7 @@ erDiagram
         string Text
         string Url
         string Image
+        string DownloadUrl
         string Video
         time Updated
         time Created
@@ -174,11 +181,10 @@ erDiagram
 
     Feed {
         uuid ID PK
+        uuid PublisherID FK
         string Url
         string Name
-        string WebsiteUrl
-        string Description
-        time LastFetchedAt
+        time Retrieved
         int ErrorCount
         bool Active
         time Updated
@@ -217,11 +223,11 @@ erDiagram
     Household ||--o{ RecipeSaved : "associated with"
     Recipe ||--o{ RecipeSaved : "is saved (1:N)"
 
-    %% Implicit M:N Relationships
-    User }|..|{ Feed : "subscribes"
-    Collection }|..|{ Recipe : "contains"
+    %% M:N Relationships
+    Household }|..|{ Feed : "subscribes (feed_subscriptions)"
+    Collection }|..|{ Recipe : "contains (collection_recipes)"
 
-    Recipe }|..|{ Taxonomy : "categorized by"
+    Recipe }|..|{ Taxonomy : "categorized by (recipe_taxonomies)"
     Food }|..|{ Taxonomy : "categorized by"
     Publisher }|..|{ Taxonomy : "categorized by"
     Unit }|..|{ Taxonomy : "categorized by"
@@ -232,15 +238,18 @@ erDiagram
     Household ||--o{ ShoppingList : "has"
 
     Publisher ||--o{ Recipe : "publishes (1:N)"
+    Publisher ||--o{ Feed : "has (1:N)"
     Feed ||--o{ Recipe : "sources (1:N)"
-    
+
+    Recipe |o..o| Recipe : "forked from (ParentID)"
+
     Recipe ||--o{ RecipeImage : "contains"
     Recipe ||--o{ RecipeIngredient : "contains"
     Recipe ||--o{ RecipeInstruction : "contains"
-    
+
     RecipeIngredient }|..o| Unit : "measures in"
     RecipeIngredient }|..o| Food : "is type of"
-    
+
     RecipeInstruction |o..o| RecipeInstruction : "sub-step of"
 
     Food }|..o| Unit : "default unit"
