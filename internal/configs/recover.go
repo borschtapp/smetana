@@ -13,7 +13,7 @@ func RecoverConfig() recover.Config {
 		EnableStackTrace: true,
 		StackTraceHandler: func(c fiber.Ctx, e interface{}) {
 			stackTrace := debug.Stack()
-			log.Error("panic caught", "panic", e, "stack", string(stackTrace))
+			log.Errorw("panic caught", "panic", e, "stack", string(stackTrace))
 		},
 	}
 }

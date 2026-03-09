@@ -139,14 +139,14 @@ func main() {
 		defer ticker.Stop()
 
 		if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-			log.Warn("feed update failed", "error", err)
+			log.Warn("feed update failed", err)
 		}
 
 		for {
 			select {
 			case <-ticker.C:
 				if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-					log.Warn("feed update failed", "error", err)
+					log.Warn("feed update failed", err)
 				}
 			case <-ctx.Done():
 				return

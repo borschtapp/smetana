@@ -165,7 +165,7 @@ func (s *RecipeService) deleteImages(images []*domain.RecipeImage) {
 	for _, img := range images {
 		if img.DownloadUrl != nil {
 			if err := s.imageService.DeleteImage(*img.DownloadUrl); err != nil {
-				log.Warn("failed to delete image file", "path", *img.DownloadUrl, "error", err)
+				log.Warnw("failed to delete image file", "path", *img.DownloadUrl, "error", err)
 			}
 		}
 	}
@@ -254,7 +254,7 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
 				ing.FoodID = &ing.Food.ID
 			} else {
-				log.Warn("error creating food", "food", ing.Food, "error", err)
+				log.Warnw("error creating food", "food", ing.Food, "error", err)
 				ing.Food = nil
 			}
 		}
@@ -262,7 +262,7 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 			if err := s.unitRepo.FindOrCreate(ing.Unit); err == nil {
 				ing.UnitID = &ing.Unit.ID
 			} else {
-				log.Warn("error creating unit", "unit", ing.Unit, "error", err)
+				log.Warnw("error creating unit", "unit", ing.Unit, "error", err)
 				ing.Unit = nil
 			}
 		}
@@ -270,7 +270,7 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	if recipe.Publisher != nil {
 		if err := s.publisherService.FindOrCreate(ctx, recipe.Publisher); err != nil {
-			log.Warn("error creating publisher", "publisher", recipe.Publisher, "error", err)
+			log.Warnw("error creating publisher", "publisher", recipe.Publisher, "error", err)
 		} else {
 			recipe.PublisherID = &recipe.Publisher.ID
 		}
@@ -295,7 +295,7 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 	}
 
 	if err := s.repo.CreateImages(recipe.Images); err != nil {
-		log.Warn("failed to save images", "error", err)
+		log.Warn("failed to save images", err)
 		return
 	}
 
@@ -324,7 +324,7 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 		if img.DownloadUrl != nil {
 			err := s.repo.UpdateImage(img)
 			if err != nil {
-				log.Warn("failed to update image", "image_id", img.ID, "error", err)
+				log.Warnw("failed to update image", "image_id", img.ID, "error", err)
 			}
 		}
 	}

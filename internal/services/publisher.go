@@ -27,7 +27,7 @@ func (s *PublisherService) FindOrCreate(ctx context.Context, pub *domain.Publish
 	if pub.RemoteImage != nil && len(*pub.RemoteImage) != 0 {
 		path := pub.FilePath()
 		if storedImage, err := s.imageService.DownloadAndSaveImage(ctx, *pub.RemoteImage, path); err != nil {
-			log.Warnf("en error on download publisher image %v: %s", pub, err.Error())
+			log.Warnw("unable to download publisher image, skipping", "publisher", pub, "url", *pub.RemoteImage, "error", err)
 		} else {
 			pub.Image = &storedImage.Path
 		}

@@ -49,7 +49,7 @@ func (s *LocalStorage) Save(path string, content io.Reader, size int64, contentT
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Warn("failed to close file", "path", fullPath, "error", err)
+			log.Warnw("failed to close file", "path", fullPath, "error", err)
 		}
 	}(file)
 

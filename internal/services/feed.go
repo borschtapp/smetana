@@ -121,7 +121,7 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 		pub = &domain.Publisher{Url: url, Name: url}
 	}
 	if err := s.publisherRepo.FindOrCreate(pub); err != nil {
-		log.Warn("error creating publisher", "publisher", pub, "error", err)
+		log.Warnw("error creating publisher", "publisher", pub, "error", err)
 	} else {
 		feed.PublisherID = pub.ID
 	}
@@ -139,7 +139,7 @@ func (s *FeedService) FetchUpdates(ctx context.Context) error {
 		return err
 	}
 
-	log.Info("checking feeds for updates", "count", len(feeds))
+	log.Infow("checking feeds for updates", "count", len(feeds))
 
 	var g errgroup.Group
 	g.SetLimit(s.fetchConcurrency)
@@ -165,14 +165,14 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, 
 	})
 
 	if err != nil {
-		log.Warn("failed to scrape feed", "url", feed.Url, "error", err)
+		log.Warnw("failed to scrape feed", "url", feed.Url, "error", err)
 		feed.ErrorCount++
 		if feed.ErrorCount > 10 {
 			feed.Active = false
-			log.Error("deactivating feed due to repeated errors", "url", feed.Url)
+			log.Errorw("deactivating feed due to repeated errors", "url", feed.Url)
 		}
 		if updateErr := s.repo.Update(feed); updateErr != nil {
-			log.Warn("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
+			log.Warnw("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
 		}
 		return 0, err
 	}
@@ -180,7 +180,7 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, 
 	feed.ErrorCount = 0
 	feed.Retrieved = time.Now()
 	if err := s.repo.Update(feed); err != nil {
-		log.Warn("failed to persist feed metadata", "url", feed.Url, "error", err)
+		log.Warnw("failed to persist feed metadata", "url", feed.Url, "error", err)
 	}
 
 	imported := 0
@@ -198,14 +198,14 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, 
 
 		recipe.FeedID = &feed.ID
 		if _, err := s.recipeService.ImportRecipe(ctx, recipe); err != nil {
-			log.Warn("failed to import recipe", "url", url, "error", err)
+			log.Warnw("failed to import recipe", "url", url, "error", err)
 		} else {
 			imported++
 			name := ""
 			if recipe.Name != nil {
 				name = *recipe.Name
 			}
-			log.Info("imported new recipe", "name", name)
+			log.Infow("imported new recipe", "name", name)
 		}
 	}
 	return imported, nil
