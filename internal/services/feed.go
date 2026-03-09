@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -126,31 +126,29 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 }
 
 func (s *FeedService) FetchUpdates(ctx context.Context) error {
-	var feeds, err = s.repo.ListActive()
+	feeds, err := s.repo.ListActive()
 	if err != nil {
 		return err
 	}
 
 	log.Info("checking feeds for updates", "count", len(feeds))
 
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, s.fetchConcurrency)
+	var g errgroup.Group
+	g.SetLimit(s.fetchConcurrency)
 
 	for i := range feeds {
-		wg.Add(1)
-		go func(feed *domain.Feed) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			s.processFeed(ctx, feed)
-		}(&feeds[i])
+		g.Go(func() error {
+			return s.processFeed(ctx, &feeds[i])
+		})
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		log.Warn("feed fetch completed with errors", err)
+	}
 	return nil
 }
 
-func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) {
+func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error {
 	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
@@ -164,10 +162,10 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) {
 			feed.Active = false
 			log.Error("deactivating feed due to repeated errors", "url", feed.Url)
 		}
-		if err := s.repo.Update(feed); err != nil {
-			log.Warn("failed to persist error state for feed", "url", feed.Url, "error", err)
+		if updateErr := s.repo.Update(feed); updateErr != nil {
+			log.Warn("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
 		}
-		return
+		return err
 	}
 
 	feed.ErrorCount = 0
@@ -199,4 +197,5 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) {
 			log.Info("imported new recipe", "name", name)
 		}
 	}
+	return nil
 }

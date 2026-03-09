@@ -3,10 +3,11 @@ package services
 import (
 	"context"
 	"errors"
-	"sync"
+	"fmt"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -298,28 +299,26 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 		return
 	}
 
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, s.fetchConcurrency)
+	var g errgroup.Group
+	g.SetLimit(s.fetchConcurrency)
 
 	for _, image := range recipe.Images {
-		wg.Add(1)
-		go func(img *domain.RecipeImage) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			basePath := "recipe/" + img.RecipeID.String() + "/" + img.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(ctx, img.RemoteUrl, basePath); err != nil {
-				log.Warn("failed to download image", "url", img.RemoteUrl, "error", err)
+		g.Go(func() error {
+			basePath := "recipe/" + image.RecipeID.String() + "/" + image.ID.String()
+			if info, err := s.imageService.DownloadAndSaveImage(ctx, image.RemoteUrl, basePath); err != nil {
+				return fmt.Errorf("failed to download image from url %s: %w", image.RemoteUrl, err)
 			} else {
-				img.DownloadUrl = &info.Path
-				img.Width = info.Width
-				img.Height = info.Height
+				image.DownloadUrl = &info.Path
+				image.Width = info.Width
+				image.Height = info.Height
 			}
-		}(image)
+			return nil
+		})
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		log.Warn("image processing completed with errors", err)
+	}
 
 	for _, img := range recipe.Images {
 		if img.DownloadUrl != nil {
@@ -332,31 +331,29 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 }
 
 func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, s.fetchConcurrency)
+	var g errgroup.Group
+	g.SetLimit(s.fetchConcurrency)
 
 	for _, instruction := range recipe.Instructions {
 		if instruction.Image == nil || *instruction.Image == "" {
 			continue
 		}
-		wg.Add(1)
-		go func(ins *domain.RecipeInstruction) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			remoteUrl := *ins.Image
-			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + ins.ID.String()
+		g.Go(func() error {
+			remoteUrl := *instruction.Image
+			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + instruction.ID.String()
 			if info, err := s.imageService.DownloadAndSaveImage(ctx, remoteUrl, basePath); err != nil {
-				log.Warn("failed to download instruction image", "url", remoteUrl, "error", err)
+				return fmt.Errorf("failed to download instruction from url %s: %w", remoteUrl, err)
 			} else {
-				ins.DownloadUrl = &info.Path
-				if err := s.repo.UpdateInstruction(ins); err != nil {
-					log.Warn("failed to update instruction image", "instruction_id", ins.ID, "error", err)
+				instruction.DownloadUrl = &info.Path
+				if err := s.repo.UpdateInstruction(instruction); err != nil {
+					return fmt.Errorf("failed to update instruction: %w", err)
 				}
 			}
-		}(instruction)
+			return nil
+		})
 	}
 
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		log.Warn("instruction image processing completed with errors", err)
+	}
 }
