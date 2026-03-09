@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"borscht.app/smetana/internal/types"
@@ -147,6 +148,6 @@ type RecipeService interface {
 	UpdateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
-	ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
-	ImportRecipe(recipe *Recipe) (*Recipe, error)
+	ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
+	ImportRecipe(ctx context.Context, recipe *Recipe) (*Recipe, error)
 }

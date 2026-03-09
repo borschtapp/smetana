@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+
 	"borscht.app/smetana/internal/storage"
 )
 
@@ -11,7 +13,7 @@ type UploadedImage struct {
 }
 
 type ImageService interface {
-	DownloadAndSaveImage(imageURL string, savePath string) (*UploadedImage, error)
+	DownloadAndSaveImage(ctx context.Context, imageURL string, savePath string) (*UploadedImage, error)
 	SaveImageData(basePath string, data []byte, contentType string) (*UploadedImage, error)
 	DeleteImage(path storage.Path) error
 }

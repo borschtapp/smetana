@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v3/log"
 
 	"borscht.app/smetana/domain"
@@ -20,11 +22,11 @@ func (s *PublisherService) Search(opts types.SearchOptions) ([]domain.Publisher,
 	return s.repo.Search(opts)
 }
 
-func (s *PublisherService) FindOrCreate(pub *domain.Publisher) error {
+func (s *PublisherService) FindOrCreate(ctx context.Context, pub *domain.Publisher) error {
 	// Download and store publisher image before persisting
 	if pub.RemoteImage != nil && len(*pub.RemoteImage) != 0 {
 		path := pub.FilePath()
-		if storedImage, err := s.imageService.DownloadAndSaveImage(*pub.RemoteImage, path); err != nil {
+		if storedImage, err := s.imageService.DownloadAndSaveImage(ctx, *pub.RemoteImage, path); err != nil {
 			log.Warnf("en error on download publisher image %v: %s", pub, err.Error())
 		} else {
 			pub.Image = &storedImage.Path

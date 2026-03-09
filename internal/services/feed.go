@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -124,7 +125,7 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 	return feed, nil
 }
 
-func (s *FeedService) FetchUpdates() error {
+func (s *FeedService) FetchUpdates(ctx context.Context) error {
 	var feeds, err = s.repo.ListActive()
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func (s *FeedService) FetchUpdates() error {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			s.processFeed(feed)
+			s.processFeed(ctx, feed)
 		}(&feeds[i])
 	}
 
@@ -149,7 +150,7 @@ func (s *FeedService) FetchUpdates() error {
 	return nil
 }
 
-func (s *FeedService) processFeed(feed *domain.Feed) {
+func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) {
 	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
@@ -188,7 +189,7 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 		}
 
 		recipe.FeedID = &feed.ID
-		if _, err := s.recipeService.ImportRecipe(recipe); err != nil {
+		if _, err := s.recipeService.ImportRecipe(ctx, recipe); err != nil {
 			log.Warn("failed to import recipe", "url", url, "error", err)
 		} else {
 			name := ""

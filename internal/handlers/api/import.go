@@ -52,7 +52,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ImportFromURL(request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
+	recipe, err := h.recipeService.ImportFromURL(c.Context(), request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

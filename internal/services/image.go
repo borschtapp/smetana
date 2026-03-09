@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	_ "image/gif"
@@ -20,26 +21,29 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-const imageDownloadTimeout = 30 * time.Second
-
 type ImageService struct {
 	httpClient *safeurl.WrappedClient
 	userAgent  string
 	storage    storage.FileStorage
+	timeout    time.Duration
 }
 
 func NewImageService(s storage.FileStorage) domain.ImageService {
+	timeout := utils.GetenvDuration("DOWNLOAD_TIMEOUT", 30*time.Second)
 	client := safeurl.Client(
 		safeurl.GetConfigBuilder().
-			SetTimeout(imageDownloadTimeout).
+			SetTimeout(timeout).
 			Build(),
 	)
 	userAgent := utils.Getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; rv:80.0) Gecko/20100101 Firefox/80.0")
-	return &ImageService{httpClient: client, userAgent: userAgent, storage: s}
+	return &ImageService{httpClient: client, userAgent: userAgent, storage: s, timeout: timeout}
 }
 
-func (s *ImageService) DownloadAndSaveImage(imageURL string, savePath string) (*domain.UploadedImage, error) {
-	req, err := http.NewRequest(http.MethodGet, imageURL, nil)
+func (s *ImageService) DownloadAndSaveImage(ctx context.Context, imageURL string, savePath string) (*domain.UploadedImage, error) {
+	dlCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(dlCtx, http.MethodGet, imageURL, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,5 +57,5 @@ type FeedService interface {
 	Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 
 	Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
-	FetchUpdates() error
+	FetchUpdates(ctx context.Context) error
 }

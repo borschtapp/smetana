@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -47,5 +48,5 @@ type PublisherRepository interface {
 
 type PublisherService interface {
 	Search(opts types.SearchOptions) ([]Publisher, int64, error)
-	FindOrCreate(pub *Publisher) error
+	FindOrCreate(ctx context.Context, pub *Publisher) error
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -220,7 +221,7 @@ func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 }
 
 // ImportFromURL imports a recipe from URL and saves it for the given user.
-func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
+func (s *RecipeService) ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
@@ -236,7 +237,7 @@ func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.
 	if err != nil {
 		return nil, err
 	}
-	recipe, err := s.ImportRecipe(scraped)
+	recipe, err := s.ImportRecipe(ctx, scraped)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +247,7 @@ func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.
 	return recipe, nil
 }
 
-func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, error) {
+func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
 	for _, ing := range recipe.Ingredients {
 		if ing.Food != nil {
 			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
@@ -267,7 +268,7 @@ func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, err
 	}
 
 	if recipe.Publisher != nil {
-		if err := s.publisherService.FindOrCreate(recipe.Publisher); err != nil {
+		if err := s.publisherService.FindOrCreate(ctx, recipe.Publisher); err != nil {
 			log.Warn("error creating publisher", "publisher", recipe.Publisher, "error", err)
 		} else {
 			recipe.PublisherID = &recipe.Publisher.ID
@@ -278,12 +279,12 @@ func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, err
 		return nil, err
 	}
 
-	s.processRecipeImages(recipe)
-	s.processInstructionImages(recipe)
+	s.processRecipeImages(ctx, recipe)
+	s.processInstructionImages(ctx, recipe)
 	return recipe, nil
 }
 
-func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
+func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.Recipe) {
 	if len(recipe.Images) == 0 {
 		return
 	}
@@ -308,7 +309,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 			defer func() { <-sem }()
 
 			basePath := "recipe/" + img.RecipeID.String() + "/" + img.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(img.RemoteUrl, basePath); err != nil {
+			if info, err := s.imageService.DownloadAndSaveImage(ctx, img.RemoteUrl, basePath); err != nil {
 				log.Warn("failed to download image", "url", img.RemoteUrl, "error", err)
 			} else {
 				img.DownloadUrl = &info.Path
@@ -330,7 +331,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 	}
 }
 
-func (s *RecipeService) processInstructionImages(recipe *domain.Recipe) {
+func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, s.fetchConcurrency)
 
@@ -346,7 +347,7 @@ func (s *RecipeService) processInstructionImages(recipe *domain.Recipe) {
 
 			remoteUrl := *ins.Image
 			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + ins.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(remoteUrl, basePath); err != nil {
+			if info, err := s.imageService.DownloadAndSaveImage(ctx, remoteUrl, basePath); err != nil {
 				log.Warn("failed to download instruction image", "url", remoteUrl, "error", err)
 			} else {
 				ins.DownloadUrl = &info.Path
