@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/etag"
@@ -58,17 +58,17 @@ func main() {
 	_ = godotenv.Load()
 
 	if err := os.MkdirAll("./data", 0700); err != nil {
-		log.Fatalf("Unable to create data directory: %s", err)
+		log.Fatal("unable to create data directory", err)
 	}
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatalf("Database Connection Error %s", err)
+		log.Fatal("database connection error", err)
 	}
 
 	if !*skipMigrations {
 		if err := database.Migrate(db); err != nil {
-			log.Fatalf("Database Migration Error %s", err)
+			log.Fatal("database migration error", err)
 		}
 	}
 
@@ -129,5 +129,7 @@ func main() {
 	app.Get("/_health", handlers.HealthCheck)
 	app.Get("/*", swaggo.New())
 
-	log.Fatal(app.Listen(fmt.Sprintf("%s:%d", serverHost, serverPort), fiber.ListenConfig{}))
+	if err := app.Listen(fmt.Sprintf("%s:%d", serverHost, serverPort), fiber.ListenConfig{}); err != nil {
+		log.Fatal("server stopped with error", err)
+	}
 }

@@ -163,7 +163,7 @@ func (s *RecipeService) deleteImages(images []*domain.RecipeImage) {
 	for _, img := range images {
 		if img.DownloadUrl != nil {
 			if err := s.imageService.DeleteImage(*img.DownloadUrl); err != nil {
-				log.Warnf("failed to delete image file %s: %v", *img.DownloadUrl, err)
+				log.Warn("failed to delete image file", "path", *img.DownloadUrl, "error", err)
 			}
 		}
 	}
@@ -252,7 +252,7 @@ func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, err
 			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
 				ing.FoodID = &ing.Food.ID
 			} else {
-				log.Warnf("error creating food %v: %s", ing.Food, err)
+				log.Warn("error creating food", "food", ing.Food, "error", err)
 				ing.Food = nil
 			}
 		}
@@ -260,7 +260,7 @@ func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, err
 			if err := s.unitRepo.FindOrCreate(ing.Unit); err == nil {
 				ing.UnitID = &ing.Unit.ID
 			} else {
-				log.Warnf("error creating unit %v: %s", ing.Unit, err)
+				log.Warn("error creating unit", "unit", ing.Unit, "error", err)
 				ing.Unit = nil
 			}
 		}
@@ -268,7 +268,7 @@ func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, err
 
 	if recipe.Publisher != nil {
 		if err := s.publisherService.FindOrCreate(recipe.Publisher); err != nil {
-			log.Warnf("error creating publisher %v: %s", recipe.Publisher, err.Error())
+			log.Warn("error creating publisher", "publisher", recipe.Publisher, "error", err)
 		} else {
 			recipe.PublisherID = &recipe.Publisher.ID
 		}
@@ -293,7 +293,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 	}
 
 	if err := s.repo.CreateImages(recipe.Images); err != nil {
-		log.Warnf("failed to save images: %v", err)
+		log.Warn("failed to save images", "error", err)
 		return
 	}
 
@@ -309,7 +309,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 
 			basePath := "recipe/" + img.RecipeID.String() + "/" + img.ID.String()
 			if info, err := s.imageService.DownloadAndSaveImage(img.RemoteUrl, basePath); err != nil {
-				log.Warnf("failed to download image: %v", err)
+				log.Warn("failed to download image", "url", img.RemoteUrl, "error", err)
 			} else {
 				img.DownloadUrl = &info.Path
 				img.Width = info.Width
@@ -324,7 +324,7 @@ func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {
 		if img.DownloadUrl != nil {
 			err := s.repo.UpdateImage(img)
 			if err != nil {
-				log.Warnf("failed to update image: %v", err)
+				log.Warn("failed to update image", "image_id", img.ID, "error", err)
 			}
 		}
 	}
@@ -347,11 +347,11 @@ func (s *RecipeService) processInstructionImages(recipe *domain.Recipe) {
 			remoteUrl := *ins.Image
 			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + ins.ID.String()
 			if info, err := s.imageService.DownloadAndSaveImage(remoteUrl, basePath); err != nil {
-				log.Warnf("failed to download instruction image: %v", err)
+				log.Warn("failed to download instruction image", "url", remoteUrl, "error", err)
 			} else {
 				ins.DownloadUrl = &info.Path
 				if err := s.repo.UpdateInstruction(ins); err != nil {
-					log.Warnf("failed to update instruction image: %v", err)
+					log.Warn("failed to update instruction image", "instruction_id", ins.ID, "error", err)
 				}
 			}
 		}(instruction)

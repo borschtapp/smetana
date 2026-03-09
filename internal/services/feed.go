@@ -53,7 +53,7 @@ func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 
 	overrides, err := s.recipeRepo.ByParentIDsAndHousehold(parentIDs, householdID)
 	if err != nil {
-		log.Warnf("stream override lookup failed: %v", err)
+		log.Warn("stream override lookup failed", err)
 		return recipes, total, nil
 	}
 
@@ -112,7 +112,7 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 		pub = &domain.Publisher{Url: url, Name: url}
 	}
 	if err := s.publisherRepo.FindOrCreate(pub); err != nil {
-		log.Warnf("error creating publisher %v: %s", pub, err.Error())
+		log.Warn("error creating publisher", "publisher", pub, "error", err)
 	} else {
 		feed.PublisherID = pub.ID
 	}
@@ -130,7 +130,7 @@ func (s *FeedService) FetchUpdates() error {
 		return err
 	}
 
-	log.Infof("Checking %d feeds for updates...", len(feeds))
+	log.Info("checking feeds for updates", "count", len(feeds))
 
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, s.fetchConcurrency)
@@ -157,13 +157,14 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 	})
 
 	if err != nil {
-		log.Warnf("Failed to scrape feed %s: %v", feed.Url, err)
+		log.Warn("failed to scrape feed", "url", feed.Url, "error", err)
 		feed.ErrorCount++
 		if feed.ErrorCount > 10 {
 			feed.Active = false
+			log.Error("deactivating feed due to repeated errors", "url", feed.Url)
 		}
 		if err := s.repo.Update(feed); err != nil {
-			log.Warnf("failed to persist error state for feed %s: %v", feed.Url, err)
+			log.Warn("failed to persist error state for feed", "url", feed.Url, "error", err)
 		}
 		return
 	}
@@ -171,7 +172,7 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 	feed.ErrorCount = 0
 	feed.Retrieved = time.Now()
 	if err := s.repo.Update(feed); err != nil {
-		log.Warnf("failed to persist feed metadata for %s: %v", feed.Url, err)
+		log.Warn("failed to persist feed metadata", "url", feed.Url, "error", err)
 	}
 
 	for _, recipe := range recipes {
@@ -188,13 +189,13 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 
 		recipe.FeedID = &feed.ID
 		if _, err := s.recipeService.ImportRecipe(recipe); err != nil {
-			log.Warnf("Failed to import recipe from %s: %v", url, err)
+			log.Warn("failed to import recipe", "url", url, "error", err)
 		} else {
 			name := ""
 			if recipe.Name != nil {
 				name = *recipe.Name
 			}
-			log.Infof("Imported new recipe: %s", name)
+			log.Info("imported new recipe", "name", name)
 		}
 	}
 }

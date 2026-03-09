@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 
@@ -9,8 +8,6 @@ import (
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
-
-var validate = validator.New(validator.WithRequiredStructEnabled())
 
 type AuthHandler struct {
 	authService domain.AuthService
@@ -183,7 +180,7 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 
 	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
-		log.Warnf("OIDC token exchange failed: %v", err)
+		log.Warn("OIDC token exchange failed:", err)
 		return sentinels.BadRequest("Failed to exchange token")
 	}
 

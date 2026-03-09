@@ -91,7 +91,7 @@ func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain
 	if err != nil {
 		return nil, nil, sentinels.ErrUnauthorized
 	}
-	if !time.Now().Before(userToken.Expires) {
+	if time.Now().After(userToken.Expires) {
 		return nil, nil, sentinels.ErrUnauthorized
 	}
 	user := userToken.User

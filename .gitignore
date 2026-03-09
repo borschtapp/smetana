@@ -1,4 +1,9 @@
 .idea/
+.vscode/
+.agents/
+.claude/
+
+qodana.yaml
 
 tmp/
 *.db
