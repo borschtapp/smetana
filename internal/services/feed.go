@@ -76,7 +76,7 @@ func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 	return recipes, total, nil
 }
 
-func (s *FeedService) Subscribe(householdID uuid.UUID, url string) (*domain.Feed, error) {
+func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string) (*domain.Feed, error) {
 	feed, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
 		return nil, err
@@ -86,6 +86,14 @@ func (s *FeedService) Subscribe(householdID uuid.UUID, url string) (*domain.Feed
 		feed, err = s.createFeed(url)
 		if err != nil {
 			return nil, err
+		}
+
+		count, err := s.processFeed(ctx, feed)
+		if err != nil {
+			return nil, err
+		}
+		if count == 0 {
+			return nil, sentinels.BadRequest("feed has no importable recipes")
 		}
 	}
 
@@ -138,7 +146,8 @@ func (s *FeedService) FetchUpdates(ctx context.Context) error {
 
 	for i := range feeds {
 		g.Go(func() error {
-			return s.processFeed(ctx, &feeds[i])
+			_, err := s.processFeed(ctx, &feeds[i])
+			return err
 		})
 	}
 
@@ -148,7 +157,7 @@ func (s *FeedService) FetchUpdates(ctx context.Context) error {
 	return nil
 }
 
-func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error {
+func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, error) {
 	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
@@ -165,7 +174,7 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error 
 		if updateErr := s.repo.Update(feed); updateErr != nil {
 			log.Warn("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
 		}
-		return err
+		return 0, err
 	}
 
 	feed.ErrorCount = 0
@@ -174,6 +183,7 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error 
 		log.Warn("failed to persist feed metadata", "url", feed.Url, "error", err)
 	}
 
+	imported := 0
 	for _, recipe := range recipes {
 		url := ""
 		if recipe.IsBasedOn != nil {
@@ -190,6 +200,7 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error 
 		if _, err := s.recipeService.ImportRecipe(ctx, recipe); err != nil {
 			log.Warn("failed to import recipe", "url", url, "error", err)
 		} else {
+			imported++
 			name := ""
 			if recipe.Name != nil {
 				name = *recipe.Name
@@ -197,5 +208,5 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) error 
 			log.Info("imported new recipe", "name", name)
 		}
 	}
-	return nil
+	return imported, nil
 }

@@ -3720,6 +3720,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "image": {
+                    "description": "local URL of downloaded image",
                     "type": "string"
                 },
                 "order": {

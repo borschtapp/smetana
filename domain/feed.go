@@ -53,7 +53,7 @@ type FeedRepository interface {
 
 type FeedService interface {
 	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Feed, int64, error)
-	Subscribe(householdID uuid.UUID, url string) (*Feed, error)
+	Subscribe(ctx context.Context, householdID uuid.UUID, url string) (*Feed, error)
 	Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 
 	Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
