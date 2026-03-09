@@ -17,7 +17,7 @@ func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
 }
 
 func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
-	if err := r.db.First(&food, "name = ?", food.Name).Error; err == nil {
+	if err := r.db.First(&food, "lower(name) = lower(?)", food.Name).Error; err == nil {
 		return nil
 	}
 

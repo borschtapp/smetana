@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/storage"
-	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -30,13 +29,4 @@ func (i *RecipeImage) BeforeCreate(_ *gorm.DB) error {
 		return err
 	}
 	return nil
-}
-
-func FromKripImage(image *krip.ImageObject) *RecipeImage {
-	model := &RecipeImage{}
-	model.RemoteUrl = image.Url
-	model.Width = image.Width
-	model.Height = image.Height
-	model.Caption = image.Caption
-	return model
 }

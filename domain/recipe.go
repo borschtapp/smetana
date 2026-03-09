@@ -4,10 +4,6 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
-	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/model"
-	kUtils "github.com/borschtapp/krip/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -85,155 +81,6 @@ type Video struct {
 	ThumbnailUrl string `json:"thumbnail_url,omitempty"`
 }
 
-func FromKripAuthor(person *krip.Person) *Author {
-	author := &Author{}
-	author.Name = person.Name
-	author.Description = person.Description
-	author.Url = person.Url
-	author.Image = person.Image
-	return author
-}
-
-func FromKripRecipe(kripRecipe *krip.Recipe) *Recipe {
-	recipe := &Recipe{}
-	recipe.IsBasedOn = &kripRecipe.Url
-	if len(kripRecipe.Name) > 0 {
-		recipe.Name = &kripRecipe.Name
-	}
-	if len(kripRecipe.Description) > 0 {
-		recipe.Description = &kripRecipe.Description
-	}
-	if len(kripRecipe.Language) > 0 {
-		recipe.Language = &kripRecipe.Language
-	}
-	if len(kripRecipe.Images) > 0 {
-		for _, image := range kripRecipe.Images {
-			imageModel := FromKripImage(image)
-			recipe.Images = append(recipe.Images, imageModel)
-		}
-	}
-	if kripRecipe.Author != nil {
-		recipe.Author = FromKripAuthor(kripRecipe.Author)
-	}
-	if len(kripRecipe.Text) > 0 {
-		recipe.Text = &kripRecipe.Text
-	}
-	if len(kripRecipe.PrepTime) != 0 {
-		if d, err := types.DurationFromISO8601(kripRecipe.PrepTime); err == nil {
-			recipe.PrepTime = &d
-		}
-	}
-	if len(kripRecipe.CookTime) != 0 {
-		if d, err := types.DurationFromISO8601(kripRecipe.CookTime); err == nil {
-			recipe.CookTime = &d
-		}
-	}
-	if len(kripRecipe.TotalTime) != 0 {
-		if d, err := types.DurationFromISO8601(kripRecipe.TotalTime); err == nil {
-			recipe.TotalTime = &d
-		}
-	}
-	if len(kripRecipe.Difficulty) > 0 {
-		recipe.Difficulty = &kripRecipe.Difficulty
-	}
-	if len(kripRecipe.CookingMethod) > 0 {
-		recipe.Method = &kripRecipe.CookingMethod
-	}
-	if len(kripRecipe.Diets) > 0 {
-		for _, diet := range kripRecipe.Diets {
-			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "diet", Label: diet, Slug: utils.CreateTag(diet)})
-		}
-	}
-	if len(kripRecipe.Categories) > 0 {
-		for _, cat := range kripRecipe.Categories {
-			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "category", Label: cat, Slug: utils.CreateTag(cat)})
-		}
-	}
-	if len(kripRecipe.Cuisines) > 0 {
-		for _, cuisine := range kripRecipe.Cuisines {
-			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "cuisine", Label: cuisine, Slug: utils.CreateTag(cuisine)})
-		}
-	}
-	if len(kripRecipe.Keywords) > 0 {
-		for _, keyword := range kripRecipe.Keywords {
-			recipe.Taxonomies = append(recipe.Taxonomies, &Taxonomy{Type: "keyword", Label: keyword, Slug: utils.CreateTag(keyword)})
-		}
-	}
-	if len(kripRecipe.Yield) != 0 {
-		yield := kUtils.FindInt(&kripRecipe.Yield)
-		if yield > 0 {
-			recipe.Yield = &yield
-		}
-	}
-	if kripRecipe.Nutrition != nil {
-		recipe.Nutrition = &Nutrition{
-			ServingSize: kripRecipe.Nutrition.ServingSize,
-			Calories:    kripRecipe.Nutrition.Calories,
-			Carbs:       kripRecipe.Nutrition.CarbohydrateContent,
-			CarbFiber:   kripRecipe.Nutrition.FiberContent,
-			CarbSugar:   kripRecipe.Nutrition.SugarContent,
-			Cholesterol: kripRecipe.Nutrition.CholesterolContent,
-			Sodium:      kripRecipe.Nutrition.SodiumContent,
-			Fats:        kripRecipe.Nutrition.FatContent,
-			FatSat:      kripRecipe.Nutrition.SaturatedFatContent,
-			FatTrans:    kripRecipe.Nutrition.TransFatContent,
-			Protein:     kripRecipe.Nutrition.ProteinContent,
-		}
-	}
-	if kripRecipe.Rating != nil {
-		recipe.Rating = &Rating{
-			Reviews: kripRecipe.Rating.ReviewCount,
-			Count:   kripRecipe.Rating.RatingCount,
-			Value:   kripRecipe.Rating.RatingValue,
-		}
-	}
-	if kripRecipe.Video != nil {
-		recipe.Video = &Video{
-			Name:         kripRecipe.Video.Name,
-			Description:  kripRecipe.Video.Description,
-			EmbedUrl:     kripRecipe.Video.EmbedUrl,
-			ContentUrl:   kripRecipe.Video.ContentUrl,
-			ThumbnailUrl: kripRecipe.Video.ThumbnailUrl,
-		}
-	}
-	if kripRecipe.Publisher != nil {
-		recipe.Publisher = FromKripPublisher(kripRecipe.Publisher)
-	}
-	if kripRecipe.DateModified != nil {
-		recipe.Published = kripRecipe.DateModified
-	} else if kripRecipe.DatePublished != nil {
-		recipe.Published = kripRecipe.DatePublished
-	}
-
-	if len(kripRecipe.Ingredients) > 0 {
-		for _, item := range kripRecipe.Ingredients {
-			recipe.Ingredients = append(recipe.Ingredients, FromKripPropertyValue(item))
-		}
-	}
-
-	if len(kripRecipe.Equipment) > 0 {
-		equipment := make([]string, 0, len(kripRecipe.Equipment))
-		for _, eq := range kripRecipe.Equipment {
-			equipment = append(equipment, eq.Name)
-		}
-		recipe.Equipment = &equipment
-	}
-
-	if len(kripRecipe.Instructions) > 0 {
-		for _, item := range kripRecipe.Instructions {
-			recipe.Instructions = append(recipe.Instructions, FromKripHowToStep(&item.HowToStep))
-
-			if len(item.Steps) != 0 {
-				for _, step := range item.Steps {
-					recipe.Instructions = append(recipe.Instructions, FromKripHowToStep(step))
-				}
-			}
-		}
-	}
-
-	return recipe
-}
-
 func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
 	if r.ID == uuid.Nil {
 		var err error
@@ -301,5 +148,5 @@ type RecipeService interface {
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
 	ImportFromURL(url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
-	ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*Recipe, error)
+	ImportRecipe(recipe *Recipe) (*Recipe, error)
 }

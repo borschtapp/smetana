@@ -4,9 +4,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/borschtapp/kapusta"
-	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/model"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
@@ -18,22 +15,24 @@ import (
 
 type RecipeService struct {
 	repo             domain.RecipeRepository
+	userRepo         domain.UserRepository
 	imageService     domain.ImageService
 	publisherService domain.PublisherService
 	foodRepo         domain.FoodRepository
 	unitRepo         domain.UnitRepository
-	userRepo         domain.UserRepository
+	scraperService   domain.ScraperService
 	fetchConcurrency int
 }
 
-func NewRecipeService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, userRepo domain.UserRepository) domain.RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, scraperService domain.ScraperService) domain.RecipeService {
 	return &RecipeService{
 		repo:             repo,
+		userRepo:         userRepo,
 		imageService:     imageService,
 		publisherService: publisherService,
 		foodRepo:         foodRepo,
 		unitRepo:         unitRepo,
-		userRepo:         userRepo,
+		scraperService:   scraperService,
 		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
 	}
 }
@@ -233,12 +232,11 @@ func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.
 		return existing, nil
 	}
 
-	kripRecipe, err := krip.ScrapeUrl(url)
+	scraped, err := s.scraperService.ScrapeRecipe(url)
 	if err != nil {
 		return nil, err
 	}
-	recipe, err := s.ImportFromKripRecipe(kripRecipe, nil)
-
+	recipe, err := s.ImportRecipe(scraped)
 	if err != nil {
 		return nil, err
 	}
@@ -248,9 +246,25 @@ func (s *RecipeService) ImportFromURL(url string, forceUpdate bool, userID uuid.
 	return recipe, nil
 }
 
-func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *uuid.UUID) (*domain.Recipe, error) {
-	recipe := domain.FromKripRecipe(kripRecipe)
-	recipe.FeedID = feedID
+func (s *RecipeService) ImportRecipe(recipe *domain.Recipe) (*domain.Recipe, error) {
+	for _, ing := range recipe.Ingredients {
+		if ing.Food != nil {
+			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
+				ing.FoodID = &ing.Food.ID
+			} else {
+				log.Warnf("error creating food %v: %s", ing.Food, err)
+				ing.Food = nil
+			}
+		}
+		if ing.Unit != nil {
+			if err := s.unitRepo.FindOrCreate(ing.Unit); err == nil {
+				ing.UnitID = &ing.Unit.ID
+			} else {
+				log.Warnf("error creating unit %v: %s", ing.Unit, err)
+				ing.Unit = nil
+			}
+		}
+	}
 
 	if recipe.Publisher != nil {
 		if err := s.publisherService.FindOrCreate(recipe.Publisher); err != nil {
@@ -260,8 +274,6 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 		}
 	}
 
-	s.parseAndEnrichIngredients(recipe.Ingredients, kripRecipe.Language)
-
 	if err := s.repo.Import(recipe); err != nil {
 		return nil, err
 	}
@@ -269,38 +281,6 @@ func (s *RecipeService) ImportFromKripRecipe(kripRecipe *model.Recipe, feedID *u
 	s.processRecipeImages(recipe)
 	s.processInstructionImages(recipe)
 	return recipe, nil
-}
-
-func (s *RecipeService) parseAndEnrichIngredients(ingredients []*domain.RecipeIngredient, language string) {
-	for _, ingredient := range ingredients {
-		parsed, err := kapusta.ParseIngredient(ingredient.RawText, language)
-		if err != nil || parsed == nil {
-			continue
-		}
-
-		ingredient.Amount = &parsed.Quantity
-		if len(parsed.Annotation) != 0 {
-			ingredient.Note = &parsed.Annotation
-		}
-		if len(parsed.Ingredient) != 0 {
-			food := &domain.Food{Name: parsed.Ingredient}
-			if err := s.foodRepo.FindOrCreate(food); err != nil {
-				log.Warnf("error creating food %v: %s", food, err.Error())
-			} else {
-				ingredient.Food = food
-				ingredient.FoodID = &food.ID
-			}
-		}
-		if len(parsed.Unit) != 0 {
-			unit := &domain.Unit{Name: parsed.Unit}
-			if err := s.unitRepo.FindOrCreate(unit); err != nil {
-				log.Warnf("error creating unit %v: %s", unit, err.Error())
-			} else {
-				ingredient.Unit = unit
-				ingredient.UnitID = &unit.ID
-			}
-		}
-	}
 }
 
 func (s *RecipeService) processRecipeImages(recipe *domain.Recipe) {

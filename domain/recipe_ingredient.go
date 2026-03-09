@@ -3,7 +3,6 @@ package domain
 import (
 	"time"
 
-	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -32,14 +31,4 @@ func (ri *RecipeIngredient) BeforeCreate(_ *gorm.DB) error {
 		return err
 	}
 	return nil
-}
-
-func FromKripPropertyValue(item *krip.PropertyValue) *RecipeIngredient {
-	model := &RecipeIngredient{}
-	if len(item.Value) != 0 {
-		model.RawText = item.Value + " " + item.UnitText + " " + item.Name
-	} else {
-		model.RawText = item.Name
-	}
-	return model
 }

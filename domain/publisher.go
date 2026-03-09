@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -39,21 +38,6 @@ func (p *Publisher) BeforeCreate(_ *gorm.DB) error {
 
 func (p *Publisher) FilePath() string {
 	return "publisher/" + strings.ReplaceAll(utils.CreateTag(p.Name), " ", "_")
-}
-
-func FromKripPublisher(org *krip.Organization) *Publisher {
-	model := &Publisher{}
-	model.Name = org.Name
-	if len(org.Description) != 0 {
-		model.Description = &org.Description
-	}
-	if len(org.Url) != 0 {
-		model.Url = org.Url
-	}
-	if len(org.Logo) != 0 {
-		model.RemoteImage = &org.Logo
-	}
-	return model
 }
 
 type PublisherRepository interface {

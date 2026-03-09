@@ -17,7 +17,7 @@ func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 }
 
 func (r *UnitRepository) FindOrCreate(unit *domain.Unit) error {
-	if err := r.db.First(&unit, "name = ?", unit.Name).Error; err == nil {
+	if err := r.db.First(&unit, "lower(name) = lower(?)", unit.Name).Error; err == nil {
 		return nil
 	}
 
@@ -26,7 +26,7 @@ func (r *UnitRepository) FindOrCreate(unit *domain.Unit) error {
 	}
 
 	if unit.ID == uuid.Nil { // fallback for conflict scenario
-		return r.db.First(&unit, "name = ?", unit.Name).Error
+		return r.db.First(&unit, "lower(name) = lower(?)", unit.Name).Error
 	}
 
 	return nil

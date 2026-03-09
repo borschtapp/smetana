@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/model"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
@@ -22,15 +20,17 @@ type FeedService struct {
 	publisherRepo    domain.PublisherRepository
 	recipeRepo       domain.RecipeRepository
 	recipeService    domain.RecipeService
+	scraperService   domain.ScraperService
 	fetchConcurrency int
 }
 
-func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, service domain.RecipeService) domain.FeedService {
+func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
 	return &FeedService{
 		repo:             repo,
 		publisherRepo:    pubRepo,
 		recipeRepo:       recipeRepo,
-		recipeService:    service,
+		recipeService:    recipeService,
+		scraperService:   scraperService,
 		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
 	}
 }
@@ -99,26 +99,22 @@ func (s *FeedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 }
 
 func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
-	scrapedFeed, err := krip.ScrapeFeedUrl(url, model.FeedOptions{Quick: true})
+	recipes, err := s.scraperService.ScrapeFeed(url, domain.FeedScrapeOptions{Quick: true})
 	if err != nil {
 		return nil, fmt.Errorf("invalid feed url: %w", err)
 	}
 
 	feed := &domain.Feed{Url: url}
-	if len(scrapedFeed.Entries) > 0 && scrapedFeed.Entries[0].Publisher != nil {
-		pub := domain.FromKripPublisher(scrapedFeed.Entries[0].Publisher)
-		if err := s.publisherRepo.FindOrCreate(pub); err != nil {
-			log.Warnf("error creating publisher %v: %s", pub, err.Error())
-		} else {
-			feed.PublisherID = pub.ID
-		}
+	var pub *domain.Publisher
+	if len(recipes) > 0 && recipes[0].Publisher != nil {
+		pub = recipes[0].Publisher
 	} else {
-		pub := &domain.Publisher{Url: url, Name: url}
-		if err := s.publisherRepo.FindOrCreate(pub); err != nil {
-			log.Warnf("error creating publisher %v: %s", pub, err.Error())
-		} else {
-			feed.PublisherID = pub.ID
-		}
+		pub = &domain.Publisher{Url: url, Name: url}
+	}
+	if err := s.publisherRepo.FindOrCreate(pub); err != nil {
+		log.Warnf("error creating publisher %v: %s", pub, err.Error())
+	} else {
+		feed.PublisherID = pub.ID
 	}
 
 	if err := s.repo.Create(feed); err != nil {
@@ -154,7 +150,7 @@ func (s *FeedService) FetchUpdates() error {
 }
 
 func (s *FeedService) processFeed(feed *domain.Feed) {
-	scrapedFeed, err := krip.ScrapeFeedUrl(feed.Url, model.FeedOptions{
+	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
 		RequireInstructions: true,
@@ -178,19 +174,27 @@ func (s *FeedService) processFeed(feed *domain.Feed) {
 		log.Warnf("failed to persist feed metadata for %s: %v", feed.Url, err)
 	}
 
-	for _, kripRecipe := range scrapedFeed.Entries {
-		if kripRecipe.Url == "" {
+	for _, recipe := range recipes {
+		url := ""
+		if recipe.IsBasedOn != nil {
+			url = *recipe.IsBasedOn
+		}
+		if url == "" {
+			continue
+		}
+		if _, err := s.recipeRepo.ByUrl(url); err == nil {
 			continue
 		}
 
-		if _, err := s.recipeRepo.ByUrl(kripRecipe.Url); err == nil {
-			continue
-		}
-
-		if _, err := s.recipeService.ImportFromKripRecipe(kripRecipe, &feed.ID); err != nil {
-			log.Warnf("Failed to import recipe from %s: %v", kripRecipe.Url, err)
+		recipe.FeedID = &feed.ID
+		if _, err := s.recipeService.ImportRecipe(recipe); err != nil {
+			log.Warnf("Failed to import recipe from %s: %v", url, err)
 		} else {
-			log.Infof("Imported new recipe: %s", kripRecipe.Name)
+			name := ""
+			if recipe.Name != nil {
+				name = *recipe.Name
+			}
+			log.Infof("Imported new recipe: %s", name)
 		}
 	}
 }

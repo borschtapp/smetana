@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/storage"
-	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -34,24 +33,4 @@ func (ri *RecipeInstruction) BeforeCreate(_ *gorm.DB) error {
 		return err
 	}
 	return nil
-}
-
-func FromKripHowToStep(item *krip.HowToStep) *RecipeInstruction {
-	model := &RecipeInstruction{}
-	if len(item.Name) != 0 {
-		model.Title = &item.Name
-	}
-	if len(item.Text) != 0 {
-		model.Text = item.Text
-	}
-	if len(item.Url) != 0 {
-		model.Url = &item.Url
-	}
-	if len(item.Image) != 0 {
-		model.Image = &item.Image
-	}
-	if len(item.Video) != 0 {
-		model.Video = &item.Video
-	}
-	return model
 }
