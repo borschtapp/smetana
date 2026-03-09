@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -100,6 +101,7 @@ func TestFeedService_Stream_OverrideLookupFailure_ReturnsOriginalResults(t *test
 func TestFeedService_FetchUpdates_ProcessesAllActiveFeeds(t *testing.T) {
 	feed1 := domain.Feed{ID: uuid.New(), Active: true, Url: "https://feed1.example.com"}
 	feed2 := domain.Feed{ID: uuid.New(), Active: true, Url: "https://feed2.example.com"}
+	var mu sync.Mutex
 	processedURLs := make(map[string]bool)
 
 	feedRepo := &stubFeedRepo{
@@ -107,7 +109,9 @@ func TestFeedService_FetchUpdates_ProcessesAllActiveFeeds(t *testing.T) {
 			return []domain.Feed{feed1, feed2}, nil
 		},
 		updateFn: func(f *domain.Feed) error {
+			mu.Lock()
 			processedURLs[f.Url] = true
+			mu.Unlock()
 			return nil
 		},
 	}
