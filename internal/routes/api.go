@@ -13,7 +13,7 @@ import (
 	"borscht.app/smetana/internal/services"
 )
 
-func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db *gorm.DB) {
+func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db *gorm.DB) domain.FeedService {
 	// Repositories
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
@@ -129,4 +129,6 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	feedsGroup.Delete("/:id", feedHandler.Unsubscribe)
 	feedsGroup.Get("/", feedHandler.ListSubscriptions)
 	feedsGroup.Get("/stream", feedHandler.ListStream)
+
+	return feedService
 }

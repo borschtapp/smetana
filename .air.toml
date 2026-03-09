@@ -4,9 +4,9 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = ["-no-migrate"]
-  bin = "tmp\\smetana.exe"
-  cmd = "go build -o ./tmp/smetana.exe ."
-  delay = 0
+  bin = "tmp/smetana.exe"
+  cmd = "go build -o tmp/smetana.exe main.go"
+  delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", ".idea", ".vscode", ".git", "docs", "data"]
   exclude_file = []
   exclude_regex = ["_test.go"]
