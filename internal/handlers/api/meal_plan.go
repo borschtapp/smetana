@@ -12,6 +12,8 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
+const dateFmt = "2006-01-02"
+
 type MealPlanHandler struct {
 	mealPlanService domain.MealPlanService
 }
@@ -48,12 +50,12 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 
 	var from, to *time.Time
 	if fromStr != "" {
-		if t, err := time.Parse("2006-01-02", fromStr); err == nil {
+		if t, err := time.Parse(dateFmt, fromStr); err == nil {
 			from = &t
 		}
 	}
 	if toStr != "" {
-		if t, err := time.Parse("2006-01-02", toStr); err == nil {
+		if t, err := time.Parse(dateFmt, toStr); err == nil {
 			to = &t
 		}
 	}
@@ -74,7 +76,7 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 }
 
 type MealPlanForm struct {
-	Date     time.Time  `validate:"required" json:"date" swaggertype:"string" format:"date" example:"2024-12-25"`
+	Date     string     `validate:"required,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-25"`
 	MealType string     `validate:"required,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"dinner"`
 	RecipeID *uuid.UUID `json:"recipe_id"`
 	Servings *int       `validate:"omitempty,min=1" json:"servings" example:"4"`
@@ -108,8 +110,9 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
+	date, _ := time.Parse(dateFmt, form.Date)
 	mealPlan := &domain.MealPlan{
-		Date:     form.Date,
+		Date:     date,
 		MealType: form.MealType,
 		RecipeID: form.RecipeID,
 		Servings: form.Servings,
@@ -124,7 +127,7 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 }
 
 type UpdateMealPlanForm struct {
-	Date     *time.Time `json:"date" swaggertype:"string" format:"date" example:"2024-12-26"`
+	Date     *string    `validate:"omitempty,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-26"`
 	MealType *string    `validate:"omitempty,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"lunch"`
 	RecipeID *uuid.UUID `json:"recipe_id"`
 	Servings *int       `validate:"omitempty,min=1" json:"servings" example:"2"`
@@ -168,7 +171,9 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	}
 
 	if form.Date != nil {
-		mealPlan.Date = *form.Date
+		if date, err := time.Parse(dateFmt, *form.Date); err == nil {
+			mealPlan.Date = date
+		}
 	}
 	if form.MealType != nil {
 		mealPlan.MealType = *form.MealType
