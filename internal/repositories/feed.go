@@ -30,7 +30,7 @@ func (r *FeedRepository) ByUrl(url string) (*domain.Feed, error) {
 
 func (r *FeedRepository) ListActive() ([]domain.Feed, error) {
 	var feeds []domain.Feed
-	if err := r.db.Where("active = ?", true).Find(&feeds).Error; err != nil {
+	if err := r.db.Select("feeds.*").Where("active = ?", true).Find(&feeds).Error; err != nil {
 		return nil, err
 	}
 	return feeds, nil
@@ -53,6 +53,8 @@ func (r *FeedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	} else if total == 0 {
 		return nil, 0, nil
 	}
+
+	q = q.Select("feeds.*")
 
 	if len(opts.Preload) != 0 {
 		if slices.Contains(opts.Preload, "publisher") {

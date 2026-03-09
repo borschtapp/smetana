@@ -53,6 +53,8 @@ func (r *CollectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 		return collections, 0, nil
 	}
 
+	q = q.Select("collections.*")
+
 	if len(opts.Preload) != 0 {
 		if slices.Contains(opts.Preload, "recipes:5") {
 			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {

@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.4
 	github.com/borschtapp/kapusta v0.1.0
-	github.com/borschtapp/krip v0.15.2
+	github.com/borschtapp/krip v0.15.3
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/doyensec/safeurl v0.2.2
 	github.com/go-playground/validator/v10 v10.30.1

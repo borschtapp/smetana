@@ -81,6 +81,10 @@ func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 		return recipes, 0, nil
 	}
 
+	// is_saved is not a real DB column; use explicit SELECT to prevent GORM from emitting auto-generated column list.
+	// The "saved" preload block below overrides this with the EXISTS subquery.
+	q = q.Select("recipes.*")
+
 	// preload relations
 	if len(opts.Preload) == 1 && opts.Preload[0] == "all" {
 		q = q.Preload(clause.Associations).

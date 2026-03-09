@@ -37,6 +37,8 @@ func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 		return nil, 0, nil
 	}
 
+	q = q.Select("publishers.*")
+
 	if len(opts.Preload) != 0 {
 		if slices.Contains(opts.Preload, "feeds") {
 			q = q.Preload("Feeds")

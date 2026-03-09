@@ -64,8 +64,8 @@ github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuP
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/borschtapp/kapusta v0.1.0 h1:wgtkuCOuKIorBbrDfqZmANpd/jZtUQa69eziXv60c6E=
 github.com/borschtapp/kapusta v0.1.0/go.mod h1:qSn/V7FMaG+arGYamJFfG8EXYiJFVZ++/4KRCjSygPw=
-github.com/borschtapp/krip v0.15.2 h1:g6TV5NTMQIPPg2rsdB8MVhvP02vjjX5Dp4HkPR6fYBA=
-github.com/borschtapp/krip v0.15.2/go.mod h1:43cVK4HGYiY1o8YlwRURF92JQObBp8A380psnmTqeRs=
+github.com/borschtapp/krip v0.15.3 h1:bHIWeK5dU4+ONvsVoDS/ZLDHiGiAyiEGrAg4ZTFj1Tw=
+github.com/borschtapp/krip v0.15.3/go.mod h1:43cVK4HGYiY1o8YlwRURF92JQObBp8A380psnmTqeRs=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
