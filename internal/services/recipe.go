@@ -22,11 +22,12 @@ type RecipeService struct {
 	publisherService domain.PublisherService
 	foodRepo         domain.FoodRepository
 	unitRepo         domain.UnitRepository
+	taxonomyRepo     domain.TaxonomyRepository
 	scraperService   domain.ScraperService
 	fetchConcurrency int
 }
 
-func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, scraperService domain.ScraperService) domain.RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, taxonomyRepo domain.TaxonomyRepository, scraperService domain.ScraperService) domain.RecipeService {
 	return &RecipeService{
 		repo:             repo,
 		userRepo:         userRepo,
@@ -34,6 +35,7 @@ func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserReposito
 		publisherService: publisherService,
 		foodRepo:         foodRepo,
 		unitRepo:         unitRepo,
+		taxonomyRepo:     taxonomyRepo,
 		scraperService:   scraperService,
 		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
 	}
@@ -267,6 +269,16 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 			}
 		}
 	}
+
+	resolved := recipe.Taxonomies[:0]
+	for _, taxonomy := range recipe.Taxonomies {
+		if err := s.taxonomyRepo.FindOrCreate(taxonomy); err == nil {
+			resolved = append(resolved, taxonomy)
+		} else {
+			log.Warnw("error creating taxonomy", "taxonomy", taxonomy, "error", err)
+		}
+	}
+	recipe.Taxonomies = resolved
 
 	if recipe.Publisher != nil {
 		if err := s.publisherService.FindOrCreate(ctx, recipe.Publisher); err != nil {

@@ -150,7 +150,7 @@ func (r *RecipeRepository) Create(recipe *domain.Recipe) error {
 }
 
 func (r *RecipeRepository) Import(recipe *domain.Recipe) error {
-	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit").Create(recipe).Error
+	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit", "Taxonomies.*").Create(recipe).Error
 }
 
 func (r *RecipeRepository) CreateImages(images []*domain.RecipeImage) error {

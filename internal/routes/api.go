@@ -30,7 +30,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	// Services with business logic (need repos injected)
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	scraperService := services.NewScraperService()
-	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, scraperService)
+	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)
 	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
 
 	userService := services.NewUserService(userRepo)

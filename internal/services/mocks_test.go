@@ -138,6 +138,19 @@ func (s *stubUnitRepo) FindOrCreate(u *domain.Unit) error {
 	return nil
 }
 
+type stubTaxonomyRepo struct {
+	domain.TaxonomyRepository
+
+	findOrCreateFn func(*domain.Taxonomy) error
+}
+
+func (s *stubTaxonomyRepo) FindOrCreate(t *domain.Taxonomy) error {
+	if s.findOrCreateFn != nil {
+		return s.findOrCreateFn(t)
+	}
+	return nil
+}
+
 type stubScraperService struct {
 	domain.ScraperService
 

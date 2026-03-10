@@ -15,16 +15,45 @@ import (
 	"borscht.app/smetana/internal/storage"
 )
 
+type recipeServiceDeps struct {
+	repo       *stubRecipeRepo
+	userRepo   *stubUserRepo
+	imgService *stubImageService
+	pubService *stubPublisherService
+	foodRepo   *stubFoodRepo
+	unitRepo   *stubUnitRepo
+	taxRepo    *stubTaxonomyRepo
+	scraper    *stubScraperService
+}
+
 // newTestRecipeService builds a RecipeService wired up with the provided stubs.
-func newTestRecipeService(repo *stubRecipeRepo, userRepo *stubUserRepo, imgSvc *stubImageService, pubSvc *stubPublisherService, foodRepo *stubFoodRepo, unitRepo *stubUnitRepo, scraperSvc *stubScraperService) domain.RecipeService {
-	return services.NewRecipeService(repo, userRepo, imgSvc, pubSvc, foodRepo, unitRepo, scraperSvc)
+func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
+	if deps.imgService == nil {
+		deps.imgService = &stubImageService{}
+	}
+	if deps.pubService == nil {
+		deps.pubService = &stubPublisherService{}
+	}
+	if deps.foodRepo == nil {
+		deps.foodRepo = &stubFoodRepo{}
+	}
+	if deps.unitRepo == nil {
+		deps.unitRepo = &stubUnitRepo{}
+	}
+	if deps.taxRepo == nil {
+		deps.taxRepo = &stubTaxonomyRepo{}
+	}
+	if deps.scraper == nil {
+		deps.scraper = &stubScraperService{}
+	}
+	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.pubService, deps.foodRepo, deps.unitRepo, deps.taxRepo, deps.scraper)
 }
 
 func TestRecipeService_ByID_GlobalRecipe_AnyHouseholdCanRead(t *testing.T) {
 	globalRecipe := &domain.Recipe{ID: uuid.New(), HouseholdID: nil}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return globalRecipe, nil }}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	got, err := svc.ByID(globalRecipe.ID, uuid.New()) // any household
 
 	require.NoError(t, err)
@@ -36,7 +65,7 @@ func TestRecipeService_ByID_HouseholdRecipe_SameHouseholdCanRead(t *testing.T) {
 	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &hid}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	got, err := svc.ByID(recipe.ID, hid)
 
 	require.NoError(t, err)
@@ -48,7 +77,7 @@ func TestRecipeService_ByID_HouseholdRecipe_OtherHouseholdForbidden(t *testing.T
 	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &ownerHID}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	_, err := svc.ByID(recipe.ID, uuid.New()) // different household
 
 	require.ErrorIs(t, err, sentinels.ErrForbidden)
@@ -59,7 +88,7 @@ func TestRecipeService_ByID_NotFound(t *testing.T) {
 		return nil, sentinels.ErrRecordNotFound
 	}}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	_, err := svc.ByID(uuid.New(), uuid.New())
 
 	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
@@ -102,7 +131,7 @@ func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
 		updateFn: func(r *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	patch := &domain.Recipe{ID: globalID, Name: ptr("My Borsch")}
 	err := svc.Update(patch, uid, hid)
 
@@ -136,7 +165,7 @@ func TestRecipeService_Update_GlobalRecipe_SetsHouseholdAndUser(t *testing.T) {
 		updateFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.Update(&domain.Recipe{ID: global.ID}, uid, hid)
 	require.NoError(t, err)
 }
@@ -172,7 +201,7 @@ func TestRecipeService_Update_GlobalRecipe_DeepCopiesIngredients(t *testing.T) {
 		updateFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.Update(&domain.Recipe{ID: global.ID}, uuid.New(), uuid.New())
 	require.NoError(t, err)
 }
@@ -204,7 +233,7 @@ func TestRecipeService_Update_GlobalRecipe_MigratesPointers(t *testing.T) {
 		updateFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	patch := &domain.Recipe{ID: globalID}
 	err := svc.Update(patch, uuid.New(), hid)
 
@@ -237,7 +266,7 @@ func TestRecipeService_Update_HouseholdRecipe_UpdatesDirectly(t *testing.T) {
 		},
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.Update(&domain.Recipe{ID: rid}, uid, hid)
 
 	require.NoError(t, err)
@@ -252,7 +281,7 @@ func TestRecipeService_Delete_GlobalRecipe_Forbidden(t *testing.T) {
 		},
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.Delete(uuid.New(), uuid.New())
 
 	require.ErrorIs(t, err, sentinels.ErrForbidden)
@@ -263,7 +292,7 @@ func TestRecipeService_Delete_DifferentHousehold_Forbidden(t *testing.T) {
 	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &ownerHID}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.Delete(recipe.ID, uuid.New()) // requester is from a different household
 
 	require.ErrorIs(t, err, sentinels.ErrForbidden)
@@ -281,7 +310,7 @@ func TestRecipeService_Delete_OriginalHouseholdRecipe_DeletesImages(t *testing.T
 	}
 
 	deletedPaths := make([]storage.Path, 0)
-	imgSvc := &stubImageService{
+	imgService := &stubImageService{
 		deleteImageFn: func(p storage.Path) error {
 			deletedPaths = append(deletedPaths, p)
 			return nil
@@ -292,7 +321,7 @@ func TestRecipeService_Delete_OriginalHouseholdRecipe_DeletesImages(t *testing.T
 		deleteFn: func(_ uuid.UUID) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, imgSvc, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgService})
 	err := svc.Delete(recipe.ID, hid)
 
 	require.NoError(t, err)
@@ -314,7 +343,7 @@ func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
 	}
 
 	deleteImageCalled := false
-	imgSvc := &stubImageService{
+	imgService := &stubImageService{
 		deleteImageFn: func(_ storage.Path) error {
 			deleteImageCalled = true
 			return nil
@@ -325,7 +354,7 @@ func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
 		deleteFn: func(_ uuid.UUID) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, imgSvc, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgService})
 	err := svc.Delete(recipe.ID, hid)
 
 	require.NoError(t, err)
@@ -354,7 +383,7 @@ func TestRecipeService_ImportRecipe_ResolvesFood(t *testing.T) {
 		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, foodRepo, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -383,7 +412,7 @@ func TestRecipeService_ImportRecipe_ResolvesUnit(t *testing.T) {
 		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, unitRepo, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, unitRepo: unitRepo})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -407,7 +436,7 @@ func TestRecipeService_ImportRecipe_FoodError_NilsFood(t *testing.T) {
 		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, foodRepo, &stubUnitRepo{}, &stubScraperService{})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "Food resolution failure must not abort the import")
@@ -441,7 +470,7 @@ func TestRecipeService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 		},
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, scraper)
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, scraper: scraper})
 	got, err := svc.ImportFromURL(context.Background(), testURL, false, uid, hid)
 
 	require.NoError(t, err)
@@ -471,7 +500,7 @@ func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 		userSaveFn:     func(_, _, _ uuid.UUID) error { return nil },
 	}
 
-	svc := newTestRecipeService(repo, nil, &stubImageService{}, &stubPublisherService{}, &stubFoodRepo{}, &stubUnitRepo{}, scraper)
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, scraper: scraper})
 	got, err := svc.ImportFromURL(context.Background(), testURL, false, uid, hid)
 
 	require.NoError(t, err)

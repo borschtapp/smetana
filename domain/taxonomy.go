@@ -36,6 +36,7 @@ func (t *Taxonomy) BeforeCreate(_ *gorm.DB) error {
 
 type TaxonomyRepository interface {
 	List(taxonomyType string, offset, limit int) ([]Taxonomy, int64, error)
+	FindOrCreate(taxonomy *Taxonomy) error
 }
 
 type TaxonomyService interface {

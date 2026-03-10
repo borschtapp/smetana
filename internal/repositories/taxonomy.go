@@ -1,8 +1,11 @@
 package repositories
 
 import (
-	"borscht.app/smetana/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"borscht.app/smetana/domain"
 )
 
 type TaxonomyRepository struct {
@@ -30,4 +33,20 @@ func (r *TaxonomyRepository) List(taxonomyType string, offset, limit int) ([]dom
 		return nil, 0, err
 	}
 	return taxonomies, total, nil
+}
+
+func (r *TaxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
+	if err := r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error; err == nil {
+		return nil
+	}
+
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(taxonomy).Error; err != nil {
+		return err
+	}
+
+	if taxonomy.ID == uuid.Nil { // fallback for conflict scenario
+		return r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error
+	}
+
+	return nil
 }
