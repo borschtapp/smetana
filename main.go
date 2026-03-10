@@ -61,10 +61,6 @@ func main() {
 	flag.Parse()
 	_ = godotenv.Load()
 
-	if err := os.MkdirAll("./data", 0700); err != nil {
-		log.Fatal("unable to create data directory", err)
-	}
-
 	db, err := database.Connect()
 	if err != nil {
 		log.Fatal("database connection error", err)

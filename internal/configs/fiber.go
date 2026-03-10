@@ -27,7 +27,7 @@ func FiberConfig() fiber.Config {
 			} else if e, ok := err.(*fiber.Error); ok {
 				se = &sentinels.Error{Status: e.Code, Message: e.Message}
 			} else {
-				log.Error("unexpected error:", err)
+				log.Errorw("unexpected error", "error", err)
 				se = &sentinels.Error{Status: fiber.StatusInternalServerError, Message: "An internal error occurred"}
 			}
 
