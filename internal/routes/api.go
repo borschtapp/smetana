@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -13,7 +15,7 @@ import (
 	"borscht.app/smetana/internal/services"
 )
 
-func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db *gorm.DB) domain.FeedService {
+func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService domain.ImageService, db *gorm.DB) domain.FeedService {
 	// Repositories
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
@@ -31,7 +33,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	scraperService := services.NewScraperService()
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)
-	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
+	feedService := services.NewFeedService(appCtx, feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
 
 	userService := services.NewUserService(userRepo)
 	authService := services.NewAuthService(userRepo)

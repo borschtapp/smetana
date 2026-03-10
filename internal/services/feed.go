@@ -17,6 +17,7 @@ import (
 )
 
 type FeedService struct {
+	appCtx           context.Context
 	repo             domain.FeedRepository
 	publisherRepo    domain.PublisherRepository
 	recipeRepo       domain.RecipeRepository
@@ -25,8 +26,9 @@ type FeedService struct {
 	fetchConcurrency int
 }
 
-func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
+func NewFeedService(appCtx context.Context, repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
 	return &FeedService{
+		appCtx:           appCtx,
 		repo:             repo,
 		publisherRepo:    pubRepo,
 		recipeRepo:       recipeRepo,
@@ -88,7 +90,17 @@ func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 			return nil, err
 		}
 
-		count, err := s.processFeed(ctx, feed)
+		newCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+		defer cancel()
+		go func() {
+			select {
+			case <-s.appCtx.Done():
+				cancel()
+			case <-newCtx.Done():
+			}
+		}()
+
+		count, err := s.processFeed(newCtx, feed)
 		if err != nil {
 			return nil, err
 		}

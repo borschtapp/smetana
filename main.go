@@ -102,7 +102,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	feedService := routes.RegisterApiRoutes(apiGroup, imageService, db)
+	feedService := routes.RegisterApiRoutes(ctx, apiGroup, imageService, db)
 
 	fetchInterval := utils.GetenvDuration("FETCH_INTERVAL", 24*time.Hour)
 	go func() {

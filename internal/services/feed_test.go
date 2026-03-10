@@ -23,7 +23,7 @@ func newTestFeedService(
 	recipeSvc *stubRecipeService,
 	scraper *stubScraperService,
 ) domain.FeedService {
-	return services.NewFeedService(feedRepo, pubRepo, recipeRepo, recipeSvc, scraper)
+	return services.NewFeedService(context.Background(), feedRepo, pubRepo, recipeRepo, recipeSvc, scraper)
 }
 
 func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
