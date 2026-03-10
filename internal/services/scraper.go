@@ -131,7 +131,7 @@ func (s *ScraperService) kripToRecipe(kripRecipe *model.Recipe) *domain.Recipe {
 		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{Type: "keyword", Label: keyword, Slug: utils.CreateTag(keyword)})
 	}
 	if len(kripRecipe.Yield) != 0 {
-		if yield := kUtils.FindInt(&kripRecipe.Yield); yield > 0 {
+		if yield := kUtils.FindInt(kripRecipe.Yield); yield > 0 {
 			recipe.Yield = &yield
 		}
 	}

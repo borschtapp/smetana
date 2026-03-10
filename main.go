@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
-	fiberS3 "github.com/gofiber/storage/s3/v2"
 	"github.com/joho/godotenv"
 
 	_ "borscht.app/smetana/docs"
@@ -93,36 +91,13 @@ func main() {
 	serverHost := utils.Getenv("SERVER_HOST", "")
 	serverPort := utils.GetenvInt("SERVER_PORT", 3000)
 
-	var fileStorage storage.FileStorage
-	uploadsBaseUrl := os.Getenv("BASE_URL")
-	if os.Getenv("S3_BUCKET") != "" {
-		if uploadsBaseUrl == "" {
-			uploadsBaseUrl = fmt.Sprintf("%s/%s", os.Getenv("S3_HOST"), os.Getenv("S3_BUCKET"))
-		}
-		fileStorage = storage.NewS3Storage(fiberS3.Config{
-			Bucket:   os.Getenv("S3_BUCKET"),
-			Endpoint: os.Getenv("S3_HOST"),
-			Region:   os.Getenv("S3_REGION"),
-			Credentials: fiberS3.Credentials{
-				AccessKey:       os.Getenv("S3_ACCESS_KEY"),
-				SecretAccessKey: os.Getenv("S3_SECRET_KEY"),
-			},
-		}, uploadsBaseUrl)
-	} else {
-		if uploadsBaseUrl == "" {
-			uploadsHost := serverHost
-			if serverHost == "" {
-				uploadsHost = "localhost"
-			}
-			uploadsBaseUrl = fmt.Sprintf("http://%s:%d/uploads", uploadsHost, serverPort)
-		}
-		storageRoot := utils.Getenv("STORAGE_ROOT", "./data/uploads")
-		fileStorage = storage.NewLocalStorage(storageRoot, uploadsBaseUrl)
-		app.Use("/uploads", static.New(storageRoot))
+	storageCfg := configs.NewStorage(serverHost, serverPort)
+	if storageCfg.StorageRoot != "" {
+		app.Use("/uploads", static.New(storageCfg.StorageRoot))
 	}
-	storage.SetDefault(fileStorage)
+	storage.SetDefault(storageCfg.Storage)
 
-	imageService := services.NewImageService(fileStorage)
+	imageService := services.NewImageService(storageCfg.Storage)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
