@@ -307,7 +307,7 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 	}
 
 	if err := s.repo.CreateImages(recipe.Images); err != nil {
-		log.Warn("failed to save images", err)
+		log.Warnw("failed to save images", "error", err)
 		return
 	}
 
@@ -329,7 +329,7 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warn("image processing completed with errors", err)
+		log.Warnw("image processing completed with errors", "error", err)
 	}
 
 	for _, img := range recipe.Images {
@@ -366,6 +366,6 @@ func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *do
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warn("instruction image processing completed with errors", err)
+		log.Warnw("instruction image processing completed with errors", "error", err)
 	}
 }

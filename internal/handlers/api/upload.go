@@ -52,7 +52,7 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	defer func(src multipart.File) {
 		err := src.Close()
 		if err != nil {
-			log.Warn("failed to close uploaded file", err)
+			log.Warnw("failed to close uploaded file", "error", err)
 		}
 	}(src)
 

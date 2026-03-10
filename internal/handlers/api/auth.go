@@ -180,7 +180,7 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 
 	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
-		log.Warn("OIDC token exchange failed:", err)
+		log.Warnw("OIDC token exchange failed", "error", err)
 		return sentinels.BadRequest("Failed to exchange token")
 	}
 

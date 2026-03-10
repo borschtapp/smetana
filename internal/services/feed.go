@@ -54,7 +54,7 @@ func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 
 	overrides, err := s.recipeRepo.ByParentIDsAndHousehold(parentIDs, householdID)
 	if err != nil {
-		log.Warn("stream override lookup failed", err)
+		log.Warnw("stream override lookup failed", "household_id", householdID, "error", err)
 		return recipes, total, nil
 	}
 
@@ -152,7 +152,7 @@ func (s *FeedService) FetchUpdates(ctx context.Context) error {
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warn("feed fetch completed with errors", err)
+		log.Warnw("feed fetch completed with errors", "error", err)
 	}
 	return nil
 }

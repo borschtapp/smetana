@@ -37,7 +37,7 @@ func RegisterApiRoutes(router fiber.Router, imageService domain.ImageService, db
 	authService := services.NewAuthService(userRepo)
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
-		log.Warn("OIDC service not initialized", err)
+		log.Warnw("OIDC service not initialized", "error", err)
 	}
 
 	authHandler := api.NewAuthHandler(authService, oidcService)

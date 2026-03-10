@@ -15,7 +15,7 @@ import (
 func Protected() fiber.Handler {
 	secretKey := configs.JwtSecretKey()
 	if len(secretKey) == 0 {
-		log.Fatal("JWT_SECRET_KEY environment variable is not set")
+		log.Fatalw("JWT_SECRET_KEY environment variable is not set")
 	}
 
 	// Create config for JWT authentication middlewares.

@@ -63,12 +63,12 @@ func main() {
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatal("database connection error", err)
+		log.Fatalw("database connection error", "error", err)
 	}
 
 	if !*skipMigrations {
 		if err := database.Migrate(db); err != nil {
-			log.Fatal("database migration error", err)
+			log.Fatalw("database migration error", "error", err)
 		}
 	}
 
@@ -135,14 +135,14 @@ func main() {
 		defer ticker.Stop()
 
 		if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-			log.Warn("feed update failed", err)
+			log.Warnw("feed update failed", "error", err)
 		}
 
 		for {
 			select {
 			case <-ticker.C:
 				if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-					log.Warn("feed update failed", err)
+					log.Warnw("feed update failed", "error", err)
 				}
 			case <-ctx.Done():
 				return
@@ -156,6 +156,6 @@ func main() {
 	if err := app.Listen(fmt.Sprintf("%s:%d", serverHost, serverPort), fiber.ListenConfig{
 		GracefulContext: ctx,
 	}); err != nil {
-		log.Fatal("server stopped with error", err)
+		log.Fatalw("server stopped with error", "error", err)
 	}
 }

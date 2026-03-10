@@ -2,6 +2,8 @@ package configs
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -34,6 +36,7 @@ var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
 		return postgres.Open(dsn)
 	},
 	"sqlite": func(cfg databaseEnvVars) gorm.Dialector {
+		_ = os.MkdirAll(filepath.Dir(cfg.Name), 0700)
 		return sqlite.Open(cfg.Name)
 	},
 }
