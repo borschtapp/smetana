@@ -11,15 +11,16 @@ import (
 )
 
 type Feed struct {
-	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	Active      bool      `json:"active"`
-	PublisherID uuid.UUID `gorm:"type:char(36)" json:"-"`
-	Url         string    `gorm:"uniqueIndex" json:"url"`
-	Name        string    `json:"name"`
-	ErrorCount  int       `json:"error_count"`
-	Retrieved   time.Time `json:"retrieved"` // last successful retrieval time
-	Created     time.Time `gorm:"autoCreateTime" json:"created"`
-	Updated     time.Time `gorm:"autoUpdateTime" json:"updated"`
+	ID              uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	Active          bool      `json:"active"`
+	PublisherID     uuid.UUID `gorm:"type:char(36)" json:"-"`
+	Url             string    `gorm:"uniqueIndex" json:"url"`
+	Name            string    `json:"name"`
+	ErrorCount      int       `json:"error_count"`
+	LastSyncAt      time.Time `json:"last_sync_at"`
+	LastSyncSuccess bool      `json:"last_sync_success"`
+	Created         time.Time `gorm:"autoCreateTime" json:"created"`
+	Updated         time.Time `gorm:"autoUpdateTime" json:"updated"`
 
 	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
 	Publisher    *Publisher `json:"publisher,omitempty"`
@@ -57,5 +58,5 @@ type FeedService interface {
 	Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 
 	Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
-	FetchUpdates(ctx context.Context) error
+	FetchFeed(ctx context.Context, feed *Feed) (int, int, error)
 }

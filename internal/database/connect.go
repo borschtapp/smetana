@@ -35,6 +35,7 @@ func Migrate(db *gorm.DB) error {
 		&domain.Collection{},
 		&domain.ShoppingList{},
 		&domain.Feed{},
+		&domain.SchedulerLog{},
 	)
 	return err
 }

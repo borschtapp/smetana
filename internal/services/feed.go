@@ -8,33 +8,27 @@ import (
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type FeedService struct {
-	appCtx           context.Context
-	repo             domain.FeedRepository
-	publisherRepo    domain.PublisherRepository
-	recipeRepo       domain.RecipeRepository
-	recipeService    domain.RecipeService
-	scraperService   domain.ScraperService
-	fetchConcurrency int
+	repo           domain.FeedRepository
+	publisherRepo  domain.PublisherRepository
+	recipeRepo     domain.RecipeRepository
+	recipeService  domain.RecipeService
+	scraperService domain.ScraperService
 }
 
-func NewFeedService(appCtx context.Context, repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
+func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
 	return &FeedService{
-		appCtx:           appCtx,
-		repo:             repo,
-		publisherRepo:    pubRepo,
-		recipeRepo:       recipeRepo,
-		recipeService:    recipeService,
-		scraperService:   scraperService,
-		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
+		repo:           repo,
+		publisherRepo:  pubRepo,
+		recipeRepo:     recipeRepo,
+		recipeService:  recipeService,
+		scraperService: scraperService,
 	}
 }
 
@@ -87,30 +81,33 @@ func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	if errors.Is(err, sentinels.ErrRecordNotFound) {
 		feed, err = s.createFeed(url)
 		if err != nil {
-			return nil, err
+			log.Warnw("subscribe scrape feed failed", "url", url, "error", err)
+			return nil, sentinels.Unprocessable("can't scrape feed url")
 		}
 
-		newCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-		defer cancel()
+		// Submit background task to fetch recipes
 		go func() {
-			select {
-			case <-s.appCtx.Done():
-				cancel()
-			case <-newCtx.Done():
+			if found, imported, err := s.FetchFeed(context.WithoutCancel(ctx), feed); err != nil {
+				log.Errorw("background feed fetch failed", "url", url, "error", err)
+			} else if found == 0 {
+				log.Warnw("background feed fetch found no recipes", "url", url)
+
+				feed.Active = false
+				if updateErr := s.repo.Update(feed); updateErr != nil {
+					log.Warnw("failed to deactivate feed with no recipes", "url", url, "error", updateErr)
+				}
+			} else {
+				log.Infow("background feed fetched successfully", "url", url, "found", found, "imported", imported)
 			}
 		}()
-
-		count, err := s.processFeed(newCtx, feed)
-		if err != nil {
-			return nil, err
-		}
-		if count == 0 {
-			return nil, sentinels.BadRequest("feed has no importable recipes")
-		}
 	}
 
 	if err := s.repo.AddFeed(householdID, feed); err != nil {
 		return nil, err
+	}
+
+	if len(feed.Recipes) == 0 {
+		return nil, sentinels.Unprocessable("feed has no importable recipes")
 	}
 	return feed, nil
 }
@@ -132,6 +129,7 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 	} else {
 		pub = &domain.Publisher{Url: url, Name: url}
 	}
+
 	if err := s.publisherRepo.FindOrCreate(pub); err != nil {
 		log.Warnw("error creating publisher", "publisher", pub, "error", err)
 	} else {
@@ -142,34 +140,14 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 		return nil, err
 	}
 
+	feed.Recipes = recipes
 	return feed, nil
 }
 
-func (s *FeedService) FetchUpdates(ctx context.Context) error {
-	feeds, err := s.repo.ListActive()
-	if err != nil {
-		return err
-	}
+func (s *FeedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, int, error) {
+	imported := 0
+	feed.LastSyncAt = time.Now()
 
-	log.Infow("checking feeds for updates", "count", len(feeds))
-
-	var g errgroup.Group
-	g.SetLimit(s.fetchConcurrency)
-
-	for i := range feeds {
-		g.Go(func() error {
-			_, err := s.processFeed(ctx, &feeds[i])
-			return err
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Warnw("feed fetch completed with errors", "error", err)
-	}
-	return nil
-}
-
-func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, error) {
 	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
@@ -179,23 +157,20 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, 
 	if err != nil {
 		log.Warnw("failed to scrape feed", "url", feed.Url, "error", err)
 		feed.ErrorCount++
-		if feed.ErrorCount > 10 {
+		feed.LastSyncSuccess = false
+		if feed.ErrorCount > 3 {
 			feed.Active = false
 			log.Errorw("deactivating feed due to repeated errors", "url", feed.Url)
 		}
 		if updateErr := s.repo.Update(feed); updateErr != nil {
 			log.Warnw("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
 		}
-		return 0, err
+		return 0, 0, err
 	}
 
 	feed.ErrorCount = 0
-	feed.Retrieved = time.Now()
-	if err := s.repo.Update(feed); err != nil {
-		log.Warnw("failed to persist feed metadata", "url", feed.Url, "error", err)
-	}
+	feed.LastSyncSuccess = true
 
-	imported := 0
 	for _, recipe := range recipes {
 		url := ""
 		if recipe.IsBasedOn != nil {
@@ -220,5 +195,10 @@ func (s *FeedService) processFeed(ctx context.Context, feed *domain.Feed) (int, 
 			log.Infow("imported new recipe", "name", name)
 		}
 	}
-	return imported, nil
+
+	if err := s.repo.Update(feed); err != nil {
+		log.Warnw("failed to persist feed metadata", "url", feed.Url, "error", err)
+	}
+
+	return len(recipes), imported, nil
 }

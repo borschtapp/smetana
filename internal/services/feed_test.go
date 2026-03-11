@@ -3,7 +3,6 @@ package services_test
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -23,7 +22,7 @@ func newTestFeedService(
 	recipeSvc *stubRecipeService,
 	scraper *stubScraperService,
 ) domain.FeedService {
-	return services.NewFeedService(context.Background(), feedRepo, pubRepo, recipeRepo, recipeSvc, scraper)
+	return services.NewFeedService(feedRepo, pubRepo, recipeRepo, recipeSvc, scraper)
 }
 
 func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
@@ -98,66 +97,11 @@ func TestFeedService_Stream_OverrideLookupFailure_ReturnsOriginalResults(t *test
 	assert.Equal(t, globalID, got[0].ID, "original recipe must be returned when override lookup fails")
 }
 
-func TestFeedService_FetchUpdates_ProcessesAllActiveFeeds(t *testing.T) {
-	feed1 := domain.Feed{ID: uuid.New(), Active: true, Url: "https://feed1.example.com"}
-	feed2 := domain.Feed{ID: uuid.New(), Active: true, Url: "https://feed2.example.com"}
-	var mu sync.Mutex
-	processedURLs := make(map[string]bool)
-
-	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) {
-			return []domain.Feed{feed1, feed2}, nil
-		},
-		updateFn: func(f *domain.Feed) error {
-			mu.Lock()
-			processedURLs[f.Url] = true
-			mu.Unlock()
-			return nil
-		},
-	}
-	scraper := &stubScraperService{
-		scrapeFeedFn: func(url string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
-			return []*domain.Recipe{}, nil // no new recipes, but scrape succeeded
-		},
-	}
-
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
-	err := svc.FetchUpdates(context.Background())
-
-	require.NoError(t, err)
-	assert.True(t, processedURLs["https://feed1.example.com"], "feed1 must have been processed")
-	assert.True(t, processedURLs["https://feed2.example.com"], "feed2 must have been processed")
-}
-
-func TestFeedService_FetchUpdates_NoActiveFeeds_Succeeds(t *testing.T) {
-	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return nil, nil },
-	}
-
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, &stubScraperService{})
-	err := svc.FetchUpdates(context.Background())
-
-	require.NoError(t, err)
-}
-
-func TestFeedService_FetchUpdates_ListError_PropagatesError(t *testing.T) {
-	dbErr := errors.New("connection refused")
-	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return nil, dbErr },
-	}
-
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, &stubScraperService{})
-	err := svc.FetchUpdates(context.Background())
-
-	require.ErrorIs(t, err, dbErr)
-}
-
-func TestFeedService_ProcessFeed_ScrapeError_IncrementsErrorCount(t *testing.T) {
-	feed := domain.Feed{ID: uuid.New(), Active: true, ErrorCount: 3, Url: "https://bad.feed"}
+func TestFeedService_FetchFeed_ScrapeError_IncrementsErrorCount(t *testing.T) {
+	feed := domain.Feed{ID: uuid.New(), Active: true, ErrorCount: 2, Url: "https://bad.feed"}
 	var updatedFeed *domain.Feed
 
 	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return []domain.Feed{feed}, nil },
 		updateFn: func(f *domain.Feed) error {
 			updatedFeed = f
 			return nil
@@ -170,21 +114,21 @@ func TestFeedService_ProcessFeed_ScrapeError_IncrementsErrorCount(t *testing.T) 
 	}
 
 	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
-	_ = svc.FetchUpdates(context.Background())
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
+	require.Error(t, err)
 	require.NotNil(t, updatedFeed)
-	assert.Equal(t, 4, updatedFeed.ErrorCount, "error count must increment on scrape failure")
+	assert.Equal(t, 3, updatedFeed.ErrorCount, "error count must increment on scrape failure")
 	assert.True(t, updatedFeed.Active, "feed must remain active below threshold")
 }
 
-func TestFeedService_ProcessFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing.T) {
-	// After 10 consecutive errors the feed must be deactivated.
-	feed := domain.Feed{ID: uuid.New(), Active: true, ErrorCount: 10, Url: "https://dead.feed"}
+func TestFeedService_FetchFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing.T) {
+	// After 3 consecutive errors the feed must be deactivated.
+	feed := domain.Feed{ID: uuid.New(), Active: true, ErrorCount: 3, Url: "https://dead.feed"}
 	var updatedFeed *domain.Feed
 
 	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return []domain.Feed{feed}, nil },
-		updateFn:     func(f *domain.Feed) error { updatedFeed = f; return nil },
+		updateFn: func(f *domain.Feed) error { updatedFeed = f; return nil },
 	}
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(_ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
@@ -193,22 +137,21 @@ func TestFeedService_ProcessFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing
 	}
 
 	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
-	_ = svc.FetchUpdates(context.Background())
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
+	require.Error(t, err)
 	require.NotNil(t, updatedFeed)
 	assert.False(t, updatedFeed.Active, "feed must be deactivated after exceeding the error threshold")
-	assert.Equal(t, 11, updatedFeed.ErrorCount)
+	assert.Equal(t, 4, updatedFeed.ErrorCount)
 }
 
-func TestFeedService_ProcessFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
-	existingURL := "https://recipe.example.com/borsch"
+func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{IsBasedOn: &existingURL}
+	scraped := &domain.Recipe{IsBasedOn: new("https://recipe.example.com/borsch")}
 	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return []domain.Feed{feed}, nil },
-		updateFn:     func(_ *domain.Feed) error { return nil },
+		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(_ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
@@ -230,21 +173,19 @@ func TestFeedService_ProcessFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 	}
 
 	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, recipeRepo, recipeSvc, scraper)
-	err := svc.FetchUpdates(context.Background())
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
 	assert.False(t, importCalled, "ImportRecipe must not be called for already-imported recipes")
 }
 
-func TestFeedService_ProcessFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
+func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 	feedID := uuid.New()
-	newURL := "https://recipe.example.com/new"
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{IsBasedOn: &newURL}
+	scraped := &domain.Recipe{IsBasedOn: new("https://recipe.example.com/new")}
 	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return []domain.Feed{feed}, nil },
-		updateFn:     func(_ *domain.Feed) error { return nil },
+		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(_ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
@@ -267,22 +208,21 @@ func TestFeedService_ProcessFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T)
 	}
 
 	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, recipeRepo, recipeSvc, scraper)
-	err := svc.FetchUpdates(context.Background())
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
 	require.NotNil(t, importedRecipe)
 	assert.Equal(t, feedID, *importedRecipe.FeedID, "imported recipe must be linked to the source feed")
 }
 
-func TestFeedService_ProcessFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
+func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 	// Recipes without IsBasedOn (no URL) cannot be deduplicated and must be
 	// skipped to avoid importing the same recipe repeatedly.
 	feed := domain.Feed{ID: uuid.New(), Active: true, Url: "https://good.feed"}
 	noURLRecipe := &domain.Recipe{IsBasedOn: nil}
 
 	feedRepo := &stubFeedRepo{
-		listActiveFn: func() ([]domain.Feed, error) { return []domain.Feed{feed}, nil },
-		updateFn:     func(_ *domain.Feed) error { return nil },
+		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(_ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
@@ -298,7 +238,8 @@ func TestFeedService_ProcessFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 	}
 
 	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, recipeSvc, scraper)
-	_ = svc.FetchUpdates(context.Background())
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
+	require.NoError(t, err)
 	assert.False(t, importCalled, "recipe without URL must be skipped")
 }

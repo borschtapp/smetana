@@ -73,8 +73,7 @@ func TestRecipeService_ByID_HouseholdRecipe_SameHouseholdCanRead(t *testing.T) {
 }
 
 func TestRecipeService_ByID_HouseholdRecipe_OtherHouseholdForbidden(t *testing.T) {
-	ownerHID := uuid.New()
-	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &ownerHID}
+	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
@@ -288,8 +287,7 @@ func TestRecipeService_Delete_GlobalRecipe_Forbidden(t *testing.T) {
 }
 
 func TestRecipeService_Delete_DifferentHousehold_Forbidden(t *testing.T) {
-	ownerHID := uuid.New()
-	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &ownerHID}
+	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
@@ -333,13 +331,11 @@ func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
 	// A cloned recipe (ParentID set) shares images with the global original —
 	// deleting should NOT delete storage files.
 	hid := uuid.New()
-	parentID := uuid.New()
-	imgPath := storage.Path("recipe/abc/shared.jpg")
 	recipe := &domain.Recipe{
 		ID:          uuid.New(),
 		HouseholdID: &hid,
-		ParentID:    &parentID, // clone: do not delete shared images
-		Images:      []*domain.RecipeImage{{DownloadUrl: &imgPath}},
+		ParentID:    new(uuid.New()), // clone: do not delete shared images
+		Images:      []*domain.RecipeImage{{DownloadUrl: new(storage.Path("recipe/abc/shared.jpg"))}},
 	}
 
 	deleteImageCalled := false

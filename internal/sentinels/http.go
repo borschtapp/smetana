@@ -40,6 +40,10 @@ func Forbidden(m string) *Error {
 	return &Error{Status: fiber.StatusForbidden, Message: m}
 }
 
+func Unprocessable(m string) *Error {
+	return &Error{Status: fiber.StatusUnprocessableEntity, Message: m}
+}
+
 func Unauthorized(m string) *Error {
 	return &Error{Status: fiber.StatusUnauthorized, Message: m}
 }

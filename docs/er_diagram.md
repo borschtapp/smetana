@@ -181,14 +181,26 @@ erDiagram
 
     Feed {
         uuid ID PK
+        bool Active
         uuid PublisherID FK
         string Url
         string Name
-        time Retrieved
         int ErrorCount
-        bool Active
+        time LastSyncAt
+        bool LastSyncSuccess
         time Updated
         time Created
+    }
+
+    SchedulerLog {
+        uuid ID PK
+        string JobType
+        uuid EntityID FK
+        time StartedAt
+        time CompletedAt
+        string Status
+        string ErrorMessage
+        string Metadata
     }
 
     MealPlan {

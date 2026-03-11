@@ -2,6 +2,9 @@ package routes
 
 import (
 	"context"
+	"fmt"
+
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
@@ -10,12 +13,15 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/handlers/api"
+	"borscht.app/smetana/internal/jobs"
 	"borscht.app/smetana/internal/middlewares"
 	"borscht.app/smetana/internal/repositories"
+	"borscht.app/smetana/internal/scheduler"
 	"borscht.app/smetana/internal/services"
+	"borscht.app/smetana/internal/utils"
 )
 
-func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService domain.ImageService, db *gorm.DB) domain.FeedService {
+func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService domain.ImageService, db *gorm.DB) error {
 	// Repositories
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
@@ -24,6 +30,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService
 	unitRepo := repositories.NewUnitRepository(db)
 	feedRepo := repositories.NewFeedRepository(db)
 	householdRepo := repositories.NewHouseholdRepository(db)
+	schedulerRepo := repositories.NewSchedulerRepository(db)
 	collectionRepo := repositories.NewCollectionRepository(db)
 	mealPlanRepo := repositories.NewMealPlanRepository(db)
 	shoppingListRepo := repositories.NewShoppingListRepository(db)
@@ -33,8 +40,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	scraperService := services.NewScraperService()
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)
-	feedService := services.NewFeedService(appCtx, feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
-
+	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
 	userService := services.NewUserService(userRepo)
 	authService := services.NewAuthService(userRepo)
 	oidcService, err := services.NewOIDCService(userRepo)
@@ -132,5 +138,24 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService
 	feedsGroup.Get("/", feedHandler.ListSubscriptions)
 	feedsGroup.Get("/stream", feedHandler.ListStream)
 
-	return feedService
+	// Scheduler for background jobs
+	sched, err := scheduler.New()
+	if err != nil {
+		return fmt.Errorf("failed to initialize scheduler: %w", err)
+	}
+
+	fetchInterval := utils.GetenvDuration("FETCH_INTERVAL", 24*time.Hour)
+	if err := sched.Register(jobs.NewFeedFetchJob(feedService, feedRepo, schedulerRepo), fetchInterval); err != nil {
+		return fmt.Errorf("failed to register feed fetch job: %w", err)
+	}
+
+	sched.Start()
+	go func() {
+		<-appCtx.Done()
+		if err := sched.Shutdown(); err != nil {
+			log.Errorw("scheduler shutdown error", "error", err)
+		}
+	}()
+
+	return nil
 }

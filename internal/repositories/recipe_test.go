@@ -147,14 +147,12 @@ func TestRecipeRepository_ByParentIDsAndHousehold_ReturnsMatchingOverrides(t *te
 
 func TestRecipeRepository_ByParentIDsAndHousehold_OtherHousehold_ReturnsEmpty(t *testing.T) {
 	db := openTestDB(t)
-	hid := seedHousehold(t, db)
-
 	globalID, _ := uuid.NewV7()
 	global := &domain.Recipe{ID: globalID}
 	seedRecipe(t, db, global)
 
 	cloneID, _ := uuid.NewV7()
-	clone := &domain.Recipe{ID: cloneID, ParentID: &globalID, HouseholdID: &hid}
+	clone := &domain.Recipe{ID: cloneID, ParentID: &globalID, HouseholdID: new(seedHousehold(t, db))}
 	seedRecipe(t, db, clone)
 
 	repo := repositories.NewRecipeRepository(db)

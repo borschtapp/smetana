@@ -190,3 +190,23 @@ func (s *stubRecipeService) ImportRecipe(ctx context.Context, r *domain.Recipe) 
 }
 
 func ptr[T any](v T) *T { return &v }
+
+type stubSchedulerRepo struct {
+	domain.SchedulerRepository
+	createLogFn func(*domain.SchedulerLog) error
+	updateLogFn func(*domain.SchedulerLog) error
+}
+
+func (s *stubSchedulerRepo) CreateLog(log *domain.SchedulerLog) error {
+	if s.createLogFn != nil {
+		return s.createLogFn(log)
+	}
+	return nil
+}
+
+func (s *stubSchedulerRepo) UpdateLog(log *domain.SchedulerLog) error {
+	if s.updateLogFn != nil {
+		return s.updateLogFn(log)
+	}
+	return nil
+}

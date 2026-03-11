@@ -105,7 +105,7 @@ func (r *FeedRepository) Create(feed *domain.Feed) error {
 
 func (r *FeedRepository) Update(feed *domain.Feed) error {
 	// Explicitly select mutable columns so that zero-value fields like are persisted correctly
-	return r.db.Model(feed).Select("active", "error_count", "retrieved", "name").Updates(feed).Error
+	return r.db.Model(feed).Select("active", "error_count", "last_sync_at", "last_sync_success", "name").Updates(feed).Error
 }
 
 func (r *FeedRepository) Delete(id uuid.UUID) error {

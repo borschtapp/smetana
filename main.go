@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
@@ -102,28 +101,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	feedService := routes.RegisterApiRoutes(ctx, apiGroup, imageService, db)
-
-	fetchInterval := utils.GetenvDuration("FETCH_INTERVAL", 24*time.Hour)
-	go func() {
-		ticker := time.NewTicker(fetchInterval)
-		defer ticker.Stop()
-
-		if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-			log.Warnw("feed update failed", "error", err)
-		}
-
-		for {
-			select {
-			case <-ticker.C:
-				if err := feedService.FetchUpdates(ctx); err != nil && ctx.Err() == nil {
-					log.Warnw("feed update failed", "error", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	if err := routes.RegisterApiRoutes(ctx, apiGroup, imageService, db); err != nil {
+		log.Fatalw("failed to register api routes", "error", err)
+	}
 
 	app.Get("/_health", handlers.HealthCheck)
 	app.Get("/*", swaggo.New())
