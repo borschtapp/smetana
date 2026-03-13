@@ -1,13 +1,11 @@
 package api
 
 import (
-	"borscht.app/smetana/internal/tokens"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CollectionHandler struct {
@@ -119,9 +117,9 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [get]
 func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -158,9 +156,9 @@ type UpdateCollectionForm struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [patch]
 func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
+		return err
 	}
 
 	var form UpdateCollectionForm
@@ -209,9 +207,9 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id}/recipes [get]
 func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
+		return err
 	}
 
 	claims, err := tokens.ParseJwtClaims(c)
@@ -251,14 +249,9 @@ func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id}/recipes/{recipeId} [post]
 func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, recipeID, err := types.UuidParams(c, "id", "recipeId")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
-	}
-
-	recipeID, err := uuid.Parse(c.Params("recipeId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -286,14 +279,9 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id}/recipes/{recipeId} [delete]
 func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, recipeID, err := types.UuidParams(c, "id", "recipeId")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
-	}
-
-	recipeID, err := uuid.Parse(c.Params("recipeId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -322,9 +310,9 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/collections/{id} [delete]
 func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid collection id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

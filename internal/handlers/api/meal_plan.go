@@ -150,9 +150,9 @@ type UpdateMealPlanForm struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [patch]
 func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid meal plan id")
+		return err
 	}
 
 	var form UpdateMealPlanForm
@@ -210,9 +210,9 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/mealplan/{id} [delete]
 func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid meal plan id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

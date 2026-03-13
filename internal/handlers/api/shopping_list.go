@@ -18,24 +18,6 @@ func NewShoppingListHandler(service domain.ShoppingListService) *ShoppingListHan
 	return &ShoppingListHandler{service: service}
 }
 
-// listID is a helper to parse the :id path param.
-func (h *ShoppingListHandler) listID(c fiber.Ctx) (uuid.UUID, error) {
-	id, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return uuid.Nil, sentinels.BadRequest("invalid list id")
-	}
-	return id, nil
-}
-
-// itemID is a helper to parse the :itemId path param (for shopping items).
-func (h *ShoppingListHandler) itemID(c fiber.Ctx) (uuid.UUID, error) {
-	id, err := uuid.Parse(c.Params("itemId"))
-	if err != nil {
-		return uuid.Nil, sentinels.BadRequest("invalid item id")
-	}
-	return id, nil
-}
-
 // GetShoppingLists godoc
 // @Summary List all shopping lists for the household.
 // @Tags shoppinglist
@@ -91,23 +73,25 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 // @Summary List items in a shopping list.
 // @Tags shoppinglist
 // @Produce json
-// @Param listID path string true "List ID"
+// @Param id path string true "List ID"
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.ShoppingItem]
 // @Security ApiKeyAuth
-// @Router /api/v1/shoppinglists/{listID}/items [get]
+// @Router /api/v1/shoppinglists/{id}/items [get]
 func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
-	lid, err := h.listID(c)
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
 	}
+
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
 	p := types.GetPagination(c)
-	items, total, err := h.service.Items(lid, tokenData.HouseholdID, p.Offset, p.Limit)
+
+	items, total, err := h.service.Items(id, tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
@@ -120,20 +104,21 @@ func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
 // DeleteShoppingList godoc
 // @Summary Delete a shopping list.
 // @Tags shoppinglist
-// @Param listID path string true "List ID"
+// @Param id path string true "List ID"
 // @Success 204
 // @Security ApiKeyAuth
-// @Router /api/v1/shoppinglists/{listID} [delete]
+// @Router /api/v1/shoppinglists/{id} [delete]
 func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
-	lid, err := h.listID(c)
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
 	}
+
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
-	if err := h.service.DeleteList(lid, tokenData.HouseholdID); err != nil {
+	if err := h.service.DeleteList(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -150,16 +135,17 @@ type ShoppingItemForm struct {
 // @Tags shoppinglist
 // @Accept json
 // @Produce json
-// @Param listID path string true "List ID"
+// @Param id path string true "List ID"
 // @Param item body ShoppingItemForm true "Item data"
 // @Success 201 {object} domain.ShoppingItem
 // @Security ApiKeyAuth
-// @Router /api/v1/shoppinglists/{listID}/items [post]
+// @Router /api/v1/shoppinglists/{id}/items [post]
 func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
-	lid, err := h.listID(c)
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
 	}
+
 	var form ShoppingItemForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sentinels.BadRequest(err.Error())
@@ -171,8 +157,9 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
 	item := &domain.ShoppingItem{Product: form.Name, Quantity: form.Quantity, UnitID: form.UnitID}
-	if err := h.service.AddItem(item, lid, tokenData.HouseholdID); err != nil {
+	if err := h.service.AddItem(item, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(item)
@@ -189,21 +176,18 @@ type UpdateShoppingItemForm struct {
 // @Tags shoppinglist
 // @Accept json
 // @Produce json
-// @Param listID path string true "List ID"
-// @Param id path string true "Item ID"
+// @Param id path string true "List ID"
+// @Param itemId path string true "Item ID"
 // @Param item body UpdateShoppingItemForm true "Item data"
 // @Success 200 {object} domain.ShoppingItem
 // @Security ApiKeyAuth
-// @Router /api/v1/shoppinglists/{listID}/items/{id} [patch]
+// @Router /api/v1/shoppinglists/{id}/items/{itemId} [patch]
 func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
-	lid, err := h.listID(c)
+	id, itemID, err := types.UuidParams(c, "id", "itemId")
 	if err != nil {
 		return err
 	}
-	id, err := h.itemID(c)
-	if err != nil {
-		return err
-	}
+
 	var form UpdateShoppingItemForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sentinels.BadRequest(err.Error())
@@ -212,7 +196,7 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	patch := &domain.ShoppingItem{ID: id}
+	patch := &domain.ShoppingItem{ID: itemID}
 	if form.Name != nil {
 		patch.Product = *form.Name
 	}
@@ -222,7 +206,8 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	if form.IsBought != nil {
 		patch.IsBought = *form.IsBought
 	}
-	if err := h.service.UpdateItem(patch, lid, tokenData.HouseholdID); err != nil {
+
+	if err := h.service.UpdateItem(patch, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.JSON(patch)
@@ -231,17 +216,13 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 // DeleteShoppingItem godoc
 // @Summary Remove a shopping list item.
 // @Tags shoppinglist
-// @Param listID path string true "List ID"
-// @Param id path string true "Item ID"
+// @Param id path string true "List ID"
+// @Param itemId path string true "Item ID"
 // @Success 204
 // @Security ApiKeyAuth
-// @Router /api/v1/shoppinglists/{listID}/items/{id} [delete]
+// @Router /api/v1/shoppinglists/{id}/items/{itemId} [delete]
 func (h *ShoppingListHandler) DeleteShoppingItem(c fiber.Ctx) error {
-	lid, err := h.listID(c)
-	if err != nil {
-		return err
-	}
-	id, err := h.itemID(c)
+	id, itemID, err := types.UuidParams(c, "id", "itemId")
 	if err != nil {
 		return err
 	}
@@ -249,7 +230,8 @@ func (h *ShoppingListHandler) DeleteShoppingItem(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.service.DeleteItem(id, lid, tokenData.HouseholdID); err != nil {
+
+	if err := h.service.DeleteItem(itemID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

@@ -1,13 +1,11 @@
 package api
 
 import (
-	"borscht.app/smetana/internal/tokens"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
+	"github.com/gofiber/fiber/v3"
 )
 
 type RecipeHandler struct {
@@ -74,9 +72,9 @@ func (h *RecipeHandler) Search(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [get]
 func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -138,9 +136,9 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [patch]
 func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -180,9 +178,9 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id} [delete]
 func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -209,9 +207,9 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/favorite [post]
 func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -238,9 +236,9 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/favorite [delete]
 func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -269,9 +267,9 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients [post]
 func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -283,7 +281,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	if err := c.Bind().Body(&ingredient); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
-	ingredient.RecipeID = recipeID
+	ingredient.RecipeID = id
 
 	if err := h.recipeService.CreateIngredient(ingredient, tokenData.HouseholdID); err != nil {
 		return err
@@ -308,14 +306,9 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [patch]
 func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, ingredientID, err := types.UuidParams(c, "id", "ingredientId")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
-	}
-
-	ingredientID, err := uuid.Parse(c.Params("ingredientId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid ingredient id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -328,7 +321,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 	ingredient.ID = ingredientID
-	ingredient.RecipeID = recipeID
+	ingredient.RecipeID = id
 
 	if err := h.recipeService.UpdateIngredient(ingredient, tokenData.HouseholdID); err != nil {
 		return err
@@ -351,14 +344,9 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/ingredients/{ingredientId} [delete]
 func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, ingredientID, err := types.UuidParams(c, "id", "ingredientId")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
-	}
-
-	ingredientID, err := uuid.Parse(c.Params("ingredientId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid ingredient id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -366,7 +354,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.DeleteIngredient(ingredientID, recipeID, tokenData.HouseholdID); err != nil {
+	if err := h.recipeService.DeleteIngredient(ingredientID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -387,9 +375,9 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions [post]
 func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -401,7 +389,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	if err := c.Bind().Body(&instruction); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
-	instruction.RecipeID = recipeID
+	instruction.RecipeID = id
 
 	if err := h.recipeService.CreateInstruction(instruction, tokenData.HouseholdID); err != nil {
 		return err
@@ -426,14 +414,9 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions/{instructionId} [patch]
 func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, instructionID, err := types.UuidParams(c, "id", "instructionId")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
-	}
-
-	instructionID, err := uuid.Parse(c.Params("instructionId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid instruction id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -446,7 +429,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 		return sentinels.BadRequest(err.Error())
 	}
 	instruction.ID = instructionID
-	instruction.RecipeID = recipeID
+	instruction.RecipeID = id
 
 	if err := h.recipeService.UpdateInstruction(instruction, tokenData.HouseholdID); err != nil {
 		return err
@@ -469,14 +452,9 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/instructions/{instructionId} [delete]
 func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
-	recipeID, err := uuid.Parse(c.Params("id"))
+	id, instructionID, err := types.UuidParams(c, "id", "instructionId")
 	if err != nil {
-		return sentinels.BadRequest("invalid recipe id")
-	}
-
-	instructionID, err := uuid.Parse(c.Params("instructionId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid instruction id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -484,7 +462,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.DeleteInstruction(instructionID, recipeID, tokenData.HouseholdID); err != nil {
+	if err := h.recipeService.DeleteInstruction(instructionID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

@@ -1,13 +1,11 @@
 package api
 
 import (
-	"borscht.app/smetana/internal/tokens"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
+	"github.com/gofiber/fiber/v3"
 )
 
 type HouseholdHandler struct {
@@ -31,9 +29,9 @@ func NewHouseholdHandler(householdService domain.HouseholdService) *HouseholdHan
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id} [get]
 func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid household id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -68,9 +66,9 @@ type UpdateHouseholdForm struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id} [patch]
 func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid household id")
+		return err
 	}
 
 	var form UpdateHouseholdForm
@@ -116,9 +114,9 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members [get]
 func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid household id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -161,9 +159,9 @@ type AddMemberForm struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members [post]
 func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid household id")
+		return err
 	}
 
 	var form AddMemberForm
@@ -204,14 +202,9 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/households/{id}/members/{userId} [delete]
 func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, targetUserID, err := types.UuidParams(c, "id", "userId")
 	if err != nil {
-		return sentinels.BadRequest("invalid household id")
-	}
-
-	targetUserID, err := uuid.Parse(c.Params("userId"))
-	if err != nil {
-		return sentinels.BadRequest("invalid user id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

@@ -1,13 +1,11 @@
 package api
 
 import (
-	"borscht.app/smetana/internal/tokens"
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
+	"github.com/gofiber/fiber/v3"
 )
 
 type FeedHandler struct {
@@ -71,9 +69,9 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds/{id} [delete]
 func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid feed id")
+		return err
 	}
 
 	claims, err := tokens.ParseJwtClaims(c)

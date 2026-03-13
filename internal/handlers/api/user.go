@@ -1,12 +1,11 @@
 package api
 
 import (
-	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
+	"borscht.app/smetana/internal/types"
+	"github.com/gofiber/fiber/v3"
 )
 
 type UserHandler struct {
@@ -30,9 +29,9 @@ func NewUserHandler(userService domain.UserService) *UserHandler {
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [get]
 func (h *UserHandler) GetUser(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid user id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -67,9 +66,9 @@ type UpdateUserForm struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [patch]
 func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid user id")
+		return err
 	}
 
 	var body UpdateUserForm
@@ -105,9 +104,9 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [delete]
 func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := types.UuidParam(c, "id")
 	if err != nil {
-		return sentinels.BadRequest("invalid user id")
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
