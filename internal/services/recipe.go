@@ -255,6 +255,13 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 		if ing.Food != nil {
 			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
 				ing.FoodID = &ing.Food.ID
+				for _, tax := range ing.Food.Taxonomies {
+					if err := s.taxonomyRepo.FindOrCreate(tax); err == nil {
+						_ = s.foodRepo.AddTaxonomy(ing.Food.ID, tax)
+					} else {
+						log.Warnw("error creating food taxonomy", "taxonomy", tax, "error", err)
+					}
+				}
 			} else {
 				log.Warnw("error creating food", "food", ing.Food, "error", err)
 				ing.Food = nil

@@ -1480,7 +1480,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update an existing meal plan entry (e.g. change date, servings, or note).",
+                "description": "Update an existing meal plan entry (e.g. change date, servings or description).",
                 "consumes": [
                     "application/json"
                 ],
@@ -2463,16 +2463,12 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/shoppinglist": {
+        "/api/v1/shoppinglists": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
-                ],
-                "description": "Returns all shopping list items for the current household.",
-                "consumes": [
-                    "*/*"
                 ],
                 "produces": [
                     "application/json"
@@ -2480,38 +2476,15 @@ const docTemplate = `{
                 "tags": [
                     "shoppinglist"
                 ],
-                "summary": "List shopping list items.",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
+                "summary": "List all shopping lists for the household.",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/types.ListResponse-domain_ShoppingList"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.ShoppingList"
+                            }
                         }
                     }
                 }
@@ -2522,7 +2495,6 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Add a new item to the household shopping list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2532,11 +2504,11 @@ const docTemplate = `{
                 "tags": [
                     "shoppinglist"
                 ],
-                "summary": "Add item to shopping list.",
+                "summary": "Create a new shopping list.",
                 "parameters": [
                     {
-                        "description": "Shopping list item data",
-                        "name": "item",
+                        "description": "List data",
+                        "name": "list",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -2550,44 +2522,25 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/domain.ShoppingList"
                         }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
                     }
                 }
             }
         },
-        "/api/v1/shoppinglist/{id}": {
+        "/api/v1/shoppinglists/{id}": {
             "delete": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Delete an item from the shopping list.",
-                "consumes": [
-                    "*/*"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "shoppinglist"
                 ],
-                "summary": "Remove shopping list item.",
+                "summary": "Delete a shopping list.",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Item ID",
+                        "description": "List ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2596,30 +2549,128 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/shoppinglists/{id}/items": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shoppinglist"
+                ],
+                "summary": "List items in a shopping list.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "List ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
+                            "$ref": "#/definitions/types.ListResponse-domain_ShoppingItem"
                         }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shoppinglist"
+                ],
+                "summary": "Add one or more items to a shopping list.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "List ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     },
-                    "403": {
-                        "description": "Forbidden",
+                    {
+                        "description": "Item data (object or array)",
+                        "name": "item",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
+                            "$ref": "#/definitions/api.ShoppingItemForm"
                         }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ShoppingItem"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/shoppinglists/{id}/items/{itemId}": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "shoppinglist"
+                ],
+                "summary": "Remove a shopping list item.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "List ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             },
@@ -2629,7 +2680,6 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update an existing item on the shopping list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2639,22 +2689,29 @@ const docTemplate = `{
                 "tags": [
                     "shoppinglist"
                 ],
-                "summary": "Update shopping list item.",
+                "summary": "Update a shopping list item.",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Item ID",
+                        "description": "List ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Shopping list item data",
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Item data",
                         "name": "item",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.UpdateShoppingListForm"
+                            "$ref": "#/definitions/api.UpdateShoppingItemForm"
                         }
                     }
                 ],
@@ -2662,31 +2719,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.ShoppingList"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
+                            "$ref": "#/definitions/domain.ShoppingItem"
                         }
                     }
                 }
@@ -3075,6 +3108,9 @@ const docTemplate = `{
                     "format": "date",
                     "example": "2024-12-25"
                 },
+                "description": {
+                    "type": "string"
+                },
                 "meal_type": {
                     "type": "string",
                     "enum": [
@@ -3083,9 +3119,6 @@ const docTemplate = `{
                         "dinner"
                     ],
                     "example": "dinner"
-                },
-                "note": {
-                    "type": "string"
                 },
                 "recipe_id": {
                     "type": "string"
@@ -3129,6 +3162,25 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ShoppingItemForm": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "example": 2
+                },
+                "food_id": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string",
+                    "example": "2 cups of milk"
+                },
+                "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
         "api.ShoppingListForm": {
             "type": "object",
             "required": [
@@ -3137,14 +3189,7 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string",
-                    "example": "Milk"
-                },
-                "quantity": {
-                    "type": "number",
-                    "example": 2
-                },
-                "unit_id": {
-                    "type": "string"
+                    "example": "Weekly Shop"
                 }
             }
         },
@@ -3190,6 +3235,9 @@ const docTemplate = `{
                     "format": "date",
                     "example": "2024-12-26"
                 },
+                "description": {
+                    "type": "string"
+                },
                 "meal_type": {
                     "type": "string",
                     "enum": [
@@ -3198,9 +3246,6 @@ const docTemplate = `{
                         "dinner"
                     ],
                     "example": "lunch"
-                },
-                "note": {
-                    "type": "string"
                 },
                 "recipe_id": {
                     "type": "string"
@@ -3212,9 +3257,13 @@ const docTemplate = `{
                 }
             }
         },
-        "api.UpdateShoppingListForm": {
+        "api.UpdateShoppingItemForm": {
             "type": "object",
             "properties": {
+                "amount": {
+                    "type": "number",
+                    "example": 1
+                },
                 "is_bought": {
                     "type": "boolean",
                     "example": true
@@ -3222,10 +3271,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Organic Milk"
-                },
-                "quantity": {
-                    "type": "number",
-                    "example": 1
                 }
             }
         },
@@ -3309,6 +3354,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "last_sync_at": {
+                    "type": "string"
+                },
+                "last_sync_success": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3320,10 +3371,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.Recipe"
                     }
-                },
-                "retrieved": {
-                    "description": "last successful retrieval time",
-                    "type": "string"
                 },
                 "total_recipes": {
                     "type": "integer"
@@ -3352,6 +3399,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "slug": {
                     "type": "string"
                 },
                 "taxonomies": {
@@ -3403,6 +3453,9 @@ const docTemplate = `{
                 "date": {
                     "type": "string"
                 },
+                "description": {
+                    "type": "string"
+                },
                 "household_id": {
                     "type": "string"
                 },
@@ -3411,9 +3464,6 @@ const docTemplate = `{
                 },
                 "meal_type": {
                     "description": "breakfast, lunch, dinner",
-                    "type": "string"
-                },
-                "note": {
                     "type": "string"
                 },
                 "recipe": {
@@ -3683,7 +3733,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amount": {
+                    "description": "nil when unquantified (e.g. \"to taste\", \"a pinch of\")",
                     "type": "number"
+                },
+                "category": {
+                    "description": "Category groups ingredients into named sections within a recipe (e.g. \"For the sauce\", \"For the dough\").",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description holds preparation notes extracted from the ingredient string (e.g. \"finely diced\", \"at room temperature\").",
+                    "type": "string"
                 },
                 "food": {
                     "$ref": "#/definitions/domain.Food"
@@ -3694,15 +3753,16 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "kind": {
-                    "description": "\"main\", \"secondary\", \"essential\"",
-                    "type": "string"
+                "maxAmount": {
+                    "description": "upper bound for range quantities (e.g. \"1–2 cups\")",
+                    "type": "number"
                 },
-                "note": {
+                "name": {
+                    "description": "Name is the ingredient name as written in this recipe (e.g. \"carrots\", \"all-purpose flour\").\nMay differ from Food.Name, which holds the deduplicated canonical form (e.g. \"carrot\").",
                     "type": "string"
                 },
                 "raw_text": {
-                    "description": "original unparsed value",
+                    "description": "RawText is the original unparsed ingredient string from the source (e.g. \"2 large carrots, diced\").",
                     "type": "string"
                 },
                 "unit": {
@@ -3746,6 +3806,39 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.ShoppingItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "food": {
+                    "$ref": "#/definitions/domain.Food"
+                },
+                "food_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_bought": {
+                    "type": "boolean"
+                },
+                "shopping_list_id": {
+                    "type": "string"
+                },
+                "text": {
+                    "description": "raw user input",
+                    "type": "string"
+                },
+                "unit": {
+                    "$ref": "#/definitions/domain.Unit"
+                },
+                "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.ShoppingList": {
             "type": "object",
             "properties": {
@@ -3755,19 +3848,16 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "is_bought": {
+                "is_default": {
                     "type": "boolean"
                 },
-                "product": {
-                    "type": "string"
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ShoppingItem"
+                    }
                 },
-                "quantity": {
-                    "type": "number"
-                },
-                "unit": {
-                    "$ref": "#/definitions/domain.Unit"
-                },
-                "unit_id": {
+                "name": {
                     "type": "string"
                 }
             }
@@ -3828,6 +3918,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "slug": {
                     "type": "string"
                 },
                 "taxonomies": {
@@ -4005,13 +4098,13 @@ const docTemplate = `{
                 }
             }
         },
-        "types.ListResponse-domain_ShoppingList": {
+        "types.ListResponse-domain_ShoppingItem": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.ShoppingList"
+                        "$ref": "#/definitions/domain.ShoppingItem"
                     }
                 },
                 "meta": {

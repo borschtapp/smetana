@@ -96,7 +96,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService
 	mealPlanGroup.Patch("/:id", mealPlanHandler.UpdateMealPlan)
 	mealPlanGroup.Delete("/:id", mealPlanHandler.DeleteMealPlan)
 
-	shoppingListService := services.NewShoppingListService(shoppingListRepo)
+	shoppingListService := services.NewShoppingListService(shoppingListRepo, foodRepo, unitRepo)
 	shoppingListHandler := api.NewShoppingListHandler(shoppingListService)
 	shoppingListGroup := router.Group("/shoppinglists", middlewares.Protected())
 	shoppingListGroup.Get("/", shoppingListHandler.GetShoppingLists)

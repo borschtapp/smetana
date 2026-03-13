@@ -50,14 +50,14 @@ func (r *ShoppingListRepository) DeleteList(id uuid.UUID) error {
 
 func (r *ShoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, error) {
 	var item domain.ShoppingItem
-	if err := r.db.Preload("Unit").First(&item, id).Error; err != nil {
+	if err := r.db.Preload("Unit").Preload("Food").First(&item, id).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	return &item, nil
 }
 
 func (r *ShoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
-	query := r.db.Preload("Unit").Where("shopping_list_id = ?", listID)
+	query := r.db.Preload("Unit").Preload("Food").Where("shopping_list_id = ?", listID)
 
 	var total int64
 	if err := query.Model(&domain.ShoppingItem{}).Count(&total).Error; err != nil {
@@ -71,18 +71,23 @@ func (r *ShoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) 
 	return items, total, nil
 }
 
-func (r *ShoppingListRepository) CreateItem(item *domain.ShoppingItem) error {
-	if err := r.db.Create(item).Error; err != nil {
+func (r *ShoppingListRepository) CreateItems(items []*domain.ShoppingItem) error {
+	if err := r.db.Create(&items).Error; err != nil {
 		return err
 	}
-	if item.UnitID != nil {
-		return r.db.Preload("Unit").First(item, item.ID).Error
+
+	for _, item := range items {
+		if item.UnitID != nil || item.FoodID != nil {
+			if err := r.db.Preload("Unit").Preload("Food").First(item, item.ID).Error; err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
 
 func (r *ShoppingListRepository) UpdateItem(item *domain.ShoppingItem) error {
-	return r.db.Model(item).Select("product", "quantity", "unit_id", "is_bought").Updates(item).Error
+	return r.db.Model(item).Select("amount", "text", "is_bought", "unit_id", "food_id").Updates(item).Error
 }
 
 func (r *ShoppingListRepository) DeleteItem(id uuid.UUID) error {

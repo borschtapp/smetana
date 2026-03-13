@@ -3,17 +3,22 @@ package services
 import (
 	"errors"
 
+	"github.com/borschtapp/kapusta"
+	"github.com/google/uuid"
+
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
-	"github.com/google/uuid"
+	"borscht.app/smetana/internal/utils"
 )
 
 type ShoppingListService struct {
-	repo domain.ShoppingListRepository
+	repo     domain.ShoppingListRepository
+	foodRepo domain.FoodRepository
+	unitRepo domain.UnitRepository
 }
 
-func NewShoppingListService(repo domain.ShoppingListRepository) domain.ShoppingListService {
-	return &ShoppingListService{repo: repo}
+func NewShoppingListService(repo domain.ShoppingListRepository, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository) domain.ShoppingListService {
+	return &ShoppingListService{repo: repo, foodRepo: foodRepo, unitRepo: unitRepo}
 }
 
 // ensureOwned fetches a list by ID and verifies household ownership.
@@ -65,12 +70,83 @@ func (s *ShoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, off
 	return s.repo.ListItems(listID, offset, limit)
 }
 
-func (s *ShoppingListService) AddItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *ShoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return err
 	}
-	item.ShoppingListID = listID
-	return s.repo.CreateItem(item)
+
+	existingItems, _, err := s.repo.ListItems(listID, 0, -1)
+	if err != nil {
+		return err
+	}
+
+	byFood := make(map[uuid.UUID]*domain.ShoppingItem, len(existingItems))
+	for i := range existingItems {
+		if existingItems[i].FoodID != nil {
+			byFood[*existingItems[i].FoodID] = &existingItems[i]
+		}
+	}
+
+	var toCreate []*domain.ShoppingItem
+	for _, item := range items {
+		item.ShoppingListID = listID
+		if item.FoodID == nil && item.Text != "" {
+			s.parseItemText(item)
+		}
+
+		if item.FoodID != nil {
+			if match, ok := byFood[*item.FoodID]; ok {
+				if match.IsBought {
+					// Restore a previously bought item: uncheck and replace amount.
+					match.IsBought = false
+					match.Amount = item.Amount
+				} else if item.Amount != nil {
+					// Accumulate into an existing unbought item.
+					if match.Amount != nil {
+						match.Amount = new(*match.Amount + *item.Amount)
+					} else {
+						match.Amount = item.Amount
+					}
+				}
+				if err := s.repo.UpdateItem(match); err != nil {
+					return err
+				}
+				*item = *match
+				continue
+			}
+		}
+		toCreate = append(toCreate, item)
+	}
+
+	if len(toCreate) == 0 {
+		return nil
+	}
+	return s.repo.CreateItems(toCreate)
+}
+
+// parseItemText uses kapusta to extract amount, food, and unit from raw text.
+func (s *ShoppingListService) parseItemText(item *domain.ShoppingItem) {
+	parsed, err := kapusta.ParseIngredient(item.Text, "")
+	if err != nil || parsed == nil {
+		return
+	}
+	if parsed.Amount != 0 && item.Amount == nil {
+		item.Amount = &parsed.Amount
+	}
+	if parsed.Name != "" {
+		food := &domain.Food{Name: parsed.Name, Slug: utils.CreateTag(parsed.Name)}
+		if err := s.foodRepo.FindOrCreate(food); err == nil {
+			item.FoodID = &food.ID
+			item.Food = food
+		}
+	}
+	if parsed.Unit != "" {
+		unit := &domain.Unit{Name: parsed.Unit, Slug: utils.CreateTag(parsed.UnitCode)}
+		if err := s.unitRepo.FindOrCreate(unit); err == nil {
+			item.UnitID = &unit.ID
+			item.Unit = unit
+		}
+	}
 }
 
 func (s *ShoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {

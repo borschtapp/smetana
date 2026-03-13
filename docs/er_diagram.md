@@ -122,9 +122,10 @@ erDiagram
         uuid FoodID FK
         uuid UnitID FK
         float Amount
+        float MaxAmount
+        string Description
+        string Category
         string RawText
-        string Kind
-        string Note
         time Updated
         time Created
     }
@@ -156,6 +157,7 @@ erDiagram
     Unit {
         uuid ID PK
         string Name
+        string Code
         time Created
     }
 
@@ -210,7 +212,7 @@ erDiagram
         string MealType
         uuid RecipeID FK
         int Servings
-        string Note
+        string Description
         time Updated
         time Created
     }
@@ -218,9 +220,10 @@ erDiagram
     ShoppingList {
         uuid ID PK
         uuid HouseholdID FK
-        string Product
+        float Amount
+        string Text
         uuid UnitID FK
-        float Quantity
+        uuid FoodID FK
         bool IsBought
         time Updated
         time Created
@@ -270,4 +273,5 @@ erDiagram
 
     MealPlan }|..o| Recipe : "plans"
     ShoppingList }|..o| Unit : "measures in"
+    ShoppingList }|..o| Food : "is type of"
 ```

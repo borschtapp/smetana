@@ -14,7 +14,7 @@ type MealPlan struct {
 	MealType    string     `json:"meal_type"` // breakfast, lunch, dinner
 	RecipeID    *uuid.UUID `gorm:"type:char(36)" json:"recipe_id,omitempty"`
 	Servings    *int       `json:"servings,omitempty"`
-	Note        *string    `json:"note,omitempty"`
+	Description *string    `json:"description,omitempty"`
 	Updated     time.Time  `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time  `gorm:"autoCreateTime" json:"-"`
 

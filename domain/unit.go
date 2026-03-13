@@ -9,6 +9,7 @@ import (
 
 type Unit struct {
 	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	Slug    string    `gorm:"uniqueIndex:idx_unit_slug,sort:desc" json:"slug"`
 	Name    string    `gorm:"uniqueIndex:idx_unit_name,sort:desc" json:"name"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 

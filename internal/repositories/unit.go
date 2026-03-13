@@ -17,7 +17,13 @@ func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 }
 
 func (r *UnitRepository) FindOrCreate(unit *domain.Unit) error {
-	if err := r.db.First(&unit, "lower(name) = lower(?)", unit.Name).Error; err == nil {
+	if unit.Slug != "" {
+		if err := r.db.First(unit, "slug = ?", unit.Slug).Error; err == nil {
+			return nil
+		}
+	}
+
+	if err := r.db.First(unit, "lower(name) = lower(?)", unit.Name).Error; err == nil {
 		return nil
 	}
 

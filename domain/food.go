@@ -9,6 +9,7 @@ import (
 
 type Food struct {
 	ID            uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
+	Slug          string     `gorm:"uniqueIndex:idx_food_slug,sort:desc" json:"slug"`
 	Name          string     `gorm:"uniqueIndex:idx_food_name,sort:desc" json:"name"`
 	Icon          *string    `json:"icon,omitempty"`
 	DefaultUnitID *uuid.UUID `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
@@ -34,6 +35,7 @@ func (f *Food) BeforeCreate(_ *gorm.DB) error {
 
 type FoodRepository interface {
 	FindOrCreate(food *Food) error
+	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 }
 
 type FoodService interface {

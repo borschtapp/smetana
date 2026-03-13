@@ -31,15 +31,17 @@ func (s *ShoppingList) BeforeCreate(_ *gorm.DB) error {
 type ShoppingItem struct {
 	ID             uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	ShoppingListID uuid.UUID  `gorm:"type:char(36);index" json:"shopping_list_id"`
-	Product        string     `json:"product"`
-	Quantity       *float64   `json:"quantity,omitempty"`
+	Amount         *float64   `json:"amount,omitempty"`
+	Text           string     `json:"text"` // raw user input
 	UnitID         *uuid.UUID `gorm:"type:char(36);index" json:"unit_id,omitempty"`
+	FoodID         *uuid.UUID `gorm:"type:char(36);index" json:"food_id,omitempty"`
 	IsBought       bool       `gorm:"default:false" json:"is_bought"`
 	Updated        time.Time  `gorm:"autoUpdateTime" json:"-"`
 	Created        time.Time  `gorm:"autoCreateTime" json:"-"`
 
 	ShoppingList *ShoppingList `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Unit         *Unit         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"unit,omitempty"`
+	Food         *Food         `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"food,omitempty"`
 }
 
 func (s *ShoppingItem) BeforeCreate(_ *gorm.DB) error {
@@ -60,7 +62,7 @@ type ShoppingListRepository interface {
 
 	ListItems(listID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
 	ItemByID(id uuid.UUID) (*ShoppingItem, error)
-	CreateItem(item *ShoppingItem) error
+	CreateItems(items []*ShoppingItem) error
 	UpdateItem(item *ShoppingItem) error
 	DeleteItem(id uuid.UUID) error
 }
@@ -72,7 +74,7 @@ type ShoppingListService interface {
 	DeleteList(listID uuid.UUID, householdID uuid.UUID) error
 
 	Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
-	AddItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
+	AddItems(items []*ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
 	UpdateItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
 	DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error
 }

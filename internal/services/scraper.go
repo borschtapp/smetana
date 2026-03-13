@@ -60,19 +60,25 @@ func (s *ScraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 	if ingredient.Food != nil {
 		return // structured fields already set during conversion
 	}
+
 	parsed, err := kapusta.ParseIngredient(ingredient.RawText, language)
 	if err != nil || parsed == nil {
 		return
 	}
-	ingredient.Amount = &parsed.Quantity
-	if len(parsed.Annotation) != 0 {
-		ingredient.Note = &parsed.Annotation
-	}
-	if len(parsed.Ingredient) != 0 {
-		ingredient.Food = &domain.Food{Name: parsed.Ingredient}
+
+	ingredient.Amount = &parsed.Amount
+	if parsed.MaxAmount != 0 {
+		ingredient.MaxAmount = &parsed.MaxAmount
 	}
 	if len(parsed.Unit) != 0 {
-		ingredient.Unit = &domain.Unit{Name: parsed.Unit}
+		ingredient.Unit = &domain.Unit{Name: parsed.Unit, Slug: utils.CreateTag(parsed.UnitCode)}
+	}
+	if len(parsed.Name) != 0 {
+		ingredient.Name = parsed.Name
+		ingredient.Food = &domain.Food{Name: parsed.Name, Slug: utils.CreateTag(parsed.Name)}
+	}
+	if len(parsed.Description) != 0 {
+		ingredient.Description = &parsed.Description
 	}
 }
 
@@ -249,19 +255,26 @@ func (s *ScraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 			ing.Unit = &domain.Unit{Name: item.UnitText}
 		}
 		if item.Name != "" {
-			ing.Food = &domain.Food{Name: item.Name}
+			ing.Name = item.Name
+			ing.Food = &domain.Food{Name: item.Name, Slug: utils.CreateTag(item.Name)}
 		}
 	} else if item.UnitText != "" {
-		// Partially: unit and name are known, quantity is not.
+		// Partially: unit and name are known, amount is not.
 		ing.RawText = item.UnitText + " " + item.Name
 		ing.Unit = &domain.Unit{Name: item.UnitText}
 		if item.Name != "" {
-			ing.Food = &domain.Food{Name: item.Name}
+			ing.Name = item.Name
+			ing.Food = &domain.Food{Name: item.Name, Slug: utils.CreateTag(item.Name)}
 		}
 	} else {
 		// Unstructured: Name holds the full ingredient string (e.g. "2 cups flour").
 		ing.RawText = item.Name
 	}
+
+	if item.Pantry && ing.Food != nil {
+		ing.Food.Taxonomies = []*domain.Taxonomy{{Type: "group", Label: "Pantry", Slug: "pantry"}}
+	}
+
 	return ing
 }
 

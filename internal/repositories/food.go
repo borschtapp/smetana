@@ -17,6 +17,12 @@ func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
 }
 
 func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
+	if food.Slug != "" {
+		if err := r.db.First(food, "slug = ?", food.Slug).Error; err == nil {
+			return nil
+		}
+	}
+
 	if err := r.db.First(&food, "lower(name) = lower(?)", food.Name).Error; err == nil {
 		return nil
 	}
@@ -30,4 +36,8 @@ func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
 	}
 
 	return nil
+}
+
+func (r *FoodRepository) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
+	return r.db.Model(&domain.Food{ID: foodID}).Association("Taxonomies").Append(taxonomy)
 }

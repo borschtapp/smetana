@@ -125,18 +125,19 @@ func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
 }
 
 type ShoppingItemForm struct {
-	Name     string     `validate:"required" json:"name" example:"Milk"`
-	Quantity *float64   `validate:"omitempty,gt=0" json:"quantity" example:"2"`
-	UnitID   *uuid.UUID `json:"unit_id"`
+	Text   string     `validate:"required_without=FoodID" json:"text" example:"2 cups of milk"`
+	Amount *float64   `validate:"omitempty,gt=0" json:"amount" example:"2"`
+	FoodID *uuid.UUID `json:"food_id"`
+	UnitID *uuid.UUID `json:"unit_id"`
 }
 
 // AddShoppingItem godoc
-// @Summary Add item to a shopping list.
+// @Summary Add one or more items to a shopping list.
 // @Tags shoppinglist
 // @Accept json
 // @Produce json
 // @Param id path string true "List ID"
-// @Param item body ShoppingItemForm true "Item data"
+// @Param item body ShoppingItemForm true "Item data (object or array)"
 // @Success 201 {object} domain.ShoppingItem
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items [post]
@@ -146,28 +147,47 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 		return err
 	}
 
-	var form ShoppingItemForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
-	}
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
 
-	item := &domain.ShoppingItem{Product: form.Name, Quantity: form.Quantity, UnitID: form.UnitID}
-	if err := h.service.AddItem(item, id, tokenData.HouseholdID); err != nil {
+	body := c.Body()
+	isArray := len(body) > 0 && body[0] == '['
+
+	var forms []ShoppingItemForm
+	if isArray {
+		if err := c.Bind().Body(&forms); err != nil {
+			return sentinels.BadRequest(err.Error())
+		}
+	} else {
+		var form ShoppingItemForm
+		if err := c.Bind().Body(&form); err != nil {
+			return sentinels.BadRequest(err.Error())
+		}
+		forms = []ShoppingItemForm{form}
+	}
+
+	items := make([]*domain.ShoppingItem, len(forms))
+	for i, form := range forms {
+		if err := validate.Struct(form); err != nil {
+			return sentinels.BadRequestVal(err)
+		}
+		items[i] = &domain.ShoppingItem{Text: form.Text, Amount: form.Amount, FoodID: form.FoodID, UnitID: form.UnitID}
+	}
+
+	if err := h.service.AddItems(items, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
-	return c.Status(fiber.StatusCreated).JSON(item)
+	if isArray {
+		return c.Status(fiber.StatusCreated).JSON(items)
+	}
+	return c.Status(fiber.StatusCreated).JSON(items[0])
 }
 
 type UpdateShoppingItemForm struct {
 	Name     *string  `json:"name" example:"Organic Milk"`
-	Quantity *float64 `validate:"omitempty,gt=0" json:"quantity" example:"1"`
+	Amount   *float64 `validate:"omitempty,gt=0" json:"amount" example:"1"`
 	IsBought *bool    `json:"is_bought" example:"true"`
 }
 
@@ -198,10 +218,10 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	}
 	patch := &domain.ShoppingItem{ID: itemID}
 	if form.Name != nil {
-		patch.Product = *form.Name
+		patch.Text = *form.Name
 	}
-	if form.Quantity != nil {
-		patch.Quantity = form.Quantity
+	if form.Amount != nil {
+		patch.Amount = form.Amount
 	}
 	if form.IsBought != nil {
 		patch.IsBought = *form.IsBought

@@ -76,11 +76,11 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 }
 
 type MealPlanForm struct {
-	Date     string     `validate:"required,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-25"`
-	MealType string     `validate:"required,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"dinner"`
-	RecipeID *uuid.UUID `json:"recipe_id"`
-	Servings *int       `validate:"omitempty,min=1" json:"servings" example:"4"`
-	Note     *string    `json:"note"`
+	Date        string     `validate:"required,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-25"`
+	MealType    string     `validate:"required,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"dinner"`
+	RecipeID    *uuid.UUID `json:"recipe_id"`
+	Servings    *int       `validate:"omitempty,min=1" json:"servings" example:"4"`
+	Description *string    `json:"description"`
 }
 
 // CreateMealPlan godoc
@@ -112,11 +112,11 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 
 	date, _ := time.Parse(dateFmt, form.Date)
 	mealPlan := &domain.MealPlan{
-		Date:     date,
-		MealType: form.MealType,
-		RecipeID: form.RecipeID,
-		Servings: form.Servings,
-		Note:     form.Note,
+		Date:        date,
+		MealType:    form.MealType,
+		RecipeID:    form.RecipeID,
+		Servings:    form.Servings,
+		Description: form.Description,
 	}
 
 	if err := h.mealPlanService.Create(mealPlan, tokenData.HouseholdID); err != nil {
@@ -127,16 +127,16 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 }
 
 type UpdateMealPlanForm struct {
-	Date     *string    `validate:"omitempty,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-26"`
-	MealType *string    `validate:"omitempty,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"lunch"`
-	RecipeID *uuid.UUID `json:"recipe_id"`
-	Servings *int       `validate:"omitempty,min=1" json:"servings" example:"2"`
-	Note     *string    `json:"note"`
+	Date        *string    `validate:"omitempty,datetime=2006-01-02" json:"date" swaggertype:"string" format:"date" example:"2024-12-26"`
+	MealType    *string    `validate:"omitempty,oneof=breakfast lunch dinner" json:"meal_type" enums:"breakfast,lunch,dinner" example:"lunch"`
+	RecipeID    *uuid.UUID `json:"recipe_id"`
+	Servings    *int       `validate:"omitempty,min=1" json:"servings" example:"2"`
+	Description *string    `json:"description"`
 }
 
 // UpdateMealPlan godoc
 // @Summary Reschedule a meal.
-// @Description Update an existing meal plan entry (e.g. change date, servings, or note).
+// @Description Update an existing meal plan entry (e.g. change date, servings or description).
 // @Tags mealplan
 // @Accept json
 // @Produce json
@@ -184,8 +184,8 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	if form.Servings != nil {
 		mealPlan.Servings = form.Servings
 	}
-	if form.Note != nil {
-		mealPlan.Note = form.Note
+	if form.Description != nil {
+		mealPlan.Description = form.Description
 	}
 
 	if err := h.mealPlanService.Update(mealPlan, tokenData.HouseholdID); err != nil {
