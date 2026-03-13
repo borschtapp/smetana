@@ -301,6 +301,7 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	s.processRecipeImages(ctx, recipe)
 	s.processInstructionImages(ctx, recipe)
+	s.processFoodIcons(ctx, recipe)
 	return recipe, nil
 }
 
@@ -374,5 +375,34 @@ func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *do
 
 	if err := g.Wait(); err != nil {
 		log.Warnw("instruction image processing completed with errors", "error", err)
+	}
+}
+
+func (s *RecipeService) processFoodIcons(ctx context.Context, recipe *domain.Recipe) {
+	var g errgroup.Group
+	g.SetLimit(s.fetchConcurrency)
+
+	for _, ingredient := range recipe.Ingredients {
+		food := ingredient.Food
+		if food == nil || food.RemoteIcon == nil || food.Icon != nil {
+			continue // skip if no icon URL, or food already has one
+		}
+		g.Go(func() error {
+			remoteUrl := *food.RemoteIcon
+			basePath := "food/" + food.ID.String()
+			if info, err := s.imageService.DownloadAndSaveImage(ctx, remoteUrl, basePath); err != nil {
+				return fmt.Errorf("failed to download food icon from url %s: %w", remoteUrl, err)
+			} else {
+				food.Icon = &info.Path
+				if err := s.foodRepo.Update(food); err != nil {
+					return fmt.Errorf("failed to update food icon: %w", err)
+				}
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		log.Warnw("food icon processing completed with errors", "error", err)
 	}
 }

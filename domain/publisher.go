@@ -15,7 +15,7 @@ import (
 
 type Publisher struct {
 	ID          uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	Name        string        `gorm:"uniqueIndex:idx_publisher_name,sort:desc" json:"name,omitempty"`
+	Name        string        `json:"name,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Url         string        `gorm:"uniqueIndex:idx_publisher_url,sort:desc" json:"url,omitempty"`
 	Image       *storage.Path `json:"image,omitempty"`

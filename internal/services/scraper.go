@@ -274,6 +274,9 @@ func (s *ScraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 	if item.Pantry && ing.Food != nil {
 		ing.Food.Taxonomies = []*domain.Taxonomy{{Type: "group", Label: "Pantry", Slug: "pantry"}}
 	}
+	if item.Image != "" && ing.Food != nil {
+		ing.Food.RemoteIcon = &item.Image
+	}
 
 	return ing
 }
