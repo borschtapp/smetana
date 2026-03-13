@@ -1,10 +1,11 @@
 package services
 
 import (
-	"github.com/google/uuid"
+	"errors"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"github.com/google/uuid"
 )
 
 type ShoppingListService struct {
@@ -15,44 +16,88 @@ func NewShoppingListService(repo domain.ShoppingListRepository) domain.ShoppingL
 	return &ShoppingListService{repo: repo}
 }
 
-func (s *ShoppingListService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
-	item, err := s.repo.ByID(id)
+// ensureOwned fetches a list by ID and verifies household ownership.
+func (s *ShoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+	list, err := s.repo.ByID(listID)
 	if err != nil {
 		return nil, err
 	}
-	if item.HouseholdID != householdID {
+	if list.HouseholdID != householdID {
 		return nil, sentinels.ErrForbidden
 	}
-	return item, nil
+	return list, nil
 }
 
-func (s *ShoppingListService) List(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
-	return s.repo.List(householdID, offset, limit)
+func (s *ShoppingListService) Lists(householdID uuid.UUID) ([]domain.ShoppingList, error) {
+	return s.repo.ListByHousehold(householdID)
 }
 
-func (s *ShoppingListService) Create(item *domain.ShoppingList, householdID uuid.UUID) error {
-	item.HouseholdID = householdID
-	return s.repo.Create(item)
+func (s *ShoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+	return s.ensureOwned(listID, householdID)
 }
 
-func (s *ShoppingListService) Update(item *domain.ShoppingList, householdID uuid.UUID) error {
-	existing, err := s.repo.ByID(item.ID)
+func (s *ShoppingListService) CreateList(list *domain.ShoppingList, householdID uuid.UUID) error {
+	defaultList, err := s.repo.DefaultForHousehold(householdID)
+	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
+		return err
+	}
+
+	list.HouseholdID = householdID
+	list.IsDefault = defaultList == nil // first list for the household becomes the default
+	return s.repo.CreateList(list)
+}
+
+func (s *ShoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID) error {
+	list, err := s.ensureOwned(listID, householdID)
 	if err != nil {
 		return err
 	}
-	if existing.HouseholdID != householdID {
-		return sentinels.ErrForbidden
+	if list.IsDefault {
+		return sentinels.Unprocessable("cannot delete the default shopping list")
 	}
-	return s.repo.Update(item)
+	return s.repo.DeleteList(listID)
 }
 
-func (s *ShoppingListService) Delete(id uuid.UUID, householdID uuid.UUID) error {
-	item, err := s.repo.ByID(id)
+func (s *ShoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
+	if _, err := s.ensureOwned(listID, householdID); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.ListItems(listID, offset, limit)
+}
+
+func (s *ShoppingListService) AddItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ensureOwned(listID, householdID); err != nil {
+		return err
+	}
+	item.ShoppingListID = listID
+	return s.repo.CreateItem(item)
+}
+
+func (s *ShoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ensureOwned(listID, householdID); err != nil {
+		return err
+	}
+	// Confirm the item actually belongs to the given list (prevents cross-list item hijacking).
+	existing, err := s.repo.ItemByID(item.ID)
 	if err != nil {
 		return err
 	}
-	if item.HouseholdID != householdID {
+	if existing.ShoppingListID != listID {
 		return sentinels.ErrForbidden
 	}
-	return s.repo.Delete(id)
+	return s.repo.UpdateItem(item)
+}
+
+func (s *ShoppingListService) DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error {
+	if _, err := s.ensureOwned(listID, householdID); err != nil {
+		return err
+	}
+	existing, err := s.repo.ItemByID(itemID)
+	if err != nil {
+		return err
+	}
+	if existing.ShoppingListID != listID {
+		return sentinels.ErrForbidden
+	}
+	return s.repo.DeleteItem(itemID)
 }

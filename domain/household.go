@@ -13,10 +13,10 @@ type Household struct {
 	Updated time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
-	Members      []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
-	Feeds        []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
-	Collections  []*Collection   `gorm:"foreignKey:HouseholdID" json:"collections,omitempty"`
-	ShoppingList []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
+	Members       []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
+	Feeds         []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
+	Collections   []*Collection   `gorm:"foreignKey:HouseholdID" json:"collections,omitempty"`
+	ShoppingLists []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
 }
 
 func (h *Household) BeforeCreate(_ *gorm.DB) error {

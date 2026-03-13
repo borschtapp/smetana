@@ -34,6 +34,7 @@ func Migrate(db *gorm.DB) error {
 		&domain.MealPlan{},
 		&domain.Collection{},
 		&domain.ShoppingList{},
+		&domain.ShoppingItem{},
 		&domain.Feed{},
 		&domain.SchedulerLog{},
 	)
