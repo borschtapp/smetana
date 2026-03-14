@@ -2,15 +2,13 @@ package domain
 
 import (
 	"context"
-	"strings"
 	"time"
 
+	"borscht.app/smetana/internal/storage"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/internal/storage"
 	"borscht.app/smetana/internal/types"
-	"borscht.app/smetana/internal/utils"
 )
 
 type Publisher struct {
@@ -18,12 +16,14 @@ type Publisher struct {
 	Name        string        `json:"name,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Url         string        `gorm:"uniqueIndex:idx_publisher_url,sort:desc" json:"url,omitempty"`
-	Image       *storage.Path `json:"image,omitempty"`
+	ImagePath   *storage.Path `json:"image_url,omitempty"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	RemoteImage *string `json:"-" gorm:"-"`
+	// Transient: remote image URL from import, not persisted.
+	RemoteImage *string `gorm:"-" json:"-"`
 
 	TotalRecipes *int64    `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Images       []*Image  `gorm:"polymorphic:Entity;" json:"images,omitempty"`
 	Recipes      []*Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Feeds        []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
@@ -35,10 +35,6 @@ func (p *Publisher) BeforeCreate(_ *gorm.DB) error {
 		return err
 	}
 	return nil
-}
-
-func (p *Publisher) FilePath() string {
-	return "publisher/" + strings.ReplaceAll(utils.CreateTag(p.Name), " ", "_")
 }
 
 type PublisherRepository interface {

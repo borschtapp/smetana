@@ -4,12 +4,10 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"path/filepath"
 	"slices"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
-	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -50,15 +48,18 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 		return sentinels.BadRequest("Failed to open file")
 	}
 	defer func(src multipart.File) {
-		err := src.Close()
-		if err != nil {
+		if err := src.Close(); err != nil {
 			log.Warnw("failed to close uploaded file", "error", err)
 		}
 	}(src)
 
-	data, err := io.ReadAll(src)
+	const maxBytes = 8 << 20
+	data, err := io.ReadAll(io.LimitReader(src, maxBytes+1))
 	if err != nil {
 		return sentinels.BadRequest("Failed to read file")
+	}
+	if len(data) > maxBytes {
+		return sentinels.BadRequest("file too large (max 8 MB)")
 	}
 
 	contentType := http.DetectContentType(data)
@@ -66,16 +67,7 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 		return sentinels.BadRequest("Only image files are allowed (jpeg, png, webp, gif)")
 	}
 
-	// Generate random filename
-	filenameUuid, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-
-	ext := filepath.Ext(file.Filename)
-	path := "uploads/" + filenameUuid.String() + ext
-
-	uploaded, err := h.imageService.SaveImageData(path, data, contentType)
+	uploaded, err := h.imageService.PersistUploaded(c.Context(), data, contentType)
 	if err != nil {
 		return sentinels.InternalServerError("Failed to save image: " + err.Error())
 	}

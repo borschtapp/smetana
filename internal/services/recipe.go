@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
@@ -163,12 +164,13 @@ func (s *RecipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	return s.repo.Delete(id)
 }
 
-func (s *RecipeService) deleteImages(images []*domain.RecipeImage) {
-	for _, img := range images {
-		if img.DownloadUrl != nil {
-			if err := s.imageService.DeleteImage(*img.DownloadUrl); err != nil {
-				log.Warnw("failed to delete image file", "path", *img.DownloadUrl, "error", err)
-			}
+func (s *RecipeService) deleteImages(images []*domain.Image) {
+	for _, image := range images {
+		if image.ID == uuid.Nil {
+			continue
+		}
+		if err := s.imageService.Delete(image.ID); err != nil {
+			log.Warnw("failed to delete image", "image_id", image.ID, "error", err)
 		}
 	}
 }
@@ -310,44 +312,81 @@ func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.
 		return
 	}
 
-	for _, image := range recipe.Images {
-		image.RecipeID = recipe.ID
-	}
-
-	if err := s.repo.CreateImages(recipe.Images); err != nil {
-		log.Warnw("failed to save images", "error", err)
-		return
-	}
+	var (
+		mu      sync.Mutex
+		results []*domain.Image
+	)
 
 	var g errgroup.Group
 	g.SetLimit(s.fetchConcurrency)
 
 	for _, image := range recipe.Images {
+		if image.SourceURL == "" {
+			continue
+		}
 		g.Go(func() error {
-			basePath := "recipe/" + image.RecipeID.String() + "/" + image.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(ctx, image.RemoteUrl, basePath); err != nil {
-				return fmt.Errorf("failed to download image from url %s: %w", image.RemoteUrl, err)
-			} else {
-				image.DownloadUrl = &info.Path
-				image.Width = info.Width
-				image.Height = info.Height
+			image.EntityType = "recipes"
+			image.EntityID = recipe.ID
+
+			if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
+				return fmt.Errorf("failed to download recipe image %s: %w", image.SourceURL, err)
 			}
+
+			mu.Lock()
+			results = append(results, image)
+			mu.Unlock()
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warnw("image processing completed with errors", "error", err)
+		log.Warnw("recipe image processing completed with errors", "error", err)
 	}
 
-	for _, img := range recipe.Images {
-		if img.DownloadUrl != nil {
-			err := s.repo.UpdateImage(img)
-			if err != nil {
-				log.Warnw("failed to update image", "image_id", img.ID, "error", err)
-			}
+	best := selectBestImage(results)
+	if best == nil {
+		return
+	}
+
+	if err := s.imageService.SetDefault(best); err != nil {
+		log.Warnw("failed to set default recipe image", "error", err)
+		return
+	}
+
+	recipe.ImagePath = best.Path
+}
+
+// selectBestImage picks the most suitable thumbnail from a set of downloaded images.
+// Preference: largest image whose longest side is ≤ 1000 px (avoids oversized originals).
+func selectBestImage(images []*domain.Image) *domain.Image {
+	const maxPreferredDim = 1000
+
+	var (
+		best        *domain.Image
+		bestDim     int
+		fallback    *domain.Image
+		fallbackDim int
+	)
+
+	for _, image := range images {
+		if image == nil || image.Path == nil {
+			continue
+		}
+		dim := max(image.Width, image.Height)
+		if dim <= maxPreferredDim && dim > bestDim {
+			best = image
+			bestDim = dim
+		}
+		if dim > fallbackDim {
+			fallback = image
+			fallbackDim = dim
 		}
 	}
+
+	if best != nil {
+		return best
+	}
+	return fallback
 }
 
 func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
@@ -355,20 +394,26 @@ func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *do
 	g.SetLimit(s.fetchConcurrency)
 
 	for _, instruction := range recipe.Instructions {
-		if instruction.Image == nil || *instruction.Image == "" {
+		if instruction.RemoteImage == nil || *instruction.RemoteImage == "" {
 			continue
 		}
 		g.Go(func() error {
-			remoteUrl := *instruction.Image
-			basePath := "recipe/" + recipe.ID.String() + "/instruction/" + instruction.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(ctx, remoteUrl, basePath); err != nil {
-				return fmt.Errorf("failed to download instruction from url %s: %w", remoteUrl, err)
-			} else {
-				instruction.DownloadUrl = &info.Path
-				if err := s.repo.UpdateInstruction(instruction); err != nil {
-					return fmt.Errorf("failed to update instruction: %w", err)
-				}
+			image := &domain.Image{
+				EntityType: "recipe_instructions",
+				EntityID:   instruction.ID,
+				SourceURL:  *instruction.RemoteImage,
 			}
+
+			// Group instruction images under recipes/{recipeID}/ alongside recipe images.
+			if err := s.imageService.PersistRemote(ctx, image, "recipes/"+recipe.ID.String()); err != nil {
+				return fmt.Errorf("failed to download instruction image %v: %w", instruction.RemoteImage, err)
+			}
+
+			if err := s.imageService.SetDefault(image); err != nil {
+				return fmt.Errorf("failed to set instruction image default: %w", err)
+			}
+
+			instruction.ImagePath = image.Path
 			return nil
 		})
 	}
@@ -384,20 +429,25 @@ func (s *RecipeService) processFoodIcons(ctx context.Context, recipe *domain.Rec
 
 	for _, ingredient := range recipe.Ingredients {
 		food := ingredient.Food
-		if food == nil || food.RemoteIcon == nil || food.Icon != nil {
-			continue // skip if no icon URL, or food already has one
+		if food == nil || food.RemoteImage == nil || food.ImagePath != nil {
+			continue // skip if no remote icon, or food already has a local image
 		}
 		g.Go(func() error {
-			remoteUrl := *food.RemoteIcon
-			basePath := "food/" + food.ID.String()
-			if info, err := s.imageService.DownloadAndSaveImage(ctx, remoteUrl, basePath); err != nil {
-				return fmt.Errorf("failed to download food icon from url %s: %w", remoteUrl, err)
-			} else {
-				food.Icon = &info.Path
-				if err := s.foodRepo.Update(food); err != nil {
-					return fmt.Errorf("failed to update food icon: %w", err)
-				}
+			image := &domain.Image{
+				EntityType: "food",
+				EntityID:   food.ID,
+				SourceURL:  *food.RemoteImage,
 			}
+
+			if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
+				return fmt.Errorf("failed to download food icon %s: %w", *food.RemoteImage, err)
+			}
+
+			if err := s.imageService.SetDefault(image); err != nil {
+				return fmt.Errorf("failed to set food icon default: %w", err)
+			}
+
+			food.ImagePath = image.Path
 			return nil
 		})
 	}

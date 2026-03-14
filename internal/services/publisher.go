@@ -23,15 +23,30 @@ func (s *PublisherService) Search(opts types.SearchOptions) ([]domain.Publisher,
 }
 
 func (s *PublisherService) FindOrCreate(ctx context.Context, pub *domain.Publisher) error {
-	// Download and store publisher image before persisting
-	if pub.RemoteImage != nil && len(*pub.RemoteImage) != 0 {
-		path := pub.FilePath()
-		if storedImage, err := s.imageService.DownloadAndSaveImage(ctx, *pub.RemoteImage, path); err != nil {
-			log.Warnw("unable to download publisher image, skipping", "publisher", pub, "url", *pub.RemoteImage, "error", err)
-		} else {
-			pub.Image = &storedImage.Path
-		}
+	if err := s.repo.FindOrCreate(pub); err != nil {
+		return err
 	}
 
-	return s.repo.FindOrCreate(pub)
+	if pub.RemoteImage == nil || *pub.RemoteImage == "" {
+		return nil
+	}
+
+	image := &domain.Image{
+		EntityType: "publishers",
+		EntityID:   pub.ID,
+		SourceURL:  *pub.RemoteImage,
+	}
+
+	if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
+		log.Warnw("unable to download publisher image, skipping", "publisher_id", pub.ID, "url", *pub.RemoteImage, "error", err)
+		return nil
+	}
+
+	if err := s.imageService.SetDefault(image); err != nil {
+		log.Warnw("unable to set publisher default image", "publisher_id", pub.ID, "error", err)
+		return nil
+	}
+
+	pub.ImagePath = image.Path
+	return nil
 }

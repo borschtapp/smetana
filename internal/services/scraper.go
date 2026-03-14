@@ -208,9 +208,9 @@ func (s *ScraperService) kripToAuthor(person *krip.Person) *domain.Author {
 	}
 }
 
-func (s *ScraperService) kripToImage(image *krip.ImageObject) *domain.RecipeImage {
-	return &domain.RecipeImage{
-		RemoteUrl: image.Url,
+func (s *ScraperService) kripToImage(image *krip.ImageObject) *domain.Image {
+	return &domain.Image{
+		SourceURL: image.Url,
 		Width:     image.Width,
 		Height:    image.Height,
 		Caption:   image.Caption,
@@ -229,10 +229,10 @@ func (s *ScraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeI
 		ins.Url = &item.Url
 	}
 	if len(item.Image) != 0 {
-		ins.Image = &item.Image
+		ins.RemoteImage = &item.Image
 	}
 	if len(item.Video) != 0 {
-		ins.Video = &item.Video
+		ins.VideoUrl = &item.Video
 	}
 	return ins
 }
@@ -275,7 +275,7 @@ func (s *ScraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 		ing.Food.Taxonomies = []*domain.Taxonomy{{Type: "group", Label: "Pantry", Slug: "pantry"}}
 	}
 	if item.Image != "" && ing.Food != nil {
-		ing.Food.RemoteIcon = &item.Image
+		ing.Food.RemoteImage = &item.Image
 	}
 
 	return ing

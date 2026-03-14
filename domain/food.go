@@ -3,24 +3,25 @@ package domain
 import (
 	"time"
 
+	"borscht.app/smetana/internal/storage"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-
-	"borscht.app/smetana/internal/storage"
 )
 
 type Food struct {
 	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	Slug          string        `gorm:"uniqueIndex:idx_food_slug,sort:desc" json:"slug"`
 	Name          string        `json:"name"`
-	Icon          *storage.Path `json:"icon,omitempty"`
+	ImagePath     *storage.Path `json:"image_url,omitempty"`
 	DefaultUnitID *uuid.UUID    `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
 	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created       time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	RemoteIcon *string `gorm:"-" json:"-"` // transient: remote icon URL from import, not persisted
+	// Transient: remote image URL from import, not persisted.
+	RemoteImage *string `gorm:"-" json:"-"`
 
 	DefaultUnit *Unit       `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
+	Images      []*Image    `gorm:"polymorphic:Entity;" json:"images,omitempty"`
 	Taxonomies  []*Taxonomy `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
 }
 

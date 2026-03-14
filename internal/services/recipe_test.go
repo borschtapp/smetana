@@ -12,7 +12,6 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/services"
-	"borscht.app/smetana/internal/storage"
 )
 
 type recipeServiceDeps struct {
@@ -299,18 +298,18 @@ func TestRecipeService_Delete_DifferentHousehold_Forbidden(t *testing.T) {
 func TestRecipeService_Delete_OriginalHouseholdRecipe_DeletesImages(t *testing.T) {
 	// An original (no ParentID) household recipe must have its images deleted.
 	hid := uuid.New()
-	imgPath := storage.Path("recipe/abc/img1.jpg")
+	imgID := uuid.New()
 	recipe := &domain.Recipe{
 		ID:          uuid.New(),
 		HouseholdID: &hid,
 		ParentID:    nil, // original, not a clone
-		Images:      []*domain.RecipeImage{{DownloadUrl: &imgPath}},
+		Images:      []*domain.Image{{ID: imgID}},
 	}
 
-	deletedPaths := make([]storage.Path, 0)
+	deletedIDs := make([]uuid.UUID, 0)
 	imgService := &stubImageService{
-		deleteImageFn: func(p storage.Path) error {
-			deletedPaths = append(deletedPaths, p)
+		deleteFn: func(id uuid.UUID) error {
+			deletedIDs = append(deletedIDs, id)
 			return nil
 		},
 	}
@@ -323,8 +322,8 @@ func TestRecipeService_Delete_OriginalHouseholdRecipe_DeletesImages(t *testing.T
 	err := svc.Delete(recipe.ID, hid)
 
 	require.NoError(t, err)
-	require.Len(t, deletedPaths, 1)
-	assert.Equal(t, imgPath, deletedPaths[0])
+	require.Len(t, deletedIDs, 1)
+	assert.Equal(t, imgID, deletedIDs[0])
 }
 
 func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
@@ -335,12 +334,12 @@ func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
 		ID:          uuid.New(),
 		HouseholdID: &hid,
 		ParentID:    new(uuid.New()), // clone: do not delete shared images
-		Images:      []*domain.RecipeImage{{DownloadUrl: new(storage.Path("recipe/abc/shared.jpg"))}},
+		Images:      []*domain.Image{{ID: uuid.New()}},
 	}
 
 	deleteImageCalled := false
 	imgService := &stubImageService{
-		deleteImageFn: func(_ storage.Path) error {
+		deleteFn: func(_ uuid.UUID) error {
 			deleteImageCalled = true
 			return nil
 		},
@@ -375,8 +374,7 @@ func TestRecipeService_ImportRecipe_ResolvesFood(t *testing.T) {
 		},
 	}
 	repo := &stubRecipeRepo{
-		importFn:       func(_ *domain.Recipe) error { return nil },
-		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
+		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
@@ -404,8 +402,7 @@ func TestRecipeService_ImportRecipe_ResolvesUnit(t *testing.T) {
 		},
 	}
 	repo := &stubRecipeRepo{
-		importFn:       func(_ *domain.Recipe) error { return nil },
-		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
+		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo, unitRepo: unitRepo})
@@ -428,8 +425,7 @@ func TestRecipeService_ImportRecipe_FoodError_NilsFood(t *testing.T) {
 		findOrCreateFn: func(_ *domain.Food) error { return errors.New("db error") },
 	}
 	repo := &stubRecipeRepo{
-		importFn:       func(_ *domain.Recipe) error { return nil },
-		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
+		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
@@ -492,8 +488,7 @@ func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 			r.ID = importedID
 			return nil
 		},
-		createImagesFn: func(_ []*domain.RecipeImage) error { return nil },
-		userSaveFn:     func(_, _, _ uuid.UUID) error { return nil },
+		userSaveFn: func(_, _, _ uuid.UUID) error { return nil },
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo, scraper: scraper})

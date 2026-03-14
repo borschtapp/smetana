@@ -25,7 +25,6 @@ import (
 	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/handlers"
 	"borscht.app/smetana/internal/routes"
-	"borscht.app/smetana/internal/services"
 	"borscht.app/smetana/internal/storage"
 	"borscht.app/smetana/internal/utils"
 )
@@ -91,17 +90,15 @@ func main() {
 	serverPort := utils.GetenvInt("SERVER_PORT", 3000)
 
 	storageCfg := configs.NewStorage(serverHost, serverPort)
+	storage.SetDefault(storageCfg.Storage)
 	if storageCfg.StorageRoot != "" {
 		app.Use("/uploads", static.New(storageCfg.StorageRoot))
 	}
-	storage.SetDefault(storageCfg.Storage)
-
-	imageService := services.NewImageService(storageCfg.Storage)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := routes.RegisterApiRoutes(ctx, apiGroup, imageService, db); err != nil {
+	if err := routes.RegisterApiRoutes(ctx, apiGroup, storageCfg.Storage, db); err != nil {
 		log.Fatalw("failed to register api routes", "error", err)
 	}
 

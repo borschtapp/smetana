@@ -18,6 +18,7 @@ func FiberConfig() fiber.Config {
 	// Return Fiber configuration.
 	return fiber.Config{
 		ReadTimeout: time.Second * time.Duration(readTimeoutSecondsCount),
+		BodyLimit:   8 * 1024 * 1024, // 8 MB
 
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			var se *sentinels.Error

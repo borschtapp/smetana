@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// FileStorage is the interface for persisting and retrieving binary files.
 type FileStorage interface {
 	Save(path string, content io.Reader, size int64, contentType string) error
 	Delete(path string) error

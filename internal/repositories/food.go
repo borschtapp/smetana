@@ -39,7 +39,7 @@ func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
 }
 
 func (r *FoodRepository) Update(food *domain.Food) error {
-	return r.db.Model(food).Select("name", "icon", "default_unit_id").Updates(food).Error
+	return r.db.Model(food).Select("name", "image_path", "default_unit_id").Updates(food).Error
 }
 
 func (r *FoodRepository) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {

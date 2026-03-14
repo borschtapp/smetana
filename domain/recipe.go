@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"borscht.app/smetana/internal/storage"
 	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -17,6 +18,7 @@ type Recipe struct {
 	Url         *string         `gorm:"-" json:"url,omitempty"`
 	IsBasedOn   *string         `gorm:"index" json:"is_based_on,omitempty"`
 	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
+	ImagePath   *storage.Path   `json:"image_url,omitempty"`
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
 	Language    *string         `json:"language,omitempty" example:"en"`
 	Author      *Author         `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
@@ -40,7 +42,7 @@ type Recipe struct {
 	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
 	Publisher    *Publisher           `json:"publisher,omitempty"`
 	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"feed,omitempty"`
-	Images       []*RecipeImage       `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
+	Images       []*Image             `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Ingredients  []*RecipeIngredient  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"ingredients,omitempty"`
 	Instructions []*RecipeInstruction `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"instructions,omitempty"`
 	Taxonomies   []*Taxonomy          `gorm:"many2many:recipe_taxonomies;" json:"taxonomies,omitempty"`
@@ -114,9 +116,6 @@ type RecipeRepository interface {
 
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
-
-	CreateImages(images []*RecipeImage) error
-	UpdateImage(img *RecipeImage) error
 
 	CreateIngredient(ingredient *RecipeIngredient) error
 	UpdateIngredient(ingredient *RecipeIngredient) error

@@ -11,18 +11,19 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"gorm.io/gorm"
 
-	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/handlers/api"
 	"borscht.app/smetana/internal/jobs"
 	"borscht.app/smetana/internal/middlewares"
 	"borscht.app/smetana/internal/repositories"
 	"borscht.app/smetana/internal/scheduler"
 	"borscht.app/smetana/internal/services"
+	"borscht.app/smetana/internal/storage"
 	"borscht.app/smetana/internal/utils"
 )
 
-func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService domain.ImageService, db *gorm.DB) error {
+func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage storage.FileStorage, db *gorm.DB) error {
 	// Repositories
+	imageRepo := repositories.NewImageRepository(db)
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
 	recipeRepo := repositories.NewRecipeRepository(db)
@@ -37,6 +38,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, imageService
 	taxonomyRepo := repositories.NewTaxonomyRepository(db)
 
 	// Services with business logic (need repos injected)
+	imageService := services.NewImageService(fileStorage, imageRepo)
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	scraperService := services.NewScraperService()
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)

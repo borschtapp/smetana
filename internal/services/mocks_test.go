@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/storage"
 )
 
 type stubRecipeRepo struct {
@@ -22,8 +21,6 @@ type stubRecipeRepo struct {
 	deleteFn                  func(uuid.UUID) error
 	userSaveFn                func(uuid.UUID, uuid.UUID, uuid.UUID) error
 	userUnsaveFn              func(uuid.UUID, uuid.UUID) error
-	createImagesFn            func([]*domain.RecipeImage) error
-	updateImageFn             func(*domain.RecipeImage) error
 	updateIngredientFn        func(*domain.RecipeIngredient) error
 	updateInstructionFn       func(*domain.RecipeInstruction) error
 	transactionFn             func(func(domain.RecipeRepository) error) error
@@ -44,10 +41,6 @@ func (s *stubRecipeRepo) Update(r *domain.Recipe) error          { return s.upda
 func (s *stubRecipeRepo) Delete(id uuid.UUID) error              { return s.deleteFn(id) }
 func (s *stubRecipeRepo) UserSave(rid, uid, hid uuid.UUID) error { return s.userSaveFn(rid, uid, hid) }
 func (s *stubRecipeRepo) UserUnsave(rid, uid uuid.UUID) error    { return s.userUnsaveFn(rid, uid) }
-func (s *stubRecipeRepo) CreateImages(imgs []*domain.RecipeImage) error {
-	return s.createImagesFn(imgs)
-}
-func (s *stubRecipeRepo) UpdateImage(img *domain.RecipeImage) error { return s.updateImageFn(img) }
 func (s *stubRecipeRepo) UpdateIngredient(i *domain.RecipeIngredient) error {
 	return s.updateIngredientFn(i)
 }
@@ -82,19 +75,26 @@ func (s *stubUserRepo) DeleteToken(tok string) error          { return s.deleteT
 type stubImageService struct {
 	domain.ImageService
 
-	downloadAndSaveFn func(context.Context, string, string) (*domain.UploadedImage, error)
-	deleteImageFn     func(storage.Path) error
+	persistRemoteFn func(context.Context, *domain.Image, string) error
+	deleteFn        func(uuid.UUID) error
+	setDefaultFn    func(*domain.Image) error
 }
 
-func (s *stubImageService) DownloadAndSaveImage(ctx context.Context, url, path string) (*domain.UploadedImage, error) {
-	if s.downloadAndSaveFn != nil {
-		return s.downloadAndSaveFn(ctx, url, path)
+func (s *stubImageService) PersistRemote(ctx context.Context, image *domain.Image, pathPrefix string) error {
+	if s.persistRemoteFn != nil {
+		return s.persistRemoteFn(ctx, image, pathPrefix)
 	}
-	return nil, nil
+	return nil
 }
-func (s *stubImageService) DeleteImage(p storage.Path) error {
-	if s.deleteImageFn != nil {
-		return s.deleteImageFn(p)
+func (s *stubImageService) Delete(id uuid.UUID) error {
+	if s.deleteFn != nil {
+		return s.deleteFn(id)
+	}
+	return nil
+}
+func (s *stubImageService) SetDefault(image *domain.Image) error {
+	if s.setDefaultFn != nil {
+		return s.setDefaultFn(image)
 	}
 	return nil
 }
@@ -116,11 +116,18 @@ type stubFoodRepo struct {
 	domain.FoodRepository
 
 	findOrCreateFn func(*domain.Food) error
+	updateFn       func(*domain.Food) error
 }
 
 func (s *stubFoodRepo) FindOrCreate(f *domain.Food) error {
 	if s.findOrCreateFn != nil {
 		return s.findOrCreateFn(f)
+	}
+	return nil
+}
+func (s *stubFoodRepo) Update(f *domain.Food) error {
+	if s.updateFn != nil {
+		return s.updateFn(f)
 	}
 	return nil
 }

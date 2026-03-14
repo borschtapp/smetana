@@ -3409,11 +3409,17 @@ const docTemplate = `{
                 "default_unit_id": {
                     "type": "string"
                 },
-                "icon": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
                 },
                 "name": {
                     "type": "string"
@@ -3461,6 +3467,35 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.ShoppingList"
                     }
+                }
+            }
+        },
+        "domain.Image": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer"
                 }
             }
         },
@@ -3563,8 +3598,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "image": {
+                "image_url": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
                 },
                 "name": {
                     "type": "string"
@@ -3641,10 +3682,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "image_url": {
+                    "type": "string"
+                },
                 "images": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.RecipeImage"
+                        "$ref": "#/definitions/domain.Image"
                     }
                 },
                 "ingredients": {
@@ -3729,23 +3773,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.RecipeImage": {
-            "type": "object",
-            "properties": {
-                "caption": {
-                    "type": "string"
-                },
-                "height": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "width": {
-                    "type": "integer"
-                }
-            }
-        },
         "domain.RecipeIngredient": {
             "type": "object",
             "properties": {
@@ -3796,9 +3823,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "image": {
-                    "description": "local URL of downloaded image",
+                "image_url": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
                 },
                 "order": {
                     "type": "integer"
@@ -3818,7 +3850,7 @@ const docTemplate = `{
                 "url": {
                     "type": "string"
                 },
-                "video": {
+                "video_url": {
                     "type": "string"
                 }
             }
@@ -3951,10 +3983,16 @@ const docTemplate = `{
         "domain.UploadedImage": {
             "type": "object",
             "properties": {
+                "content_type": {
+                    "type": "string"
+                },
                 "height": {
                     "type": "integer"
                 },
-                "path": {
+                "size": {
+                    "type": "integer"
+                },
+                "url": {
                     "type": "string"
                 },
                 "width": {
