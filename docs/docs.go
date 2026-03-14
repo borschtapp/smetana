@@ -1317,7 +1317,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "mealplan"
+                    "meal-plan"
                 ],
                 "summary": "List meal plan entries.",
                 "parameters": [
@@ -1381,7 +1381,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "mealplan"
+                    "meal-plan"
                 ],
                 "summary": "Schedule a meal.",
                 "parameters": [
@@ -1432,7 +1432,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "mealplan"
+                    "meal-plan"
                 ],
                 "summary": "Cancel a meal.",
                 "parameters": [
@@ -1488,7 +1488,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "mealplan"
+                    "meal-plan"
                 ],
                 "summary": "Reschedule a meal.",
                 "parameters": [
@@ -2474,17 +2474,34 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "List all shopping lists for the household.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.ShoppingList"
-                            }
+                            "$ref": "#/definitions/types.ListResponse-domain_ShoppingList"
                         }
                     }
                 }
@@ -2502,7 +2519,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "Create a new shopping list.",
                 "parameters": [
@@ -2534,7 +2551,7 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "Delete a shopping list.",
                 "parameters": [
@@ -2564,7 +2581,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "List items in a shopping list.",
                 "parameters": [
@@ -2610,7 +2627,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "Add one or more items to a shopping list.",
                 "parameters": [
@@ -2649,7 +2666,7 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "Remove a shopping list item.",
                 "parameters": [
@@ -2687,7 +2704,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "shoppinglist"
+                    "shopping-lists"
                 ],
                 "summary": "Update a shopping list item.",
                 "parameters": [
@@ -4105,6 +4122,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.ShoppingItem"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
+        "types.ListResponse-domain_ShoppingList": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ShoppingList"
                     }
                 },
                 "meta": {

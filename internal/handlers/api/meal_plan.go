@@ -27,13 +27,13 @@ func NewMealPlanHandler(mealPlanService domain.MealPlanService) *MealPlanHandler
 // GetMealPlan godoc
 // @Summary List meal plan entries.
 // @Description Returns meal plan entries for the current household. Supports date range filtering.
-// @Tags mealplan
+// @Tags meal-plan
 // @Accept */*
 // @Produce json
 // @Param from query string false "Start date (YYYY-MM-DD)"
 // @Param to query string false "End date (YYYY-MM-DD)"
 // @Param page query int false "Page number"
-// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
 // @Failure 401 {object} sentinels.Error
@@ -86,7 +86,7 @@ type MealPlanForm struct {
 // CreateMealPlan godoc
 // @Summary Schedule a meal.
 // @Description Adds a new entry to the household's meal plan.
-// @Tags mealplan
+// @Tags meal-plan
 // @Accept json
 // @Produce json
 // @Param mealplan body MealPlanForm true "Meal plan data"
@@ -137,7 +137,7 @@ type UpdateMealPlanForm struct {
 // UpdateMealPlan godoc
 // @Summary Reschedule a meal.
 // @Description Update an existing meal plan entry (e.g. change date, servings or description).
-// @Tags mealplan
+// @Tags meal-plan
 // @Accept json
 // @Produce json
 // @Param id path string true "Meal Plan ID"
@@ -198,7 +198,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 // DeleteMealPlan godoc
 // @Summary Cancel a meal.
 // @Description Remove a meal from the plan.
-// @Tags mealplan
+// @Tags meal-plan
 // @Accept */*
 // @Produce json
 // @Param id path string true "Meal Plan ID"

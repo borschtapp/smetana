@@ -11,7 +11,7 @@ type ShoppingList struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"household_id"`
 	Name        string    `json:"name"`
-	IsDefault   bool      `gorm:"default:false" json:"is_default"`
+	IsDefault   bool      `gorm:"default:false;uniqueIndex:idx_household_default,where:is_default = true" json:"is_default"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
 
@@ -55,7 +55,7 @@ func (s *ShoppingItem) BeforeCreate(_ *gorm.DB) error {
 
 type ShoppingListRepository interface {
 	ByID(id uuid.UUID) (*ShoppingList, error)
-	ListByHousehold(householdID uuid.UUID) ([]ShoppingList, error)
+	ListByHousehold(householdID uuid.UUID, offset, limit int) ([]ShoppingList, int64, error)
 	DefaultForHousehold(householdID uuid.UUID) (*ShoppingList, error) // ErrNotFound if absent
 	CreateList(list *ShoppingList) error
 	DeleteList(id uuid.UUID) error
@@ -68,7 +68,7 @@ type ShoppingListRepository interface {
 }
 
 type ShoppingListService interface {
-	Lists(householdID uuid.UUID) ([]ShoppingList, error)
+	Lists(householdID uuid.UUID, offset, limit int) ([]ShoppingList, int64, error)
 	GetList(listID uuid.UUID, householdID uuid.UUID) (*ShoppingList, error)
 	CreateList(list *ShoppingList, householdID uuid.UUID) error
 	DeleteList(listID uuid.UUID, householdID uuid.UUID) error

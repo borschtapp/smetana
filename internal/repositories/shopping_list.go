@@ -23,12 +23,19 @@ func (r *ShoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error
 	return &list, nil
 }
 
-func (r *ShoppingListRepository) ListByHousehold(householdID uuid.UUID) ([]domain.ShoppingList, error) {
-	var lists []domain.ShoppingList
-	if err := r.db.Where("household_id = ?", householdID).Find(&lists).Error; err != nil {
-		return nil, err
+func (r *ShoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
+	query := r.db.Where("household_id = ?", householdID)
+
+	var total int64
+	if err := query.Model(&domain.ShoppingList{}).Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
-	return lists, nil
+
+	var lists []domain.ShoppingList
+	if err := query.Offset(offset).Limit(limit).Find(&lists).Error; err != nil {
+		return nil, 0, err
+	}
+	return lists, total, nil
 }
 
 func (r *ShoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*domain.ShoppingList, error) {

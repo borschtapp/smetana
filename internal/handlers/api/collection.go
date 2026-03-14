@@ -26,10 +26,10 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Produce json
 // @Param q query string false "Text search"
 // @Param preload query string false "Comma-separated extras to include: recipes:5, recipes.images and total_recipes"
-// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
-// @param order query string false "Sort order: asc or desc (default: desc)"
+// @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
-// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Collection]
 // @Failure 401 {object} sentinels.Error
@@ -197,10 +197,10 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 // @Produce json
 // @Param q query string false "Text search"
 // @Param preload query string false "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved"
-// @param sort query string false "Sort by field: id, name, created, updated (default: id)"
-// @param order query string false "Sort order: asc or desc (default: desc)"
+// @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
+// @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
-// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Recipe]
 // @Failure 401 {object} sentinels.Error

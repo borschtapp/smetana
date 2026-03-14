@@ -33,8 +33,8 @@ func (s *ShoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUI
 	return list, nil
 }
 
-func (s *ShoppingListService) Lists(householdID uuid.UUID) ([]domain.ShoppingList, error) {
-	return s.repo.ListByHousehold(householdID)
+func (s *ShoppingListService) Lists(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
+	return s.repo.ListByHousehold(householdID, offset, limit)
 }
 
 func (s *ShoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {

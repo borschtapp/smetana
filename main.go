@@ -45,11 +45,11 @@ import (
 // @tag.description Recipe streams and RSS feed subscriptions.
 // @tag.name households
 // @tag.description Shared household management and member coordination.
-// @tag.name mealplan
+// @tag.name meal-plan
 // @tag.description Scheduling and planning meals.
 // @tag.name recipes
 // @tag.description Recipe search, creation, and management.
-// @tag.name shoppinglist
+// @tag.name shopping-lists
 // @tag.description Household shopping lists and inventory.
 // @tag.name user
 // @tag.description Current user profile operations.

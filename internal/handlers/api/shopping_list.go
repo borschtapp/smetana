@@ -20,9 +20,12 @@ func NewShoppingListHandler(service domain.ShoppingListService) *ShoppingListHan
 
 // GetShoppingLists godoc
 // @Summary List all shopping lists for the household.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Produce json
-// @Success 200 {object} []domain.ShoppingList
+// @Param page query int false "Page number"
+// @Param offset query int false "Offset for pagination (alternative to page)"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} types.ListResponse[domain.ShoppingList]
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists [get]
 func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
@@ -30,11 +33,19 @@ func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	lists, err := h.service.Lists(tokenData.HouseholdID)
+	p := types.GetPagination(c)
+
+	lists, total, err := h.service.Lists(tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
 		return err
 	}
-	return c.JSON(lists)
+	return c.JSON(types.ListResponse[domain.ShoppingList]{
+		Data: lists,
+		Meta: types.Meta{
+			Total: int(total),
+			Page:  p.Page,
+		},
+	})
 }
 
 type ShoppingListForm struct {
@@ -43,7 +54,7 @@ type ShoppingListForm struct {
 
 // CreateShoppingList godoc
 // @Summary Create a new shopping list.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Accept json
 // @Produce json
 // @Param list body ShoppingListForm true "List data"
@@ -62,6 +73,7 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
 	list := &domain.ShoppingList{Name: form.Name}
 	if err := h.service.CreateList(list, tokenData.HouseholdID); err != nil {
 		return err
@@ -71,7 +83,7 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 
 // GetShoppingListItems godoc
 // @Summary List items in a shopping list.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Produce json
 // @Param id path string true "List ID"
 // @Param page query int false "Page number"
@@ -97,13 +109,16 @@ func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
 	}
 	return c.JSON(types.ListResponse[domain.ShoppingItem]{
 		Data: items,
-		Meta: types.Meta{Total: int(total), Page: p.Page},
+		Meta: types.Meta{
+			Total: int(total),
+			Page:  p.Page,
+		},
 	})
 }
 
 // DeleteShoppingList godoc
 // @Summary Delete a shopping list.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Param id path string true "List ID"
 // @Success 204
 // @Security ApiKeyAuth
@@ -133,7 +148,7 @@ type ShoppingItemForm struct {
 
 // AddShoppingItem godoc
 // @Summary Add one or more items to a shopping list.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Accept json
 // @Produce json
 // @Param id path string true "List ID"
@@ -193,7 +208,7 @@ type UpdateShoppingItemForm struct {
 
 // UpdateShoppingItem godoc
 // @Summary Update a shopping list item.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Accept json
 // @Produce json
 // @Param id path string true "List ID"
@@ -235,7 +250,7 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 
 // DeleteShoppingItem godoc
 // @Summary Remove a shopping list item.
-// @Tags shoppinglist
+// @Tags shopping-lists
 // @Param id path string true "List ID"
 // @Param itemId path string true "Item ID"
 // @Success 204

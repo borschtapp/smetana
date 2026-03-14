@@ -106,7 +106,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Household ID"
 // @Param page query int false "Page number"
-// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.User]
 // @Failure 401 {object} sentinels.Error

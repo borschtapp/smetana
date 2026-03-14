@@ -23,7 +23,7 @@ func NewTaxonomyHandler(taxonomyService domain.TaxonomyService) *TaxonomyHandler
 // @Produce json
 // @Param type query string false "Filter by taxonomy type"
 // @Param page query int false "Page number"
-// @param offset query int false "Offset for pagination (alternative to page)"
+// @Param offset query int false "Offset for pagination (alternative to page)"
 // @Param limit query int false "Items per page"
 // @Success 200 {object} types.ListResponse[domain.Taxonomy]
 // @Failure 401 {object} sentinels.Error
