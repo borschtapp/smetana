@@ -47,8 +47,9 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 }
 
 type UpdateUserForm struct {
-	Name  *string `validate:"omitempty,min=2" json:"name" example:"John Doe"`
-	Email *string `validate:"omitempty,email,min=6" json:"email" format:"email" example:"john@example.com"`
+	Name            *string `validate:"omitempty,min=2" json:"name" example:"John Doe"`
+	Email           *string `validate:"omitempty,email,min=6" json:"email" format:"email" example:"john@example.com"`
+	CurrentPassword *string `validate:"required_if=Email !nil" json:"current_password" example:"password123"`
 }
 
 // UpdateUser godoc
@@ -84,7 +85,7 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email)
+	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email, body.CurrentPassword)
 	if err != nil {
 		return err
 	}

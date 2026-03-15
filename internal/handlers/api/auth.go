@@ -90,6 +90,30 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	return c.JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }
 
+// Logout godoc
+// @Summary Logout user.
+// @Description Invalidate a refresh token, ending the session.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param logout body RenewForm true "Refresh token to invalidate"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Router /api/v1/auth/logout [post]
+func (h *AuthHandler) Logout(c fiber.Ctx) error {
+	var body RenewForm
+	if err := c.Bind().Body(&body); err != nil {
+		return sentinels.BadRequest(err.Error())
+	}
+	if err := validate.Struct(body); err != nil {
+		return sentinels.BadRequestVal(err)
+	}
+	if err := h.authService.Logout(body.RefreshToken); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 type RegisterForm struct {
 	Name     string `validate:"min=2" json:"name"`
 	Email    string `validate:"required,email,min=6" json:"email"`

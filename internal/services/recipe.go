@@ -238,7 +238,7 @@ func (s *RecipeService) ImportFromURL(ctx context.Context, url string, forceUpda
 		return existing, nil
 	}
 
-	scraped, err := s.scraperService.ScrapeRecipe(url)
+	scraped, err := s.scraperService.ScrapeRecipe(ctx, url)
 	if err != nil {
 		return nil, err
 	}

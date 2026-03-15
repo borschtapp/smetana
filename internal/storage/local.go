@@ -19,8 +19,9 @@ func NewLocalStorage(root string, baseUrl string) *LocalStorage {
 	if root == "" {
 		root = "./uploads"
 	}
-	// Ensure directory exists
-	_ = os.MkdirAll(root, 0750)
+	if err := os.MkdirAll(root, 0750); err != nil {
+		log.Fatalw("failed to create upload directory", "path", root, "error", err)
+	}
 
 	return &LocalStorage{Root: root, BaseURL: baseUrl}
 }

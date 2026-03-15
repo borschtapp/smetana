@@ -1,12 +1,14 @@
 package services
 
 import (
+	"context"
 	"strings"
+	"time"
 
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/model"
 	kUtils "github.com/borschtapp/krip/utils"
+	"github.com/doyensec/safeurl"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/types"
@@ -19,8 +21,16 @@ func NewScraperService() domain.ScraperService {
 	return &ScraperService{}
 }
 
-func (s *ScraperService) ScrapeRecipe(url string) (*domain.Recipe, error) {
-	kripRecipe, err := krip.ScrapeUrl(url)
+func (s *ScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
+	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	kripRecipe, err := krip.ScrapeUrl(url, krip.ScrapeOptions{
+		RequestOptions: krip.RequestOptions{
+			Context:    scrapeCtx,
+			HttpClient: safeurl.Client(safeurl.GetConfigBuilder().Build()),
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -29,8 +39,15 @@ func (s *ScraperService) ScrapeRecipe(url string) (*domain.Recipe, error) {
 	return recipe, nil
 }
 
-func (s *ScraperService) ScrapeFeed(url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
-	scrapedFeed, err := krip.ScrapeFeedUrl(url, model.FeedOptions{
+func (s *ScraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	scrapedFeed, err := krip.ScrapeFeedUrl(url, krip.FeedOptions{
+		ScrapeOptions: krip.ScrapeOptions{RequestOptions: krip.RequestOptions{
+			Context:    scrapeCtx,
+			HttpClient: safeurl.Client(safeurl.GetConfigBuilder().Build()),
+		}},
 		Quick:               opts.Quick,
 		MinIngredients:      opts.MinIngredients,
 		RequireImage:        opts.RequireImage,
@@ -82,7 +99,7 @@ func (s *ScraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 	}
 }
 
-func (s *ScraperService) kripToRecipe(kripRecipe *model.Recipe) *domain.Recipe {
+func (s *ScraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	recipe := &domain.Recipe{}
 	recipe.IsBasedOn = &kripRecipe.Url
 	if len(kripRecipe.Name) > 0 {

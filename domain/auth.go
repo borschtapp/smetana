@@ -17,6 +17,7 @@ type AuthService interface {
 	Register(name, email, password string) (*User, error)
 	IssueTokens(user User) (*AuthTokens, error)
 	RotateRefreshToken(tokenStr string) (*User, *AuthTokens, error)
+	Logout(tokenStr string) error
 }
 
 type OIDCService interface {

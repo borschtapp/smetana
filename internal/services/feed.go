@@ -86,20 +86,20 @@ func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 		}
 
 		// Submit background task to fetch recipes
-		go func() {
-			if found, imported, err := s.FetchFeed(context.WithoutCancel(ctx), feed); err != nil {
+		go func(f *domain.Feed) {
+			if found, imported, err := s.FetchFeed(context.WithoutCancel(ctx), f); err != nil {
 				log.Errorw("background feed fetch failed", "url", url, "error", err)
 			} else if found == 0 {
 				log.Warnw("background feed fetch found no recipes", "url", url)
 
-				feed.Active = false
-				if updateErr := s.repo.Update(feed); updateErr != nil {
+				f.Active = false
+				if updateErr := s.repo.Update(f); updateErr != nil {
 					log.Warnw("failed to deactivate feed with no recipes", "url", url, "error", updateErr)
 				}
 			} else {
 				log.Infow("background feed fetched successfully", "url", url, "found", found, "imported", imported)
 			}
-		}()
+		}(new(*feed))
 	}
 
 	if err := s.repo.AddFeed(householdID, feed); err != nil {
@@ -117,7 +117,10 @@ func (s *FeedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 }
 
 func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
-	recipes, err := s.scraperService.ScrapeFeed(url, domain.FeedScrapeOptions{Quick: true})
+	scrapeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, url, domain.FeedScrapeOptions{Quick: true})
 	if err != nil {
 		return nil, fmt.Errorf("invalid feed url: %w", err)
 	}
@@ -148,7 +151,10 @@ func (s *FeedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 	imported := 0
 	feed.LastSyncAt = time.Now()
 
-	recipes, err := s.scraperService.ScrapeFeed(feed.Url, domain.FeedScrapeOptions{
+	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, feed.Url, domain.FeedScrapeOptions{
 		MinIngredients:      3,
 		RequireImage:        true,
 		RequireInstructions: true,

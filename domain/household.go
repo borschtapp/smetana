@@ -41,6 +41,6 @@ type HouseholdService interface {
 	Update(household *Household, requesterHouseholdID uuid.UUID) error
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
-	AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) (*User, error)
+	AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) error
 	RemoveMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error
 }

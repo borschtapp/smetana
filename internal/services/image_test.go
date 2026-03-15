@@ -175,12 +175,11 @@ func TestImageService_SetDefault_MarksImageAsDefault(t *testing.T) {
 
 	entityID := uuid.New()
 	imgID, _ := uuid.NewV7()
-	imgPath := storage.Path("publisher/abc/img.jpg")
 	repo.images[imgID] = &domain.Image{
 		ID:         imgID,
 		EntityType: "publishers",
 		EntityID:   entityID,
-		Path:       &imgPath,
+		Path:       new(storage.Path("publisher/abc/img.jpg")),
 	}
 
 	err := svc.SetDefault(repo.images[imgID])
@@ -195,12 +194,11 @@ func TestImageService_Delete_RemovesStorageFileAndDBRecord(t *testing.T) {
 	svc, fs, repo := newImageService(t)
 
 	imgID, _ := uuid.NewV7()
-	foodPath := storage.Path("food/abc/img.jpg")
 	repo.images[imgID] = &domain.Image{
 		ID:         imgID,
 		EntityType: "food",
 		EntityID:   uuid.New(),
-		Path:       &foodPath,
+		Path:       new(storage.Path("food/abc/img.jpg")),
 	}
 
 	require.NoError(t, svc.Delete(imgID))

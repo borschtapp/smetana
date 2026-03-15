@@ -13,12 +13,11 @@ import (
 // FiberConfig func for configuration Fiber app.
 // See: https://docs.gofiber.io/api/fiber#config
 func FiberConfig() fiber.Config {
-	readTimeoutSecondsCount := utils.GetenvInt("SERVER_READ_TIMEOUT", 60)
-
-	// Return Fiber configuration.
 	return fiber.Config{
-		ReadTimeout: time.Second * time.Duration(readTimeoutSecondsCount),
-		BodyLimit:   8 * 1024 * 1024, // 8 MB
+		ReadTimeout:  time.Second * time.Duration(utils.GetenvInt("SERVER_READ_TIMEOUT", 15)),
+		WriteTimeout: time.Second * time.Duration(utils.GetenvInt("SERVER_WRITE_TIMEOUT", 30)),
+		IdleTimeout:  time.Second * time.Duration(utils.GetenvInt("SERVER_IDLE_TIMEOUT", 120)),
+		BodyLimit:    8 * 1024 * 1024, // 8 MB
 
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			var se *sentinels.Error

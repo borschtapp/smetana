@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type FeedScrapeOptions struct {
 	Quick               bool
 	MinIngredients      int
@@ -9,6 +11,6 @@ type FeedScrapeOptions struct {
 
 // ScraperService fetches and converts external recipe data into domain objects.
 type ScraperService interface {
-	ScrapeRecipe(url string) (*Recipe, error)
-	ScrapeFeed(url string, opts FeedScrapeOptions) ([]*Recipe, error)
+	ScrapeRecipe(ctx context.Context, url string) (*Recipe, error)
+	ScrapeFeed(ctx context.Context, url string, opts FeedScrapeOptions) ([]*Recipe, error)
 }

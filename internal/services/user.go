@@ -5,6 +5,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 )
 
 type UserService struct {
@@ -23,7 +24,7 @@ func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 }
 
 // Update fetches the user, applies the non-nil patches, and persists the result.
-func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email *string) (*domain.User, error) {
+func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword *string) (*domain.User, error) {
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -31,11 +32,15 @@ func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email *s
 	if err != nil {
 		return nil, err
 	}
+	if email != nil {
+		// Email change requires password validation
+		if currentPassword == nil || !utils.ValidatePassword(user.Password, *currentPassword) {
+			return nil, sentinels.ErrUnauthorized
+		}
+		user.Email = *email
+	}
 	if name != nil {
 		user.Name = *name
-	}
-	if email != nil {
-		user.Email = *email
 	}
 	return user, s.repo.Update(user)
 }

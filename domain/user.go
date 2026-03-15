@@ -42,11 +42,11 @@ type UserRepository interface {
 
 	FindToken(tokenStr string, tokenType string) (*UserToken, error)
 	CreateToken(token *UserToken) error
-	DeleteToken(tokenStr string) error
+	DeleteToken(tokenStr string) (bool, error)
 }
 
 type UserService interface {
 	ByID(id uuid.UUID, requesterID uuid.UUID) (*User, error)
-	Update(id uuid.UUID, requesterID uuid.UUID, name, email *string) (*User, error)
+	Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword *string) (*User, error)
 	Delete(id uuid.UUID, requesterID uuid.UUID) error
 }

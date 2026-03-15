@@ -40,7 +40,7 @@ func NewUploadHandler(imageService domain.ImageService) *UploadHandler {
 func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {
-		return sentinels.BadRequest("Missing file: " + err.Error())
+		return sentinels.BadRequest("Missing file")
 	}
 
 	src, err := file.Open()
@@ -69,7 +69,8 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 
 	uploaded, err := h.imageService.PersistUploaded(c.Context(), data, contentType)
 	if err != nil {
-		return sentinels.InternalServerError("Failed to save image: " + err.Error())
+		log.Errorw("failed to save uploaded image", "error", err)
+		return sentinels.InternalServerError("Failed to save image")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(uploaded)

@@ -151,7 +151,7 @@ type AddMemberForm struct {
 // @Produce json
 // @Param id path string true "Household ID"
 // @Param member body AddMemberForm true "Member data"
-// @Success 201 {object} domain.User
+// @Success 202
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
@@ -178,12 +178,11 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	targetUser, err := h.householdService.AddMember(id, tokenData.HouseholdID, form.Email)
-	if err != nil {
+	if err := h.householdService.AddMember(id, tokenData.HouseholdID, form.Email); err != nil {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(targetUser)
+	return c.SendStatus(fiber.StatusAccepted)
 }
 
 // RemoveHouseholdMember godoc

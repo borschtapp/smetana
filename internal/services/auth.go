@@ -75,7 +75,7 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 	token := &domain.UserToken{
 		UserID:  user.ID,
 		Type:    "refresh",
-		Token:   generatedTokens.Refresh,
+		Token:   utils.HashToken(generatedTokens.Refresh),
 		Expires: time.Now().Add(expiresIn),
 	}
 
@@ -87,7 +87,7 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 
 // RotateRefreshToken validates a refresh token, invalidates it, and issues a new pair.
 func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
-	userToken, err := s.userRepo.FindToken(tokenStr, "refresh")
+	userToken, err := s.userRepo.FindToken(utils.HashToken(tokenStr), "refresh")
 	if err != nil {
 		return nil, nil, sentinels.ErrUnauthorized
 	}
@@ -99,12 +99,23 @@ func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain
 		return nil, nil, sentinels.ErrUnauthorized
 	}
 
-	if err := s.userRepo.DeleteToken(userToken.Token); err != nil {
+	deleted, err := s.userRepo.DeleteToken(userToken.Token)
+	if err != nil {
 		return nil, nil, err
 	}
+	if !deleted {
+		return nil, nil, sentinels.ErrUnauthorized
+	}
+
 	generatedTokens, err := s.IssueTokens(*user)
 	if err != nil {
 		return nil, nil, err
 	}
 	return user, generatedTokens, nil
+}
+
+// Logout invalidates the given refresh token, ending the session.
+func (s *AuthService) Logout(tokenStr string) error {
+	_, err := s.userRepo.DeleteToken(utils.HashToken(tokenStr))
+	return err
 }

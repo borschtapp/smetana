@@ -61,7 +61,7 @@ type stubUserRepo struct {
 	createFn      func(*domain.User) error
 	findTokenFn   func(string, string) (*domain.UserToken, error)
 	createTokenFn func(*domain.UserToken) error
-	deleteTokenFn func(string) error
+	deleteTokenFn func(string) (bool, error)
 }
 
 func (s *stubUserRepo) ByEmail(email string) (*domain.User, error) { return s.byEmailFn(email) }
@@ -70,7 +70,7 @@ func (s *stubUserRepo) FindToken(tok, typ string) (*domain.UserToken, error) {
 	return s.findTokenFn(tok, typ)
 }
 func (s *stubUserRepo) CreateToken(t *domain.UserToken) error { return s.createTokenFn(t) }
-func (s *stubUserRepo) DeleteToken(tok string) error          { return s.deleteTokenFn(tok) }
+func (s *stubUserRepo) DeleteToken(tok string) (bool, error)  { return s.deleteTokenFn(tok) }
 
 type stubImageService struct {
 	domain.ImageService
@@ -161,15 +161,15 @@ func (s *stubTaxonomyRepo) FindOrCreate(t *domain.Taxonomy) error {
 type stubScraperService struct {
 	domain.ScraperService
 
-	scrapeRecipeFn func(string) (*domain.Recipe, error)
-	scrapeFeedFn   func(string, domain.FeedScrapeOptions) ([]*domain.Recipe, error)
+	scrapeRecipeFn func(context.Context, string) (*domain.Recipe, error)
+	scrapeFeedFn   func(context.Context, string, domain.FeedScrapeOptions) ([]*domain.Recipe, error)
 }
 
-func (s *stubScraperService) ScrapeRecipe(url string) (*domain.Recipe, error) {
-	return s.scrapeRecipeFn(url)
+func (s *stubScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
+	return s.scrapeRecipeFn(ctx, url)
 }
-func (s *stubScraperService) ScrapeFeed(url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
-	return s.scrapeFeedFn(url, opts)
+func (s *stubScraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+	return s.scrapeFeedFn(ctx, url, opts)
 }
 
 type stubFeedRepo struct {

@@ -456,7 +456,7 @@ func TestRecipeService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 		},
 	}
 	scraper := &stubScraperService{
-		scrapeRecipeFn: func(_ string) (*domain.Recipe, error) {
+		scrapeRecipeFn: func(_ context.Context, _ string) (*domain.Recipe, error) {
 			t.Fatal("ScrapeRecipe must not be called when recipe already exists")
 			return nil, nil
 		},
@@ -478,7 +478,7 @@ func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 	importedID := uuid.New()
 
 	scraper := &stubScraperService{
-		scrapeRecipeFn: func(_ string) (*domain.Recipe, error) {
+		scrapeRecipeFn: func(_ context.Context, _ string) (*domain.Recipe, error) {
 			return &domain.Recipe{Name: &scrapedName, IsBasedOn: &testURL}, nil
 		},
 	}

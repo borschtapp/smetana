@@ -164,9 +164,14 @@ func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, 
 		return nil, "", errors.New("unable to download image: non-200 status")
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	const maxImageBytes = 20 << 20 // 20 MB
+	limited := io.LimitReader(resp.Body, maxImageBytes+1)
+	data, err := io.ReadAll(limited)
 	if err != nil {
 		return nil, "", fmt.Errorf("read response body: %w", err)
+	}
+	if int64(len(data)) > maxImageBytes {
+		return nil, "", errors.New("remote image too large (>20 MB)")
 	}
 
 	contentType := utils.DetectContentTypeFromHeader(resp.Header)

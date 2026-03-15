@@ -49,7 +49,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 
 	feed, err := h.feedService.Subscribe(c.Context(), claims.HouseholdID, req.Url)
 	if err != nil {
-		return sentinels.BadRequest(err.Error())
+		return err
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(feed)

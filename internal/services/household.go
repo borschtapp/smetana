@@ -38,22 +38,22 @@ func (s *HouseholdService) Members(householdID uuid.UUID, requesterHouseholdID u
 }
 
 // AddMember looks up the user by email and assigns them to the household.
-func (s *HouseholdService) AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) (*domain.User, error) {
+func (s *HouseholdService) AddMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetEmail string) error {
 	if householdID != requesterHouseholdID {
-		return nil, sentinels.ErrForbidden
+		return sentinels.ErrForbidden
 	}
 	target, err := s.userRepo.ByEmail(targetEmail)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if target.HouseholdID == householdID {
-		return target, nil
+		return nil
 	}
 	target.HouseholdID = householdID
 	if err := s.userRepo.Update(target); err != nil {
-		return nil, err
+		return err
 	}
-	return target, nil
+	return nil
 }
 
 // RemoveMember verifies the user belongs to the household, then moves them to a new solo household.

@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"errors"
+
 	jwtware "github.com/gofiber/contrib/v3/jwt"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/extractors"
@@ -27,7 +29,7 @@ func Protected() fiber.Handler {
 }
 
 func jwtError(c fiber.Ctx, err error) error {
-	if err.Error() == "Missing or malformed JWT" {
+	if errors.Is(err, jwtware.ErrMissingToken) {
 		return c.Status(fiber.StatusBadRequest).JSON(sentinels.BadRequest(err.Error()))
 	}
 

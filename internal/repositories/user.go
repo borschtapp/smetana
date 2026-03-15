@@ -69,6 +69,7 @@ func (r *UserRepository) CreateToken(token *domain.UserToken) error {
 	return r.db.Create(token).Error
 }
 
-func (r *UserRepository) DeleteToken(tokenStr string) error {
-	return r.db.Unscoped().Where(&domain.UserToken{Token: tokenStr}).Delete(&domain.UserToken{}).Error
+func (r *UserRepository) DeleteToken(tokenStr string) (bool, error) {
+	result := r.db.Unscoped().Where(&domain.UserToken{Token: tokenStr}).Delete(&domain.UserToken{})
+	return result.RowsAffected == 1, result.Error
 }

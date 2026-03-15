@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gofiber/fiber/v3/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -53,10 +54,16 @@ func GormConfig() (gorm.Config, gorm.Dialector) {
 		SSLMode:  utils.Getenv("DB_SSLMODE", "disable"),
 	}
 
-	config := gorm.Config{}
+	config := gorm.Config{
+		TranslateError: true,
+	}
 	if enableLogger {
 		config.Logger = logger.Default.LogMode(logger.Info)
 	}
 
-	return config, dialectRegistry[envVars.Type](envVars)
+	factory, ok := dialectRegistry[envVars.Type]
+	if !ok {
+		log.Fatalw("unsupported DB_TYPE", "type", envVars.Type, "supported", "sqlite, mysql, postgres")
+	}
+	return config, factory(envVars)
 }

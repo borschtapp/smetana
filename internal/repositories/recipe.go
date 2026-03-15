@@ -86,10 +86,7 @@ func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 	q = q.Select("recipes.*")
 
 	// preload relations
-	if len(opts.Preload) == 1 && opts.Preload[0] == "all" {
-		q = q.Preload(clause.Associations).
-			Preload("Ingredients.Food").Preload("Ingredients.Unit")
-	} else if len(opts.Preload) != 0 {
+	if len(opts.Preload) != 0 {
 		if slices.Contains(opts.Preload, "publisher") {
 			q = q.Preload("Publisher")
 		}

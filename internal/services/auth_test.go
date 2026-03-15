@@ -1,6 +1,8 @@
 package services_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -13,6 +15,11 @@ import (
 	"borscht.app/smetana/internal/services"
 	"borscht.app/smetana/internal/utils"
 )
+
+func hashToken(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
 
 func newTestAuthService(userRepo *stubUserRepo) domain.AuthService {
 	return services.NewAuthService(userRepo)
@@ -124,11 +131,12 @@ func TestAuthService_RotateRefreshToken_ValidToken_IssuesNewPair(t *testing.T) {
 	// Set up a valid non-expired token that has a User preloaded on it.
 	hid := uuid.New()
 	user := &domain.User{ID: uuid.New(), HouseholdID: hid}
-	tokenStr := "valid-refresh-token"
+	rawToken := "valid-refresh-token"
+	hashedToken := hashToken(rawToken)
 	userToken := &domain.UserToken{
 		UserID:  user.ID,
 		Type:    "refresh",
-		Token:   tokenStr,
+		Token:   hashedToken, // DB stores the hash, not the raw value
 		Expires: time.Now().Add(time.Hour),
 		User:    user,
 	}
@@ -136,18 +144,19 @@ func TestAuthService_RotateRefreshToken_ValidToken_IssuesNewPair(t *testing.T) {
 	var deletedToken string
 	repo := &stubUserRepo{
 		findTokenFn: func(tok, typ string) (*domain.UserToken, error) {
+			assert.Equal(t, hashedToken, tok, "service must hash the token before lookup")
 			assert.Equal(t, "refresh", typ)
 			return userToken, nil
 		},
-		deleteTokenFn: func(tok string) error {
+		deleteTokenFn: func(tok string) (bool, error) {
 			deletedToken = tok
-			return nil
+			return true, nil
 		},
 		createTokenFn: func(_ *domain.UserToken) error { return nil },
 	}
 
 	svc := newTestAuthService(repo)
-	returnedUser, tokens, err := svc.RotateRefreshToken(tokenStr)
+	returnedUser, tokens, err := svc.RotateRefreshToken(rawToken)
 
 	require.NoError(t, err)
 	require.NotNil(t, tokens)
@@ -155,7 +164,7 @@ func TestAuthService_RotateRefreshToken_ValidToken_IssuesNewPair(t *testing.T) {
 	assert.Equal(t, user.ID, returnedUser.ID)
 	assert.NotEmpty(t, tokens.Access, "access token must be issued")
 	assert.NotEmpty(t, tokens.Refresh, "refresh token must be issued")
-	assert.Equal(t, tokenStr, deletedToken, "old refresh token must be invalidated")
+	assert.Equal(t, hashedToken, deletedToken, "old token hash must be invalidated")
 }
 
 func TestAuthService_RotateRefreshToken_ExpiredToken_Unauthorized(t *testing.T) {
@@ -191,7 +200,7 @@ func TestAuthService_RotateRefreshToken_TokenNotFound_Unauthorized(t *testing.T)
 func TestAuthService_RotateRefreshToken_NilUser_Unauthorized(t *testing.T) {
 	// A token row exists but its User association is nil (orphaned token).
 	orphanToken := &domain.UserToken{
-		Token:   "orphan",
+		Token:   hashToken("orphan"),
 		Expires: time.Now().Add(time.Hour),
 		User:    nil, // no user loaded
 	}
@@ -203,4 +212,57 @@ func TestAuthService_RotateRefreshToken_NilUser_Unauthorized(t *testing.T) {
 	_, _, err := svc.RotateRefreshToken("orphan")
 
 	require.ErrorIs(t, err, sentinels.ErrUnauthorized)
+}
+
+func TestAuthService_RotateRefreshToken_TokenAlreadyDeleted_Unauthorized(t *testing.T) {
+	hid := uuid.New()
+	user := &domain.User{ID: uuid.New(), HouseholdID: hid}
+	userToken := &domain.UserToken{
+		UserID:  user.ID,
+		Type:    "refresh",
+		Token:   hashToken("race-token"),
+		Expires: time.Now().Add(time.Hour),
+		User:    user,
+	}
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return userToken, nil },
+		deleteTokenFn: func(_ string) (bool, error) {
+			// Simulate second concurrent request: token was already deleted
+			return false, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	_, _, err := svc.RotateRefreshToken("race-token")
+
+	require.ErrorIs(t, err, sentinels.ErrUnauthorized,
+		"must reject rotation when token already deleted (race condition protection)")
+}
+
+func TestAuthService_Logout_DeletesHashedToken(t *testing.T) {
+	rawToken := "logout-token"
+	var deletedToken string
+	repo := &stubUserRepo{
+		deleteTokenFn: func(tok string) (bool, error) {
+			deletedToken = tok
+			return true, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	err := svc.Logout(rawToken)
+
+	require.NoError(t, err)
+	assert.Equal(t, hashToken(rawToken), deletedToken, "logout must delete the hash, not the raw token")
+}
+
+func TestAuthService_Logout_PropagatesDeleteError(t *testing.T) {
+	repo := &stubUserRepo{
+		deleteTokenFn: func(_ string) (bool, error) { return false, sentinels.ErrRecordNotFound },
+	}
+
+	svc := newTestAuthService(repo)
+	err := svc.Logout("any-token")
+
+	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
 }

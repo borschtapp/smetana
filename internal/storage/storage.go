@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+
+	"borscht.app/smetana/internal/utils"
 )
 
 // FileStorage is the interface for persisting and retrieving binary files.
@@ -25,12 +27,12 @@ func AbsoluteUrl(path string) string {
 	}
 	// Ensure we handle trailing/leading slashes correctly if needed
 	// For now keeping it simple as per original logic
-	return Default.GetBaseURL() + "/" + path
+	return utils.EnsureSuffix(Default.GetBaseURL(), "/") + strings.TrimPrefix(path, "/")
 }
 
 func RelativeUrl(path string) string {
 	if strings.HasPrefix(path, "http") && Default != nil {
-		return strings.TrimPrefix(path, Default.GetBaseURL()+"/")
+		return strings.TrimPrefix(path, utils.EnsureSuffix(Default.GetBaseURL(), "/"))
 	}
 	return path
 }

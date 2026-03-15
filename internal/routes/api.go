@@ -55,6 +55,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/register", authHandler.Register)
 	authGroup.Post("/refresh", authHandler.Refresh)
+	authGroup.Post("/logout", authHandler.Logout)
 
 	oidcGroup := authGroup.Group("/oidc")
 	oidcGroup.Get("/login", authHandler.OIDCLogin)

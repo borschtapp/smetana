@@ -1,6 +1,8 @@
 package tokens
 
 import (
+	"errors"
+
 	"borscht.app/smetana/internal/sentinels"
 	jwtware "github.com/gofiber/contrib/v3/jwt"
 	"github.com/gofiber/fiber/v3"
@@ -20,30 +22,44 @@ type TokenMetadata struct {
 func ParseJwtClaims(c fiber.Ctx) (*TokenMetadata, error) {
 	token := jwtware.FromContext(c)
 	if token == nil {
-		return nil, sentinels.Unauthorized("Missing or malformed JWT")
+		return nil, sentinels.Unauthorized("Missing or invalid token")
 	}
 
-	// Setting and checking token and credentials.
 	claims, ok := token.Claims.(jwt.MapClaims)
-	if ok && token.Valid {
-		expires := int64(claims["exp"].(float64))
-
-		userID, err := uuid.Parse(claims["id"].(string))
-		if err != nil {
-			return nil, err
-		}
-
-		householdID, err := uuid.Parse(claims["hid"].(string))
-		if err != nil {
-			return nil, err
-		}
-
-		return &TokenMetadata{
-			ID:          userID,
-			HouseholdID: householdID,
-			Expires:     expires,
-		}, nil
+	if !ok || !token.Valid {
+		return nil, sentinels.Unauthorized("Expired or invalid token")
 	}
 
-	return nil, sentinels.Unauthorized("Token expired or invalid")
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return nil, sentinels.Unauthorized("Invalid token")
+	}
+
+	userID, err := parseUUIDClaim(claims, "id")
+	if err != nil {
+		return nil, sentinels.Unauthorized("Invalid token")
+	}
+
+	householdID, err := parseUUIDClaim(claims, "hid")
+	if err != nil {
+		return nil, sentinels.Unauthorized("Invalid token")
+	}
+
+	return &TokenMetadata{
+		ID:          userID,
+		HouseholdID: householdID,
+		Expires:     int64(exp),
+	}, nil
+}
+
+func parseUUIDClaim(claims jwt.MapClaims, key string) (uuid.UUID, error) {
+	val, ok := claims[key].(string)
+	if !ok {
+		return uuid.UUID{}, errors.New("Missing claim " + key)
+	}
+	id, err := uuid.Parse(val)
+	if err != nil {
+		return uuid.UUID{}, errors.New("Invalid UUID " + key)
+	}
+	return id, nil
 }
