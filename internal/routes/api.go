@@ -76,8 +76,11 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	householdsGroup.Get("/:id", householdHandler.GetHousehold)
 	householdsGroup.Patch("/:id", householdHandler.UpdateHousehold)
 	householdsGroup.Get("/:id/members", householdHandler.GetHouseholdMembers)
-	householdsGroup.Post("/:id/members", householdHandler.AddHouseholdMember)
 	householdsGroup.Delete("/:id/members/:userId", householdHandler.RemoveHouseholdMember)
+	householdsGroup.Post("/:id/invites", householdHandler.CreateHouseholdInvite)
+	householdsGroup.Get("/:id/invites", householdHandler.ListHouseholdInvites)
+	householdsGroup.Delete("/:id/invites/:code", householdHandler.RevokeHouseholdInvite)
+	householdsGroup.Post("/invites/join", householdHandler.JoinHousehold)
 
 	collectionService := services.NewCollectionService(collectionRepo, recipeRepo)
 	collectionHandler := api.NewCollectionHandler(collectionService)

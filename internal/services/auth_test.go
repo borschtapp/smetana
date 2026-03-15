@@ -135,7 +135,7 @@ func TestAuthService_RotateRefreshToken_ValidToken_IssuesNewPair(t *testing.T) {
 	hashedToken := hashToken(rawToken)
 	userToken := &domain.UserToken{
 		UserID:  user.ID,
-		Type:    "refresh",
+		Type:    domain.TokenTypeRefresh,
 		Token:   hashedToken, // DB stores the hash, not the raw value
 		Expires: time.Now().Add(time.Hour),
 		User:    user,
@@ -145,7 +145,7 @@ func TestAuthService_RotateRefreshToken_ValidToken_IssuesNewPair(t *testing.T) {
 	repo := &stubUserRepo{
 		findTokenFn: func(tok, typ string) (*domain.UserToken, error) {
 			assert.Equal(t, hashedToken, tok, "service must hash the token before lookup")
-			assert.Equal(t, "refresh", typ)
+			assert.Equal(t, domain.TokenTypeRefresh, typ)
 			return userToken, nil
 		},
 		deleteTokenFn: func(tok string) (bool, error) {
@@ -219,7 +219,7 @@ func TestAuthService_RotateRefreshToken_TokenAlreadyDeleted_Unauthorized(t *test
 	user := &domain.User{ID: uuid.New(), HouseholdID: hid}
 	userToken := &domain.UserToken{
 		UserID:  user.ID,
-		Type:    "refresh",
+		Type:    domain.TokenTypeRefresh,
 		Token:   hashToken("race-token"),
 		Expires: time.Now().Add(time.Hour),
 		User:    user,

@@ -57,6 +57,14 @@ func (r *UserRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.User{}, id).Error
 }
 
+func (r *UserRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
+	var tokens []domain.UserToken
+	if err := r.db.Where(&domain.UserToken{UserID: userID, Type: tokenType}).Find(&tokens).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return tokens, nil
+}
+
 func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.UserToken, error) {
 	var userToken domain.UserToken
 	if err := r.db.Preload("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error; err != nil {

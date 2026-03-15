@@ -74,7 +74,7 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 	expiresIn := time.Minute * time.Duration(configs.JwtRefreshExpireMinutes())
 	token := &domain.UserToken{
 		UserID:  user.ID,
-		Type:    "refresh",
+		Type:    domain.TokenTypeRefresh,
 		Token:   utils.HashToken(generatedTokens.Refresh),
 		Expires: time.Now().Add(expiresIn),
 	}
@@ -87,7 +87,7 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 
 // RotateRefreshToken validates a refresh token, invalidates it, and issues a new pair.
 func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
-	userToken, err := s.userRepo.FindToken(utils.HashToken(tokenStr), "refresh")
+	userToken, err := s.userRepo.FindToken(utils.HashToken(tokenStr), domain.TokenTypeRefresh)
 	if err != nil {
 		return nil, nil, sentinels.ErrUnauthorized
 	}

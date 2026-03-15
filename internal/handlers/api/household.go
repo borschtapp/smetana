@@ -139,32 +139,114 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 	})
 }
 
-type AddMemberForm struct {
-	Email string `validate:"required,email" json:"email" format:"email" example:"newmember@example.com"`
-}
-
-// AddHouseholdMember godoc
-// @Summary Add a member to the household by household ID.
-// @Description Assigns a user to a specific household by email.
+// CreateHouseholdInvite godoc
+// @Summary Create an invite code for the household.
+// @Description Generates a single-use 8-character invite code valid for 7 days.
 // @Tags households
-// @Accept json
 // @Produce json
 // @Param id path string true "Household ID"
-// @Param member body AddMemberForm true "Member data"
-// @Success 202
-// @Failure 400 {object} sentinels.Error
+// @Success 201 {object} domain.UserToken
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
-// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
-// @Router /api/v1/households/{id}/members [post]
-func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
+// @Router /api/v1/households/{id}/invites [post]
+func (h *HouseholdHandler) CreateHouseholdInvite(c fiber.Ctx) error {
 	id, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
 	}
 
-	var form AddMemberForm
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	invite, err := h.householdService.CreateInvite(id, tokenData.ID, tokenData.HouseholdID)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(invite)
+}
+
+// ListHouseholdInvites godoc
+// @Summary List active invite codes for the household.
+// @Tags households
+// @Produce json
+// @Param id path string true "Household ID"
+// @Success 200 {array} domain.UserToken
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/households/{id}/invites [get]
+func (h *HouseholdHandler) ListHouseholdInvites(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	invites, err := h.householdService.ListInvites(id, tokenData.ID, tokenData.HouseholdID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(invites)
+}
+
+// RevokeHouseholdInvite godoc
+// @Summary Revoke an invite code.
+// @Tags households
+// @Param id path string true "Household ID"
+// @Param code path string true "Invite code"
+// @Success 204
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/households/{id}/invites/{code} [delete]
+func (h *HouseholdHandler) RevokeHouseholdInvite(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	code := c.Params("code")
+
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.householdService.RevokeInvite(id, tokenData.HouseholdID, code); err != nil {
+		return err
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+type JoinHouseholdForm struct {
+	Code string `validate:"required,len=8" json:"code"`
+}
+
+// JoinHousehold godoc
+// @Summary Join a household using an invite code.
+// @Description Moves the authenticated user into the household identified by the invite code.
+// @Tags households
+// @Accept json
+// @Param body body JoinHouseholdForm true "Invite code"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/households/invites/join [post]
+func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
+	var form JoinHouseholdForm
 	if err := c.Bind().Body(&form); err != nil {
 		return sentinels.BadRequest(err.Error())
 	}
@@ -178,11 +260,11 @@ func (h *HouseholdHandler) AddHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.householdService.AddMember(id, tokenData.HouseholdID, form.Email); err != nil {
+	if err := h.householdService.JoinByInvite(tokenData.ID, form.Code); err != nil {
 		return err
 	}
 
-	return c.SendStatus(fiber.StatusAccepted)
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // RemoveHouseholdMember godoc
