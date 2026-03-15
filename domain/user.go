@@ -48,6 +48,6 @@ type UserRepository interface {
 
 type UserService interface {
 	ByID(id uuid.UUID, requesterID uuid.UUID) (*User, error)
-	Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword *string) (*User, error)
+	Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*User, error)
 	Delete(id uuid.UUID, requesterID uuid.UUID) error
 }

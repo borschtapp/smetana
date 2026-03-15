@@ -151,6 +151,66 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(AuthResponse{User: *user, AuthTokens: *tokens})
 }
 
+type ForgotPasswordForm struct {
+	Email string `validate:"required,email" json:"email"`
+}
+
+// ForgotPassword godoc
+// @Summary Request a password reset email.
+// @Description Sends a password reset link to the given email address. Always returns 202 to prevent user enumeration.
+// @Tags auth
+// @Accept json
+// @Param body body ForgotPasswordForm true "Email address"
+// @Success 202
+// @Failure 400 {object} sentinels.Error
+// @Failure 503 {object} sentinels.Error
+// @Router /api/v1/auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(c fiber.Ctx) error {
+	var body ForgotPasswordForm
+	if err := c.Bind().Body(&body); err != nil {
+		return sentinels.BadRequest(err.Error())
+	}
+	if err := validate.Struct(body); err != nil {
+		return sentinels.BadRequestVal(err)
+	}
+
+	if err := h.authService.ForgotPassword(body.Email); err != nil {
+		// Always return 202 — do not reveal whether the email exists or the service is unavailable.
+		log.Warnw("ForgotPassword failed", "email", body.Email, "error", err)
+	}
+
+	return c.SendStatus(fiber.StatusAccepted)
+}
+
+type ResetPasswordForm struct {
+	Token       string `validate:"required" json:"token"`
+	NewPassword string `validate:"required,min=8" json:"new_password"`
+}
+
+// ResetPassword godoc
+// @Summary Reset password using a token from email.
+// @Tags auth
+// @Accept json
+// @Param body body ResetPasswordForm true "Reset token and new password"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(c fiber.Ctx) error {
+	var body ResetPasswordForm
+	if err := c.Bind().Body(&body); err != nil {
+		return sentinels.BadRequest(err.Error())
+	}
+	if err := validate.Struct(body); err != nil {
+		return sentinels.BadRequestVal(err)
+	}
+
+	if err := h.authService.ResetPassword(body.Token, body.NewPassword); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // OIDCLogin godoc
 // @Summary OIDC Initiator.
 // @Description Redirects the user to the configured OIDC provider.

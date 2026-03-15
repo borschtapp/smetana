@@ -8,6 +8,7 @@ import (
 
 const TokenTypeRefresh = "refresh"
 const TokenTypeHouseholdInvite = "household_invite"
+const TokenTypePasswordReset = "password_reset"
 
 type UserToken struct {
 	ID      uuid.UUID `gorm:"type:char(36);primaryKey"`

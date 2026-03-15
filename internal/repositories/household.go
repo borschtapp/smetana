@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -29,6 +31,24 @@ func (r *HouseholdRepository) Create(household *domain.Household) error {
 
 func (r *HouseholdRepository) Update(household *domain.Household) error {
 	return r.db.Model(household).Updates(household).Error
+}
+
+func (r *HouseholdRepository) Delete(id uuid.UUID) error {
+	return mapErr(r.db.Delete(&domain.Household{}, id).Error)
+}
+
+func (r *HouseholdRepository) FirstOtherMember(householdID uuid.UUID, excludeUserID uuid.UUID) (*domain.User, error) {
+	var user domain.User
+	err := r.db.Where("household_id = ? AND id != ?", householdID, excludeUserID).
+		Order("created ASC").
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, mapErr(err)
+	}
+	return &user, nil
 }
 
 func (r *HouseholdRepository) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {

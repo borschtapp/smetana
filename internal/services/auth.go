@@ -14,15 +14,16 @@ import (
 )
 
 type AuthService struct {
-	userRepo  domain.UserRepository
-	dummyHash string
+	userRepo     domain.UserRepository
+	emailService domain.EmailService
+	dummyHash    string
 }
 
-func NewAuthService(userRepo domain.UserRepository) domain.AuthService {
+func NewAuthService(userRepo domain.UserRepository, emailService domain.EmailService) domain.AuthService {
 	// Pre-compute a hash so the login path always runs bcrypt regardless of
 	// whether the email exists — prevents timing-based user enumeration.
 	hash, _ := utils.HashPassword("dummy-password-for-timing-protection")
-	return &AuthService{userRepo: userRepo, dummyHash: hash}
+	return &AuthService{userRepo: userRepo, emailService: emailService, dummyHash: hash}
 }
 
 // Login validates credentials and returns the matching user.
@@ -117,5 +118,53 @@ func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain
 // Logout invalidates the given refresh token, ending the session.
 func (s *AuthService) Logout(tokenStr string) error {
 	_, err := s.userRepo.DeleteToken(utils.HashToken(tokenStr))
+	return err
+}
+
+// ForgotPassword generates a reset token and sends it to the user's email address.
+func (s *AuthService) ForgotPassword(email string) error {
+	if s.emailService == nil {
+		return sentinels.NotImplemented("Email service is not configured")
+	}
+
+	user, err := s.userRepo.ByEmail(email)
+	if err != nil {
+		return err
+	}
+
+	rawToken := utils.GenerateRandomString(32)
+	token := &domain.UserToken{
+		UserID:  user.ID,
+		Type:    domain.TokenTypePasswordReset,
+		Token:   utils.HashToken(rawToken),
+		Expires: time.Now().Add(time.Hour),
+	}
+	if err := s.userRepo.CreateToken(token); err != nil {
+		return err
+	}
+	return s.emailService.SendPasswordReset(email, rawToken)
+}
+
+// ResetPassword validates the reset token and updates the user's password.
+func (s *AuthService) ResetPassword(rawToken, newPassword string) error {
+	userToken, err := s.userRepo.FindToken(utils.HashToken(rawToken), domain.TokenTypePasswordReset)
+	if err != nil {
+		return sentinels.ErrRecordNotFound
+	}
+	if time.Now().After(userToken.Expires) {
+		return sentinels.ErrRecordNotFound
+	}
+
+	hash, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	userToken.User.Password = hash
+	if err := s.userRepo.Update(userToken.User); err != nil {
+		return err
+	}
+
+	_, err = s.userRepo.DeleteToken(userToken.Token)
 	return err
 }

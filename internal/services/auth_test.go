@@ -22,7 +22,7 @@ func hashToken(raw string) string {
 }
 
 func newTestAuthService(userRepo *stubUserRepo) domain.AuthService {
-	return services.NewAuthService(userRepo)
+	return services.NewAuthService(userRepo, nil)
 }
 
 func TestAuthService_Login_ValidCredentials_ReturnsUser(t *testing.T) {

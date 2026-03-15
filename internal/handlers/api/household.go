@@ -293,7 +293,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.householdService.RemoveMember(id, tokenData.HouseholdID, targetUserID); err != nil {
+	if err := h.householdService.RemoveMember(id, tokenData.ID, tokenData.HouseholdID, targetUserID); err != nil {
 		return err
 	}
 

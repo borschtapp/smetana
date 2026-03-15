@@ -17,11 +17,11 @@ Cookbooks management backend for [Borscht App](https://borscht.app). Scrapes, st
 - **Recipe management** — create, search, and update recipes with structured ingredients and step-by-step instructions
 - **Recipe import** — scrape any recipe URL using [krip](https://github.com/borschtapp/krip); images are downloaded and stored locally
 - **Feeds** — subscribe to RSS/Atom feeds; a background job fetches new recipes on a configurable interval
-- **Households** — shared workspaces for multiple users with member management
+- **Households** — shared workspaces; invite new members via a short code, transfer ownership, remove members
 - **Collections** — named recipe lists per household (bookmarks, favorites, etc.)
 - **Meal plans** — schedule recipes across dates per household
 - **Shopping lists** — household shopping lists with per-item management
-- **Authentication** — JWT-based sessions with refresh tokens; optional OpenID Connect (OIDC) SSO via any compliant provider
+- **Authentication** — JWT-based sessions with refresh tokens; password reset via email; optional OpenID Connect (OIDC) SSO via any compliant provider
 - **Image storage** — local filesystem (default) or S3-compatible object storage
 - **API docs** — Swagger UI served at the root (`/`)
 
@@ -63,11 +63,11 @@ Copy `.env.example` to `.env` and adjust as needed. All variables are optional; 
 
 #### Server
 
-| Variable      | Default                 | Description                          |
-|---------------|-------------------------|--------------------------------------|
-| `SERVER_HOST` | `` (all interfaces)     | Bind address                         |
-| `SERVER_PORT` | `3000`                  | Listen port                          |
-| `BASE_URL`    | `http://localhost:3000` | Public base URL (used in image URLs) |
+| Variable      | Default                 | Description                                                    |
+|---------------|-------------------------|----------------------------------------------------------------|
+| `SERVER_HOST` | `` (all interfaces)     | Bind address                                                   |
+| `SERVER_PORT` | `3000`                  | Listen port                                                    |
+| `BASE_URL`    | `https://{SERVER_HOST}` | Public base URL — used in image URLs and password reset emails |
 
 #### Database
 
@@ -92,9 +92,23 @@ To use S3-compatible storage set:
 
 #### Authentication
 
-| Variable     | Description                        |
-|--------------|------------------------------------|
-| `JWT_SECRET` | Secret key used to sign JWT tokens |
+| Variable                      | Default  | Description                              |
+|-------------------------------|----------|------------------------------------------|
+| `JWT_SECRET_KEY`              | —        | Secret key used to sign JWT tokens       |
+| `JWT_SECRET_EXPIRE_MINUTES`   | `60`     | Access token lifetime in minutes         |
+| `JWT_REFRESH_EXPIRE_MINUTES`  | `10080`  | Refresh token lifetime in minutes (7d)   |
+
+#### Email / Password reset (optional)
+
+Required for `POST /auth/forgot-password`. Password reset is disabled if `SMTP_HOST` is not set.
+
+| Variable        | Default | Description                                      |
+|-----------------|---------|--------------------------------------------------|
+| `SMTP_HOST`     | —       | SMTP server hostname (enables email support)     |
+| `SMTP_PORT`     | `587`   | SMTP port                                        |
+| `SMTP_USER`     | —       | SMTP username                                    |
+| `SMTP_PASSWORD` | —       | SMTP password                                    |
+| `SMTP_FROM`     | —       | Sender address (e.g. `noreply@example.com`)      |
 
 #### OIDC / SSO (optional)
 
@@ -129,9 +143,9 @@ All endpoints are prefixed with `/api/v1`. Protected endpoints require a `Author
 
 | Group          | Prefix           | Auth     | Description                                                       |
 |----------------|------------------|----------|-------------------------------------------------------------------|
-| Auth           | `/auth`          | Public   | Register, login, refresh token, OIDC flow                         |
-| Users          | `/users`         | Required | Get, update, delete user profile                                  |
-| Households     | `/households`    | Required | Household details and member management                           |
+| Auth           | `/auth`          | Public   | Register, login, refresh, logout, password reset, OIDC flow       |
+| Users          | `/users`         | Required | Get, update (incl. password change), delete user profile          |
+| Households     | `/households`    | Required | Household details, member management, invite codes                |
 | Collections    | `/collections`   | Required | Recipe collections CRUD + recipe membership                       |
 | Meal plan      | `/mealplan`      | Required | Per-household meal schedule                                       |
 | Shopping lists | `/shoppinglists` | Required | Shopping lists and items                                          |
@@ -150,7 +164,7 @@ Full interactive documentation is served at `/` (Swagger UI).
 ```
 domain/          # Domain types and repository/service interfaces
 internal/
-  configs/       # Fiber, GORM, storage, JWT configuration
+  configs/       # Fiber, GORM, storage, JWT, email configuration
   database/      # DB connection and GORM auto-migrations
   handlers/api/  # Fiber HTTP handlers
   jobs/          # Background job implementations

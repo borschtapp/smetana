@@ -9,6 +9,7 @@ import (
 
 type Household struct {
 	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	OwnerID uuid.UUID `gorm:"type:char(36)" json:"owner_id"`
 	Name    string    `json:"name"`
 	Updated time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
@@ -32,8 +33,10 @@ type HouseholdRepository interface {
 	ByID(id uuid.UUID) (*Household, error)
 	Create(household *Household) error
 	Update(household *Household) error
+	Delete(id uuid.UUID) error
 
 	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
+	FirstOtherMember(householdID, excludeUserID uuid.UUID) (*User, error)
 }
 
 type HouseholdService interface {
@@ -41,10 +44,10 @@ type HouseholdService interface {
 	Update(household *Household, requesterHouseholdID uuid.UUID) error
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
-	RemoveMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error
+	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) error
 
-	ListInvites(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) ([]UserToken, error)
-	CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) (*UserToken, error)
+	ListInvites(householdID uuid.UUID, requesterID, requesterHouseholdID uuid.UUID) ([]UserToken, error)
+	CreateInvite(householdID uuid.UUID, requesterID, requesterHouseholdID uuid.UUID) (*UserToken, error)
 	RevokeInvite(householdID uuid.UUID, requesterHouseholdID uuid.UUID, code string) error
 	JoinByInvite(joiningUserID uuid.UUID, code string) error
 }

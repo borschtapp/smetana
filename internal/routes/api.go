@@ -44,18 +44,25 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)
 	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
 	userService := services.NewUserService(userRepo)
-	authService := services.NewAuthService(userRepo)
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
 		log.Warnw("OIDC service not initialized", "error", err)
 	}
 
+	emailService, err := services.NewEmailService()
+	if err != nil {
+		log.Warnw("Email service not initialized", "error", err)
+	}
+
+	authService := services.NewAuthService(userRepo, emailService)
 	authHandler := api.NewAuthHandler(authService, oidcService)
 	authGroup := router.Group("/auth", limiter.New()) // enforce always-on limiter
 	authGroup.Post("/login", authHandler.Login)
 	authGroup.Post("/register", authHandler.Register)
 	authGroup.Post("/refresh", authHandler.Refresh)
 	authGroup.Post("/logout", authHandler.Logout)
+	authGroup.Post("/forgot-password", authHandler.ForgotPassword)
+	authGroup.Post("/reset-password", authHandler.ResetPassword)
 
 	oidcGroup := authGroup.Group("/oidc")
 	oidcGroup.Get("/login", authHandler.OIDCLogin)

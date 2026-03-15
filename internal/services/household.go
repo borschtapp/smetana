@@ -95,19 +95,33 @@ func (s *HouseholdService) JoinByInvite(joiningUserID uuid.UUID, code string) er
 	if err != nil {
 		return err
 	}
+	oldHouseholdID := joiningUser.HouseholdID
 	joiningUser.HouseholdID = token.User.HouseholdID
 	if err := s.userRepo.Update(joiningUser); err != nil {
 		return err
 	}
-	_, err = s.userRepo.DeleteToken(code)
-	return err
+	if _, err = s.userRepo.DeleteToken(code); err != nil {
+		return err
+	}
+	return s.deleteIfEmpty(oldHouseholdID)
 }
 
-// RemoveMember verifies the user belongs to the household, then moves them to a new solo household.
-func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
+// RemoveMember removes targetUserID from householdID.
+// Only the household owner or the target user themselves may do this.
+func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
 	if householdID != requesterHouseholdID {
 		return sentinels.ErrForbidden
 	}
+
+	household, err := s.repo.ByID(householdID)
+	if err != nil {
+		return err
+	}
+
+	if requesterID != targetUserID && household.OwnerID != requesterID {
+		return sentinels.ErrForbidden
+	}
+
 	target, err := s.userRepo.ByID(targetUserID)
 	if err != nil {
 		return err
@@ -115,10 +129,41 @@ func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterHousehol
 	if target.HouseholdID != householdID {
 		return sentinels.ErrForbidden
 	}
-	newHousehold := &domain.Household{Name: target.Name + "'s Household"}
+
+	// Transfer ownership if the owner is being removed.
+	if household.OwnerID == targetUserID {
+		next, err := s.repo.FirstOtherMember(householdID, targetUserID)
+		if err != nil {
+			return err
+		}
+		if next != nil {
+			household.OwnerID = next.ID
+			if err := s.repo.Update(household); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Move the removed user to a new solo household.
+	newHousehold := &domain.Household{Name: target.Name + "'s Household", OwnerID: target.ID}
 	if err := s.repo.Create(newHousehold); err != nil {
 		return err
 	}
 	target.HouseholdID = newHousehold.ID
-	return s.userRepo.Update(target)
+	if err := s.userRepo.Update(target); err != nil {
+		return err
+	}
+
+	return s.deleteIfEmpty(householdID)
+}
+
+func (s *HouseholdService) deleteIfEmpty(householdID uuid.UUID) error {
+	_, total, err := s.repo.Members(householdID, 0, 1)
+	if err != nil {
+		return err
+	}
+	if total == 0 {
+		return s.repo.Delete(householdID)
+	}
+	return nil
 }

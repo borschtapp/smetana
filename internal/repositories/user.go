@@ -41,6 +41,14 @@ func (r *UserRepository) ByEmailWithHousehold(email string) (*domain.User, error
 
 func (r *UserRepository) Create(user *domain.User) error {
 	return mapErr(r.db.Transaction(func(tx *gorm.DB) error {
+		if user.ID == uuid.Nil {
+			id, err := uuid.NewV7()
+			if err != nil {
+				return err
+			}
+			user.ID = id
+		}
+		user.Household.OwnerID = user.ID
 		if err := tx.Create(user.Household).Error; err != nil {
 			return err
 		}

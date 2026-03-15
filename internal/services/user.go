@@ -24,7 +24,7 @@ func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 }
 
 // Update fetches the user, applies the non-nil patches, and persists the result.
-func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword *string) (*domain.User, error) {
+func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*domain.User, error) {
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -32,12 +32,20 @@ func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	if err != nil {
 		return nil, err
 	}
-	if email != nil {
-		// Email change requires password validation
+	if email != nil || newPassword != nil {
 		if currentPassword == nil || !utils.ValidatePassword(user.Password, *currentPassword) {
 			return nil, sentinels.ErrUnauthorized
 		}
+	}
+	if email != nil {
 		user.Email = *email
+	}
+	if newPassword != nil {
+		hash, err := utils.HashPassword(*newPassword)
+		if err != nil {
+			return nil, err
+		}
+		user.Password = hash
 	}
 	if name != nil {
 		user.Name = *name
