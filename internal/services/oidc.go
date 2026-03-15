@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -89,7 +88,7 @@ func (s *OIDCService) Authorize(email, name string) (*domain.User, error) {
 	}
 
 	if name == "" {
-		name = strings.Split(email, "@")[0]
+		name = utils.EmailToName(email)
 	}
 	newUser := &domain.User{
 		Email:     email,

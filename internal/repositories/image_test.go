@@ -15,12 +15,11 @@ import (
 
 func makeImage(entityType string, entityID uuid.UUID) *domain.Image {
 	id, _ := uuid.NewV7()
-	p := storage.Path(entityType + "/" + entityID.String() + "/" + id.String() + ".jpg")
 	return &domain.Image{
 		ID:          id,
 		EntityType:  entityType,
 		EntityID:    entityID,
-		Path:        &p,
+		Path:        new(storage.Path(entityType + "/" + entityID.String() + "/" + id.String() + ".jpg")),
 		ContentType: "image/jpeg",
 	}
 }

@@ -40,6 +40,11 @@ func CsvSplitUUID(target string) []uuid.UUID {
 	return result
 }
 
+// EmailToName derives a display name from an email address by taking the local part.
+func EmailToName(email string) string {
+	return strings.Split(email, "@")[0]
+}
+
 func EnsureSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
 		return s

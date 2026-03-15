@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"borscht.app/smetana/domain"
@@ -51,7 +50,7 @@ func (s *AuthService) Register(name, email, password string) (*domain.User, erro
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 	if name == "" {
-		name = strings.Split(email, "@")[0]
+		name = utils.EmailToName(email)
 	}
 	user := &domain.User{
 		Email:     email,
@@ -149,7 +148,7 @@ func (s *AuthService) ForgotPassword(email string) error {
 func (s *AuthService) ResetPassword(rawToken, newPassword string) error {
 	userToken, err := s.userRepo.FindToken(utils.HashToken(rawToken), domain.TokenTypePasswordReset)
 	if err != nil {
-		return sentinels.ErrRecordNotFound
+		return err
 	}
 	if time.Now().After(userToken.Expires) {
 		return sentinels.ErrRecordNotFound
