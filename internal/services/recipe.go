@@ -16,7 +16,7 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type RecipeService struct {
+type recipeService struct {
 	repo             domain.RecipeRepository
 	userRepo         domain.UserRepository
 	imageService     domain.ImageService
@@ -29,7 +29,7 @@ type RecipeService struct {
 }
 
 func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, taxonomyRepo domain.TaxonomyRepository, scraperService domain.ScraperService) domain.RecipeService {
-	return &RecipeService{
+	return &recipeService{
 		repo:             repo,
 		userRepo:         userRepo,
 		imageService:     imageService,
@@ -42,7 +42,7 @@ func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserReposito
 	}
 }
 
-func (s *RecipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
+func (s *recipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	recipe, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -59,11 +59,11 @@ func (s *RecipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recip
 	return nil, sentinels.ErrForbidden
 }
 
-func (s *RecipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
 	return s.repo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts})
 }
 
-func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	recipe.HouseholdID = &householdID
 	recipe.UserID = &userID
 	if err := s.repo.Create(recipe); err != nil {
@@ -72,7 +72,7 @@ func (s *RecipeService) Create(recipe *domain.Recipe, userID uuid.UUID, househol
 	return s.UserSave(recipe.ID, userID, householdID)
 }
 
-func (s *RecipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(recipe.ID)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (s *RecipeService) Update(recipe *domain.Recipe, userID uuid.UUID, househol
 }
 
 // cloneToHousehold clones a global recipe into the given household. Make sure to preload all relevant associations
-func (s *RecipeService) cloneToHousehold(global *domain.Recipe, userID, householdID uuid.UUID) (*domain.Recipe, error) {
+func (s *recipeService) cloneToHousehold(global *domain.Recipe, userID, householdID uuid.UUID) (*domain.Recipe, error) {
 	clone := *global
 	clone.ID = uuid.Nil // BeforeCreate hook will assign a new UUID
 	clone.HouseholdID = &householdID
@@ -148,7 +148,7 @@ func (s *RecipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 	return newRecipe, nil
 }
 
-func (s *RecipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(id)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func (s *RecipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	return s.repo.Delete(id)
 }
 
-func (s *RecipeService) deleteImages(images []*domain.Image) {
+func (s *recipeService) deleteImages(images []*domain.Image) {
 	for _, image := range images {
 		if image.ID == uuid.Nil {
 			continue
@@ -175,50 +175,50 @@ func (s *RecipeService) deleteImages(images []*domain.Image) {
 	}
 }
 
-func (s *RecipeService) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
 	return s.repo.UserSave(recipeID, userID, householdID)
 }
 
-func (s *RecipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
+func (s *recipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return s.repo.UserUnsave(recipeID, userID)
 }
 
-func (s *RecipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+func (s *recipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateIngredient(ingredient)
 }
 
-func (s *RecipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+func (s *recipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateIngredient(ingredient)
 }
 
-func (s *RecipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.DeleteIngredient(id, recipeID)
 }
 
-func (s *RecipeService) CreateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
+func (s *recipeService) CreateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.CreateInstruction(instruction)
 }
 
-func (s *RecipeService) UpdateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
+func (s *recipeService) UpdateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return err
 	}
 	return s.repo.UpdateInstruction(instruction)
 }
 
-func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
 		return err
 	}
@@ -226,9 +226,9 @@ func (s *RecipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 }
 
 // ImportFromURL imports a recipe from URL and saves it for the given user.
-func (s *RecipeService) ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
+func (s *recipeService) ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	existing, err := s.repo.ByUrl(url)
-	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
 	}
 	if existing != nil {
@@ -252,7 +252,7 @@ func (s *RecipeService) ImportFromURL(ctx context.Context, url string, forceUpda
 	return recipe, nil
 }
 
-func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
+func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
 	for _, ing := range recipe.Ingredients {
 		if ing.Food != nil {
 			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
@@ -307,7 +307,7 @@ func (s *RecipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 	return recipe, nil
 }
 
-func (s *RecipeService) processRecipeImages(ctx context.Context, recipe *domain.Recipe) {
+func (s *recipeService) processRecipeImages(ctx context.Context, recipe *domain.Recipe) {
 	if len(recipe.Images) == 0 {
 		return
 	}
@@ -389,7 +389,7 @@ func selectBestImage(images []*domain.Image) *domain.Image {
 	return fallback
 }
 
-func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
+func (s *recipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
 	var g errgroup.Group
 	g.SetLimit(s.fetchConcurrency)
 
@@ -423,7 +423,7 @@ func (s *RecipeService) processInstructionImages(ctx context.Context, recipe *do
 	}
 }
 
-func (s *RecipeService) processFoodIcons(ctx context.Context, recipe *domain.Recipe) {
+func (s *recipeService) processFoodIcons(ctx context.Context, recipe *domain.Recipe) {
 	var g errgroup.Group
 	g.SetLimit(s.fetchConcurrency)
 

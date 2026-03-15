@@ -12,15 +12,15 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type CollectionRepository struct {
+type collectionRepository struct {
 	db *gorm.DB
 }
 
 func NewCollectionRepository(db *gorm.DB) domain.CollectionRepository {
-	return &CollectionRepository{db: db}
+	return &collectionRepository{db: db}
 }
 
-func (r *CollectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
+func (r *collectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.First(&collection, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -28,7 +28,7 @@ func (r *CollectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 	return &collection, nil
 }
 
-func (r *CollectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection, error) {
+func (r *collectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.Preload("Recipes").First(&collection, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -36,7 +36,7 @@ func (r *CollectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection
 	return &collection, nil
 }
 
-func (r *CollectionRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
+func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
 	var collections []domain.Collection
 
 	q := r.db.Model(&domain.Collection{}).
@@ -86,22 +86,22 @@ func (r *CollectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 	return collections, total, nil
 }
 
-func (r *CollectionRepository) Create(collection *domain.Collection) error {
+func (r *collectionRepository) Create(collection *domain.Collection) error {
 	return r.db.Create(collection).Error
 }
 
-func (r *CollectionRepository) Update(collection *domain.Collection) error {
+func (r *collectionRepository) Update(collection *domain.Collection) error {
 	return r.db.Model(collection).Select("name", "description").Updates(collection).Error
 }
 
-func (r *CollectionRepository) Delete(id uuid.UUID) error {
+func (r *collectionRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.Collection{}, id).Error
 }
 
-func (r *CollectionRepository) AddRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
+func (r *collectionRepository) AddRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
 	return r.db.Model(collection).Association("Recipes").Append(&domain.Recipe{ID: recipeID})
 }
 
-func (r *CollectionRepository) RemoveRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
+func (r *collectionRepository) RemoveRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
 	return r.db.Model(collection).Association("Recipes").Delete(&domain.Recipe{ID: recipeID})
 }

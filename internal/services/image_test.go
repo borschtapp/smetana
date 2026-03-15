@@ -73,7 +73,7 @@ func (r *fakeImageRepo) Create(image *domain.Image) error {
 
 func (r *fakeImageRepo) Update(image *domain.Image) error {
 	if _, ok := r.images[image.ID]; !ok {
-		return sentinels.ErrRecordNotFound
+		return sentinels.ErrNotFound
 	}
 	r.images[image.ID] = image
 	return nil
@@ -82,7 +82,7 @@ func (r *fakeImageRepo) Update(image *domain.Image) error {
 func (r *fakeImageRepo) FindByID(id uuid.UUID) (*domain.Image, error) {
 	image, ok := r.images[id]
 	if !ok {
-		return nil, sentinels.ErrRecordNotFound
+		return nil, sentinels.ErrNotFound
 	}
 	return image, nil
 }
@@ -103,7 +103,7 @@ func (r *fakeImageRepo) FindDefault(entityType string, entityID uuid.UUID) (*dom
 			return image, nil
 		}
 	}
-	return nil, sentinels.ErrRecordNotFound
+	return nil, sentinels.ErrNotFound
 }
 
 func (r *fakeImageRepo) FindBySourceURL(sourceURL string) (*domain.Image, error) {
@@ -113,7 +113,7 @@ func (r *fakeImageRepo) FindBySourceURL(sourceURL string) (*domain.Image, error)
 	if image, ok := r.bySourceURL[sourceURL]; ok {
 		return image, nil
 	}
-	return nil, sentinels.ErrRecordNotFound
+	return nil, sentinels.ErrNotFound
 }
 
 func (r *fakeImageRepo) SetDefault(target *domain.Image) error {
@@ -205,5 +205,5 @@ func TestImageService_Delete_RemovesStorageFileAndDBRecord(t *testing.T) {
 
 	assert.Contains(t, fs.deleted, "food/abc/img.jpg")
 	_, err := repo.FindByID(imgID)
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }

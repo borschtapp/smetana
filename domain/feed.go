@@ -13,7 +13,7 @@ import (
 type Feed struct {
 	ID              uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	Active          bool      `json:"active"`
-	PublisherID     uuid.UUID `gorm:"type:char(36)" json:"-"`
+	PublisherID     uuid.UUID `gorm:"type:char(36);index" json:"-"`
 	Url             string    `gorm:"uniqueIndex" json:"url"`
 	Name            string    `json:"name"`
 	ErrorCount      int       `json:"error_count"`

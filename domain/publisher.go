@@ -23,7 +23,7 @@ type Publisher struct {
 	RemoteImage *string `gorm:"-" json:"-"`
 
 	TotalRecipes *int64    `gorm:"->;-:migration" json:"total_recipes,omitempty"`
-	Images       []*Image  `gorm:"polymorphic:Entity;" json:"images,omitempty"`
+	Images       []*Image  `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Recipes      []*Recipe `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Feeds        []*Feed   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }

@@ -7,15 +7,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type ShoppingListRepository struct {
+type shoppingListRepository struct {
 	db *gorm.DB
 }
 
 func NewShoppingListRepository(db *gorm.DB) domain.ShoppingListRepository {
-	return &ShoppingListRepository{db: db}
+	return &shoppingListRepository{db: db}
 }
 
-func (r *ShoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
+func (r *shoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
 	var list domain.ShoppingList
 	if err := r.db.First(&list, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -23,7 +23,7 @@ func (r *ShoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error
 	return &list, nil
 }
 
-func (r *ShoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
+func (r *shoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
 	query := r.db.Where("household_id = ?", householdID)
 
 	var total int64
@@ -38,7 +38,7 @@ func (r *ShoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, 
 	return lists, total, nil
 }
 
-func (r *ShoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*domain.ShoppingList, error) {
+func (r *shoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*domain.ShoppingList, error) {
 	var list domain.ShoppingList
 	err := r.db.Where("household_id = ? AND is_default = ?", householdID, true).First(&list).Error
 	if err != nil {
@@ -47,15 +47,15 @@ func (r *ShoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*do
 	return &list, nil
 }
 
-func (r *ShoppingListRepository) CreateList(list *domain.ShoppingList) error {
+func (r *shoppingListRepository) CreateList(list *domain.ShoppingList) error {
 	return r.db.Create(list).Error
 }
 
-func (r *ShoppingListRepository) DeleteList(id uuid.UUID) error {
+func (r *shoppingListRepository) DeleteList(id uuid.UUID) error {
 	return r.db.Delete(&domain.ShoppingList{}, id).Error
 }
 
-func (r *ShoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, error) {
+func (r *shoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, error) {
 	var item domain.ShoppingItem
 	if err := r.db.Preload("Unit").Preload("Food").First(&item, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -63,7 +63,7 @@ func (r *ShoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, e
 	return &item, nil
 }
 
-func (r *ShoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
+func (r *shoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
 	query := r.db.Preload("Unit").Preload("Food").Where("shopping_list_id = ?", listID)
 
 	var total int64
@@ -78,7 +78,7 @@ func (r *ShoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) 
 	return items, total, nil
 }
 
-func (r *ShoppingListRepository) CreateItems(items []*domain.ShoppingItem) error {
+func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error {
 	if err := r.db.Create(&items).Error; err != nil {
 		return err
 	}
@@ -93,10 +93,10 @@ func (r *ShoppingListRepository) CreateItems(items []*domain.ShoppingItem) error
 	return nil
 }
 
-func (r *ShoppingListRepository) UpdateItem(item *domain.ShoppingItem) error {
+func (r *shoppingListRepository) UpdateItem(item *domain.ShoppingItem) error {
 	return r.db.Model(item).Select("amount", "text", "is_bought", "unit_id", "food_id").Updates(item).Error
 }
 
-func (r *ShoppingListRepository) DeleteItem(id uuid.UUID) error {
+func (r *shoppingListRepository) DeleteItem(id uuid.UUID) error {
 	return r.db.Delete(&domain.ShoppingItem{}, id).Error
 }

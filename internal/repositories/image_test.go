@@ -45,7 +45,7 @@ func TestImageRepository_FindByID_NotFound(t *testing.T) {
 	repo := repositories.NewImageRepository(db)
 
 	_, err := repo.FindByID(uuid.New())
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestImageRepository_FindByEntity_ReturnsAllForEntity(t *testing.T) {
@@ -85,7 +85,7 @@ func TestImageRepository_FindBySourceURL_EmptyString_NotFound(t *testing.T) {
 	repo := repositories.NewImageRepository(db)
 
 	_, err := repo.FindBySourceURL("")
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestImageRepository_SetDefault_ClearsPreviousAndSetsNew(t *testing.T) {
@@ -126,5 +126,5 @@ func TestImageRepository_Delete_RemovesRecord(t *testing.T) {
 	require.NoError(t, repo.Delete(image.ID))
 
 	_, err := repo.FindByID(image.ID)
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }

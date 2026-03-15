@@ -12,7 +12,7 @@ type MealPlan struct {
 	HouseholdID uuid.UUID  `gorm:"type:char(36);index" json:"household_id"`
 	Date        time.Time  `gorm:"index" json:"date"`
 	MealType    string     `json:"meal_type"` // breakfast, lunch, dinner
-	RecipeID    *uuid.UUID `gorm:"type:char(36)" json:"recipe_id,omitempty"`
+	RecipeID    *uuid.UUID `gorm:"type:char(36);index" json:"recipe_id,omitempty"`
 	Servings    *int       `json:"servings,omitempty"`
 	Description *string    `json:"description,omitempty"`
 	Updated     time.Time  `gorm:"autoUpdateTime" json:"-"`

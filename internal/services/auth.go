@@ -12,7 +12,7 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type AuthService struct {
+type authService struct {
 	userRepo     domain.UserRepository
 	emailService domain.EmailService
 	dummyHash    string
@@ -22,13 +22,13 @@ func NewAuthService(userRepo domain.UserRepository, emailService domain.EmailSer
 	// Pre-compute a hash so the login path always runs bcrypt regardless of
 	// whether the email exists — prevents timing-based user enumeration.
 	hash, _ := utils.HashPassword("dummy-password-for-timing-protection")
-	return &AuthService{userRepo: userRepo, emailService: emailService, dummyHash: hash}
+	return &authService{userRepo: userRepo, emailService: emailService, dummyHash: hash}
 }
 
 // Login validates credentials and returns the matching user.
-func (s *AuthService) Login(email, password string) (*domain.User, error) {
+func (s *authService) Login(email, password string) (*domain.User, error) {
 	user, err := s.userRepo.ByEmail(email)
-	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
 	}
 
@@ -44,7 +44,7 @@ func (s *AuthService) Login(email, password string) (*domain.User, error) {
 }
 
 // Register creates a new user with a personal household.
-func (s *AuthService) Register(name, email, password string) (*domain.User, error) {
+func (s *authService) Register(name, email, password string) (*domain.User, error) {
 	hash, err := utils.HashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -65,7 +65,7 @@ func (s *AuthService) Register(name, email, password string) (*domain.User, erro
 }
 
 // IssueTokens generates a new access+refresh token pair and persists the refresh token.
-func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) {
+func (s *authService) IssueTokens(user domain.User) (*domain.AuthTokens, error) {
 	generatedTokens, err := tokens.GenerateNew(user.ID, user.HouseholdID)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (s *AuthService) IssueTokens(user domain.User) (*domain.AuthTokens, error) 
 }
 
 // RotateRefreshToken validates a refresh token, invalidates it, and issues a new pair.
-func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
+func (s *authService) RotateRefreshToken(tokenStr string) (*domain.User, *domain.AuthTokens, error) {
 	userToken, err := s.userRepo.FindToken(utils.HashToken(tokenStr), domain.TokenTypeRefresh)
 	if err != nil {
 		return nil, nil, sentinels.ErrUnauthorized
@@ -115,13 +115,13 @@ func (s *AuthService) RotateRefreshToken(tokenStr string) (*domain.User, *domain
 }
 
 // Logout invalidates the given refresh token, ending the session.
-func (s *AuthService) Logout(tokenStr string) error {
+func (s *authService) Logout(tokenStr string) error {
 	_, err := s.userRepo.DeleteToken(utils.HashToken(tokenStr))
 	return err
 }
 
 // ForgotPassword generates a reset token and sends it to the user's email address.
-func (s *AuthService) ForgotPassword(email string) error {
+func (s *authService) ForgotPassword(email string) error {
 	if s.emailService == nil {
 		return sentinels.NotImplemented("Email service is not configured")
 	}
@@ -145,13 +145,13 @@ func (s *AuthService) ForgotPassword(email string) error {
 }
 
 // ResetPassword validates the reset token and updates the user's password.
-func (s *AuthService) ResetPassword(rawToken, newPassword string) error {
+func (s *authService) ResetPassword(rawToken, newPassword string) error {
 	userToken, err := s.userRepo.FindToken(utils.HashToken(rawToken), domain.TokenTypePasswordReset)
 	if err != nil {
 		return err
 	}
 	if time.Now().After(userToken.Expires) {
-		return sentinels.ErrRecordNotFound
+		return sentinels.ErrNotFound
 	}
 
 	hash, err := utils.HashPassword(newPassword)

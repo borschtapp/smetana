@@ -9,15 +9,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type MealPlanRepository struct {
+type mealPlanRepository struct {
 	db *gorm.DB
 }
 
 func NewMealPlanRepository(db *gorm.DB) domain.MealPlanRepository {
-	return &MealPlanRepository{db: db}
+	return &mealPlanRepository{db: db}
 }
 
-func (r *MealPlanRepository) ByIdWithRecipes(id uuid.UUID) (*domain.MealPlan, error) {
+func (r *mealPlanRepository) ByIdWithRecipes(id uuid.UUID) (*domain.MealPlan, error) {
 	var mealPlan domain.MealPlan
 	if err := r.db.Preload("Recipe").First(&mealPlan, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -25,7 +25,7 @@ func (r *MealPlanRepository) ByIdWithRecipes(id uuid.UUID) (*domain.MealPlan, er
 	return &mealPlan, nil
 }
 
-func (r *MealPlanRepository) List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]domain.MealPlan, int64, error) {
+func (r *mealPlanRepository) List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]domain.MealPlan, int64, error) {
 	query := r.db.Preload("Recipe").Where("household_id = ?", householdID)
 
 	if from != nil {
@@ -47,14 +47,14 @@ func (r *MealPlanRepository) List(householdID uuid.UUID, from, to *time.Time, of
 	return mealPlans, total, nil
 }
 
-func (r *MealPlanRepository) Create(mealPlan *domain.MealPlan) error {
+func (r *mealPlanRepository) Create(mealPlan *domain.MealPlan) error {
 	return r.db.Create(mealPlan).Error
 }
 
-func (r *MealPlanRepository) Update(mealPlan *domain.MealPlan) error {
+func (r *mealPlanRepository) Update(mealPlan *domain.MealPlan) error {
 	return r.db.Model(mealPlan).Updates(mealPlan).Error
 }
 
-func (r *MealPlanRepository) Delete(id uuid.UUID) error {
+func (r *mealPlanRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.MealPlan{}, id).Error
 }

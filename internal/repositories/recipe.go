@@ -11,15 +11,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type RecipeRepository struct {
+type recipeRepository struct {
 	db *gorm.DB
 }
 
 func NewRecipeRepository(db *gorm.DB) domain.RecipeRepository {
-	return &RecipeRepository{db: db}
+	return &recipeRepository{db: db}
 }
 
-func (r *RecipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
+func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 	var recipe domain.Recipe
 	if err := r.db.
 		Preload(clause.Associations).
@@ -32,7 +32,7 @@ func (r *RecipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 	return &recipe, nil
 }
 
-func (r *RecipeRepository) ByUrl(url string) (*domain.Recipe, error) {
+func (r *recipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 	var recipe domain.Recipe
 	if err := r.db.Where(&domain.Recipe{IsBasedOn: &url}).
 		Preload(clause.Associations).
@@ -45,7 +45,7 @@ func (r *RecipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 	return &recipe, nil
 }
 
-func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
+func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 	var recipes []domain.Recipe
 
 	// base filter, only show recipes saved by someone from the household
@@ -142,23 +142,23 @@ func (r *RecipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 	return recipes, total, nil
 }
 
-func (r *RecipeRepository) Create(recipe *domain.Recipe) error {
+func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 	return r.db.Create(recipe).Error
 }
 
-func (r *RecipeRepository) Import(recipe *domain.Recipe) error {
+func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit", "Taxonomies.*").Create(recipe).Error
 }
 
-func (r *RecipeRepository) Update(recipe *domain.Recipe) error {
+func (r *recipeRepository) Update(recipe *domain.Recipe) error {
 	return r.db.Model(recipe).Updates(recipe).Error
 }
 
-func (r *RecipeRepository) Delete(id uuid.UUID) error {
+func (r *recipeRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.Recipe{}, id).Error
 }
 
-func (r *RecipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
+func (r *recipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
 	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&domain.RecipeSaved{
 		UserID:      userID,
 		RecipeID:    recipeID,
@@ -166,7 +166,7 @@ func (r *RecipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, househ
 	}).Error
 }
 
-func (r *RecipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]domain.Recipe, error) {
+func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]domain.Recipe, error) {
 	if len(parentIDs) == 0 {
 		return nil, nil
 	}
@@ -184,42 +184,42 @@ func (r *RecipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, househ
 	return recipes, nil
 }
 
-func (r *RecipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
+func (r *recipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return r.db.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error
 }
 
-func (r *RecipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient) error {
+func (r *recipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient) error {
 	return r.db.Create(ingredient).Error
 }
 
-func (r *RecipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
+func (r *recipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
 	return r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Updates(ingredient).Error
 }
 
-func (r *RecipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
+func (r *recipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
 	return r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error
 }
 
-func (r *RecipeRepository) CreateInstruction(instruction *domain.RecipeInstruction) error {
+func (r *recipeRepository) CreateInstruction(instruction *domain.RecipeInstruction) error {
 	return r.db.Create(instruction).Error
 }
 
-func (r *RecipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
+func (r *recipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
 	return r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Updates(instruction).Error
 }
 
-func (r *RecipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error {
+func (r *recipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error {
 	return r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID).Error
 }
 
-func (r *RecipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) error) error {
+func (r *recipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) error) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		txRepo := NewRecipeRepository(tx)
 		return fn(txRepo)
 	})
 }
 
-func (r *RecipeRepository) ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error {
+func (r *recipeRepository) ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error {
 	// 1. RecipeSaved
 	if err := r.db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
 		return err

@@ -4,14 +4,14 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type FoodService struct {
+type foodService struct {
 	repo domain.FoodRepository
 }
 
 func NewFoodService(repo domain.FoodRepository) domain.FoodService {
-	return &FoodService{repo: repo}
+	return &foodService{repo: repo}
 }
 
-func (s *FoodService) FindOrCreate(food *domain.Food) error {
+func (s *foodService) FindOrCreate(food *domain.Food) error {
 	return s.repo.FindOrCreate(food)
 }

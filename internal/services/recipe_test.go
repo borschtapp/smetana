@@ -25,7 +25,7 @@ type recipeServiceDeps struct {
 	scraper    *stubScraperService
 }
 
-// newTestRecipeService builds a RecipeService wired up with the provided stubs.
+// newTestRecipeService builds a recipeService wired up with the provided stubs.
 func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
 	if deps.imgService == nil {
 		deps.imgService = &stubImageService{}
@@ -83,13 +83,13 @@ func TestRecipeService_ByID_HouseholdRecipe_OtherHouseholdForbidden(t *testing.T
 
 func TestRecipeService_ByID_NotFound(t *testing.T) {
 	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) {
-		return nil, sentinels.ErrRecordNotFound
+		return nil, sentinels.ErrNotFound
 	}}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	_, err := svc.ByID(uuid.New(), uuid.New())
 
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
@@ -483,7 +483,7 @@ func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 		},
 	}
 	repo := &stubRecipeRepo{
-		byUrlFn: func(_ string) (*domain.Recipe, error) { return nil, sentinels.ErrRecordNotFound },
+		byUrlFn: func(_ string) (*domain.Recipe, error) { return nil, sentinels.ErrNotFound },
 		importFn: func(r *domain.Recipe) error {
 			r.ID = importedID
 			return nil

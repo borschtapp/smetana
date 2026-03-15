@@ -11,37 +11,37 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type HouseholdService struct {
+type householdService struct {
 	repo     domain.HouseholdRepository
 	userRepo domain.UserRepository
 }
 
 func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRepository) domain.HouseholdService {
-	return &HouseholdService{repo: repo, userRepo: userRepo}
+	return &householdService{repo: repo, userRepo: userRepo}
 }
 
-func (s *HouseholdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
+func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
 	if id != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
 	return s.repo.ByID(id)
 }
 
-func (s *HouseholdService) Update(household *domain.Household, requesterHouseholdID uuid.UUID) error {
+func (s *householdService) Update(household *domain.Household, requesterHouseholdID uuid.UUID) error {
 	if household.ID != requesterHouseholdID {
 		return sentinels.ErrForbidden
 	}
 	return s.repo.Update(household)
 }
 
-func (s *HouseholdService) Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
+func (s *householdService) Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
 	if householdID != requesterHouseholdID {
 		return nil, 0, sentinels.ErrForbidden
 	}
 	return s.repo.Members(householdID, offset, limit)
 }
 
-func (s *HouseholdService) CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.UserToken, error) {
+func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.UserToken, error) {
 	if householdID != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -61,14 +61,14 @@ func (s *HouseholdService) CreateInvite(householdID uuid.UUID, requesterID uuid.
 	return token, nil
 }
 
-func (s *HouseholdService) ListInvites(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) ([]domain.UserToken, error) {
+func (s *householdService) ListInvites(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) ([]domain.UserToken, error) {
 	if householdID != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
 	return s.userRepo.FindTokensByUser(requesterID, domain.TokenTypeHouseholdInvite)
 }
 
-func (s *HouseholdService) RevokeInvite(householdID uuid.UUID, requesterHouseholdID uuid.UUID, code string) error {
+func (s *householdService) RevokeInvite(householdID uuid.UUID, requesterHouseholdID uuid.UUID, code string) error {
 	if householdID != requesterHouseholdID {
 		return sentinels.ErrForbidden
 	}
@@ -83,13 +83,13 @@ func (s *HouseholdService) RevokeInvite(householdID uuid.UUID, requesterHousehol
 	return err
 }
 
-func (s *HouseholdService) JoinByInvite(joiningUserID uuid.UUID, code string) error {
+func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) error {
 	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
 	if err != nil {
 		return err
 	}
 	if time.Now().After(token.Expires) {
-		return sentinels.ErrRecordNotFound
+		return sentinels.ErrNotFound
 	}
 	joiningUser, err := s.userRepo.ByID(joiningUserID)
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *HouseholdService) JoinByInvite(joiningUserID uuid.UUID, code string) er
 
 // RemoveMember removes targetUserID from householdID.
 // Only the household owner or the target user themselves may do this.
-func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
+func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
 	if householdID != requesterHouseholdID {
 		return sentinels.ErrForbidden
 	}
@@ -157,7 +157,7 @@ func (s *HouseholdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 	return s.deleteIfEmpty(householdID)
 }
 
-func (s *HouseholdService) deleteIfEmpty(householdID uuid.UUID) error {
+func (s *householdService) deleteIfEmpty(householdID uuid.UUID) error {
 	_, total, err := s.repo.Members(householdID, 0, 1)
 	if err != nil {
 		return err

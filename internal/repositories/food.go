@@ -8,15 +8,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type FoodRepository struct {
+type foodRepository struct {
 	db *gorm.DB
 }
 
 func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
-	return &FoodRepository{db: db}
+	return &foodRepository{db: db}
 }
 
-func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
+func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 	if food.Slug != "" {
 		if err := r.db.First(food, "slug = ?", food.Slug).Error; err == nil {
 			return nil
@@ -38,10 +38,10 @@ func (r *FoodRepository) FindOrCreate(food *domain.Food) error {
 	return nil
 }
 
-func (r *FoodRepository) Update(food *domain.Food) error {
+func (r *foodRepository) Update(food *domain.Food) error {
 	return r.db.Model(food).Select("name", "image_path", "default_unit_id").Updates(food).Error
 }
 
-func (r *FoodRepository) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
+func (r *foodRepository) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
 	return r.db.Model(&domain.Food{ID: foodID}).Association("Taxonomies").Append(taxonomy)
 }

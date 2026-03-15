@@ -4,14 +4,14 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type UnitService struct {
+type unitService struct {
 	repo domain.UnitRepository
 }
 
 func NewUnitService(repo domain.UnitRepository) domain.UnitService {
-	return &UnitService{repo: repo}
+	return &unitService{repo: repo}
 }
 
-func (s *UnitService) FindOrCreate(unit *domain.Unit) error {
+func (s *unitService) FindOrCreate(unit *domain.Unit) error {
 	return s.repo.FindOrCreate(unit)
 }

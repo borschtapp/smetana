@@ -8,15 +8,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type TaxonomyRepository struct {
+type taxonomyRepository struct {
 	db *gorm.DB
 }
 
 func NewTaxonomyRepository(db *gorm.DB) domain.TaxonomyRepository {
-	return &TaxonomyRepository{db: db}
+	return &taxonomyRepository{db: db}
 }
 
-func (r *TaxonomyRepository) List(taxonomyType string, offset, limit int) ([]domain.Taxonomy, int64, error) {
+func (r *taxonomyRepository) List(taxonomyType string, offset, limit int) ([]domain.Taxonomy, int64, error) {
 	query := r.db.Model(&domain.Taxonomy{})
 
 	if taxonomyType != "" {
@@ -35,7 +35,7 @@ func (r *TaxonomyRepository) List(taxonomyType string, offset, limit int) ([]dom
 	return taxonomies, total, nil
 }
 
-func (r *TaxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
+func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 	if err := r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error; err == nil {
 		return nil
 	}

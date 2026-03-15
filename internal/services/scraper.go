@@ -15,13 +15,13 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type ScraperService struct{}
+type scraperService struct{}
 
 func NewScraperService() domain.ScraperService {
-	return &ScraperService{}
+	return &scraperService{}
 }
 
-func (s *ScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
+func (s *scraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -39,7 +39,7 @@ func (s *ScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.
 	return recipe, nil
 }
 
-func (s *ScraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+func (s *scraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
@@ -66,14 +66,14 @@ func (s *ScraperService) ScrapeFeed(ctx context.Context, url string, opts domain
 	return recipes, nil
 }
 
-func (s *ScraperService) enrichIngredients(ingredients []*domain.RecipeIngredient, language string) {
+func (s *scraperService) enrichIngredients(ingredients []*domain.RecipeIngredient, language string) {
 	for _, ingredient := range ingredients {
 		s.enrichIngredient(ingredient, language)
 	}
 }
 
 // enrichIngredient uses Kapusta to parse RawText for ingredients that were structured by Krip.
-func (s *ScraperService) enrichIngredient(ingredient *domain.RecipeIngredient, language string) {
+func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, language string) {
 	if ingredient.Food != nil {
 		return // structured fields already set during conversion
 	}
@@ -99,7 +99,7 @@ func (s *ScraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 	}
 }
 
-func (s *ScraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
+func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	recipe := &domain.Recipe{}
 	recipe.IsBasedOn = &kripRecipe.Url
 	if len(kripRecipe.Name) > 0 {
@@ -216,7 +216,7 @@ func (s *ScraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	return recipe
 }
 
-func (s *ScraperService) kripToAuthor(person *krip.Person) *domain.Author {
+func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
 	return &domain.Author{
 		Name:        person.Name,
 		Description: person.Description,
@@ -225,7 +225,7 @@ func (s *ScraperService) kripToAuthor(person *krip.Person) *domain.Author {
 	}
 }
 
-func (s *ScraperService) kripToImage(image *krip.ImageObject) *domain.Image {
+func (s *scraperService) kripToImage(image *krip.ImageObject) *domain.Image {
 	return &domain.Image{
 		SourceURL: image.Url,
 		Width:     image.Width,
@@ -234,7 +234,7 @@ func (s *ScraperService) kripToImage(image *krip.ImageObject) *domain.Image {
 	}
 }
 
-func (s *ScraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeInstruction {
+func (s *scraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeInstruction {
 	ins := &domain.RecipeInstruction{}
 	if len(item.Name) != 0 {
 		ins.Title = &item.Name
@@ -254,7 +254,7 @@ func (s *ScraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeI
 	return ins
 }
 
-func (s *ScraperService) kripToIngredient(item *krip.PropertyValue) *domain.RecipeIngredient {
+func (s *scraperService) kripToIngredient(item *krip.PropertyValue) *domain.RecipeIngredient {
 	ing := &domain.RecipeIngredient{}
 	if item.Value != "" {
 		// Structured: value, optional unit, and name are separate.
@@ -298,7 +298,7 @@ func (s *ScraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 	return ing
 }
 
-func (s *ScraperService) kripToPublisher(org *krip.Organization) *domain.Publisher {
+func (s *scraperService) kripToPublisher(org *krip.Organization) *domain.Publisher {
 	pub := &domain.Publisher{Name: org.Name}
 	if len(org.Description) != 0 {
 		pub.Description = &org.Description

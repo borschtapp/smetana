@@ -10,15 +10,15 @@ import (
 	"borscht.app/smetana/internal/sentinels"
 )
 
-type MealPlanService struct {
+type mealPlanService struct {
 	repo domain.MealPlanRepository
 }
 
 func NewMealPlanService(repo domain.MealPlanRepository) domain.MealPlanService {
-	return &MealPlanService{repo: repo}
+	return &mealPlanService{repo: repo}
 }
 
-func (s *MealPlanService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.MealPlan, error) {
+func (s *mealPlanService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.MealPlan, error) {
 	mealPlan, err := s.repo.ByIdWithRecipes(id)
 	if err != nil {
 		return nil, err
@@ -29,11 +29,11 @@ func (s *MealPlanService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (
 	return mealPlan, nil
 }
 
-func (s *MealPlanService) List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]domain.MealPlan, int64, error) {
+func (s *mealPlanService) List(householdID uuid.UUID, from, to *time.Time, offset, limit int) ([]domain.MealPlan, int64, error) {
 	return s.repo.List(householdID, from, to, offset, limit)
 }
 
-func (s *MealPlanService) Create(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
+func (s *mealPlanService) Create(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
 	mealPlan.HouseholdID = householdID
 	if err := s.repo.Create(mealPlan); err != nil {
 		return err
@@ -50,7 +50,7 @@ func (s *MealPlanService) Create(mealPlan *domain.MealPlan, householdID uuid.UUI
 	return nil
 }
 
-func (s *MealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
+func (s *mealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUID) error {
 	existing, err := s.repo.ByIdWithRecipes(mealPlan.ID)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (s *MealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUI
 	return nil
 }
 
-func (s *MealPlanService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+func (s *mealPlanService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	mealPlan, err := s.repo.ByIdWithRecipes(id)
 	if err != nil {
 		return err

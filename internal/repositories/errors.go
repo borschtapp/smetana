@@ -14,7 +14,7 @@ func mapErr(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		return sentinels.ErrRecordNotFound
+		return sentinels.ErrNotFound
 	case errors.Is(err, gorm.ErrDuplicatedKey):
 		return sentinels.ErrAlreadyExists
 	default:

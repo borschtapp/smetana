@@ -7,15 +7,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type UserRepository struct {
+type userRepository struct {
 	db *gorm.DB
 }
 
 func NewUserRepository(db *gorm.DB) domain.UserRepository {
-	return &UserRepository{db: db}
+	return &userRepository{db: db}
 }
 
-func (r *UserRepository) ByID(id uuid.UUID) (*domain.User, error) {
+func (r *userRepository) ByID(id uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.First(&user, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -23,7 +23,7 @@ func (r *UserRepository) ByID(id uuid.UUID) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) ByEmail(email string) (*domain.User, error) {
+func (r *userRepository) ByEmail(email string) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.Where(&domain.User{Email: email}).First(&user).Error; err != nil {
 		return nil, mapErr(err)
@@ -31,7 +31,7 @@ func (r *UserRepository) ByEmail(email string) (*domain.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) ByEmailWithHousehold(email string) (*domain.User, error) {
+func (r *userRepository) ByEmailWithHousehold(email string) (*domain.User, error) {
 	var user domain.User
 	if err := r.db.Where(&domain.User{Email: email}).Preload("Household").First(&user).Error; err != nil {
 		return nil, mapErr(err)
@@ -39,7 +39,7 @@ func (r *UserRepository) ByEmailWithHousehold(email string) (*domain.User, error
 	return &user, nil
 }
 
-func (r *UserRepository) Create(user *domain.User) error {
+func (r *userRepository) Create(user *domain.User) error {
 	return mapErr(r.db.Transaction(func(tx *gorm.DB) error {
 		if user.ID == uuid.Nil {
 			id, err := uuid.NewV7()
@@ -57,15 +57,15 @@ func (r *UserRepository) Create(user *domain.User) error {
 	}))
 }
 
-func (r *UserRepository) Update(user *domain.User) error {
+func (r *userRepository) Update(user *domain.User) error {
 	return r.db.Model(user).Updates(user).Error
 }
 
-func (r *UserRepository) Delete(id uuid.UUID) error {
+func (r *userRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.User{}, id).Error
 }
 
-func (r *UserRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
+func (r *userRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
 	var tokens []domain.UserToken
 	if err := r.db.Where(&domain.UserToken{UserID: userID, Type: tokenType}).Find(&tokens).Error; err != nil {
 		return nil, mapErr(err)
@@ -73,7 +73,7 @@ func (r *UserRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([
 	return tokens, nil
 }
 
-func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.UserToken, error) {
+func (r *userRepository) FindToken(tokenStr string, tokenType string) (*domain.UserToken, error) {
 	var userToken domain.UserToken
 	if err := r.db.Preload("User").Where(&domain.UserToken{Token: tokenStr, Type: tokenType}).First(&userToken).Error; err != nil {
 		return nil, mapErr(err)
@@ -81,11 +81,11 @@ func (r *UserRepository) FindToken(tokenStr string, tokenType string) (*domain.U
 	return &userToken, nil
 }
 
-func (r *UserRepository) CreateToken(token *domain.UserToken) error {
+func (r *userRepository) CreateToken(token *domain.UserToken) error {
 	return r.db.Create(token).Error
 }
 
-func (r *UserRepository) DeleteToken(tokenStr string) (bool, error) {
+func (r *userRepository) DeleteToken(tokenStr string) (bool, error) {
 	result := r.db.Unscoped().Where(&domain.UserToken{Token: tokenStr}).Delete(&domain.UserToken{})
 	return result.RowsAffected == 1, result.Error
 }

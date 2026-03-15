@@ -8,16 +8,16 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type CollectionService struct {
+type collectionService struct {
 	repo       domain.CollectionRepository
 	recipeRepo domain.RecipeRepository
 }
 
 func NewCollectionService(repo domain.CollectionRepository, recipeRepo domain.RecipeRepository) domain.CollectionService {
-	return &CollectionService{repo: repo, recipeRepo: recipeRepo}
+	return &collectionService{repo: repo, recipeRepo: recipeRepo}
 }
 
-func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
+func (s *collectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
 	collection, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func (s *CollectionService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.C
 	return collection, nil
 }
 
-func (s *CollectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
+func (s *collectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID) (*domain.Collection, error) {
 	collection, err := s.repo.ByIdWithRecipes(id)
 	if err != nil {
 		return nil, err
@@ -39,17 +39,17 @@ func (s *CollectionService) ByIDWithRecipes(id uuid.UUID, householdID uuid.UUID)
 	return collection, nil
 }
 
-func (s *CollectionService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
+func (s *collectionService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Collection, int64, error) {
 	return s.repo.Search(householdID, opts)
 }
 
-func (s *CollectionService) Create(collection *domain.Collection, userID uuid.UUID, householdID uuid.UUID) error {
+func (s *collectionService) Create(collection *domain.Collection, userID uuid.UUID, householdID uuid.UUID) error {
 	collection.HouseholdID = householdID
 	collection.UserID = userID
 	return s.repo.Create(collection)
 }
 
-func (s *CollectionService) Update(collection *domain.Collection, householdID uuid.UUID) error {
+func (s *collectionService) Update(collection *domain.Collection, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(collection.ID)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (s *CollectionService) Update(collection *domain.Collection, householdID uu
 	return s.repo.Update(collection)
 }
 
-func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
+func (s *collectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	collection, err := s.repo.ByID(id)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func (s *CollectionService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	return s.repo.Delete(id)
 }
 
-func (s *CollectionService) ListRecipes(collectionID uuid.UUID, userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+func (s *collectionService) ListRecipes(collectionID uuid.UUID, userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
 	existing, err := s.repo.ByID(collectionID)
 	if err != nil {
 		return nil, 0, err
@@ -83,7 +83,7 @@ func (s *CollectionService) ListRecipes(collectionID uuid.UUID, userID uuid.UUID
 	return s.recipeRepo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, CollectionID: collectionID})
 }
 
-func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+func (s *collectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	collection, err := s.repo.ByID(collectionID)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (s *CollectionService) AddRecipe(collectionID uuid.UUID, recipeID uuid.UUID
 	return s.repo.AddRecipe(collection, recipeID)
 }
 
-func (s *CollectionService) RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
+func (s *collectionService) RemoveRecipe(collectionID uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	collection, err := s.repo.ByID(collectionID)
 	if err != nil {
 		return err

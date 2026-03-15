@@ -193,9 +193,9 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 		},
 	}
 	recipeRepo := &stubRecipeRepo{
-		// ByUrl returning ErrRecordNotFound means recipe is new
+		// ByUrl returning ErrNotFound means recipe is new
 		byUrlFn: func(_ string) (*domain.Recipe, error) {
-			return nil, sentinels.ErrRecordNotFound
+			return nil, sentinels.ErrNotFound
 		},
 	}
 	var importedRecipe *domain.Recipe

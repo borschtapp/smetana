@@ -25,7 +25,7 @@ type RecipeInstruction struct {
 	RemoteImage *string `gorm:"-" json:"-"`
 
 	Recipe *Recipe            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Images []*Image           `gorm:"polymorphic:Entity;" json:"images,omitempty"`
+	Images []*Image           `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Parent *RecipeInstruction `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"parent,omitempty"`
 }
 

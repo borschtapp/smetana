@@ -13,7 +13,7 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type OIDCService struct {
+type oidcService struct {
 	provider     *oidc.Provider
 	oauth2Config *oauth2.Config
 	verifier     *oidc.IDTokenVerifier
@@ -46,7 +46,7 @@ func NewOIDCService(userRepo domain.UserRepository) (domain.OIDCService, error) 
 
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientID})
 
-	return &OIDCService{
+	return &oidcService{
 		provider:     provider,
 		oauth2Config: conf,
 		verifier:     verifier,
@@ -54,11 +54,11 @@ func NewOIDCService(userRepo domain.UserRepository) (domain.OIDCService, error) 
 	}, nil
 }
 
-func (s *OIDCService) LoginURL(state string) string {
+func (s *oidcService) LoginURL(state string) string {
 	return s.oauth2Config.AuthCodeURL(state)
 }
 
-func (s *OIDCService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
+func (s *oidcService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
 	oauth2Token, err := s.oauth2Config.Exchange(ctx, code)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to exchange token: %v", err)
@@ -78,12 +78,12 @@ func (s *OIDCService) Exchange(ctx context.Context, code string) (*oauth2.Token,
 }
 
 // Authorize finds a user by email or provisions one via JIT registration.
-func (s *OIDCService) Authorize(email, name string) (*domain.User, error) {
+func (s *oidcService) Authorize(email, name string) (*domain.User, error) {
 	user, err := s.userRepo.ByEmailWithHousehold(email)
 	if err == nil {
 		return user, nil
 	}
-	if !errors.Is(err, sentinels.ErrRecordNotFound) {
+	if !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
 	}
 

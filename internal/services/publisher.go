@@ -9,20 +9,20 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type PublisherService struct {
+type publisherService struct {
 	repo         domain.PublisherRepository
 	imageService domain.ImageService
 }
 
 func NewPublisherService(repo domain.PublisherRepository, imageService domain.ImageService) domain.PublisherService {
-	return &PublisherService{repo: repo, imageService: imageService}
+	return &publisherService{repo: repo, imageService: imageService}
 }
 
-func (s *PublisherService) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
+func (s *publisherService) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
 	return s.repo.Search(opts)
 }
 
-func (s *PublisherService) FindOrCreate(ctx context.Context, pub *domain.Publisher) error {
+func (s *publisherService) FindOrCreate(ctx context.Context, pub *domain.Publisher) error {
 	if err := s.repo.FindOrCreate(pub); err != nil {
 		return err
 	}

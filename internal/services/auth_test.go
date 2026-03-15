@@ -57,7 +57,7 @@ func TestAuthService_Login_WrongPassword_Unauthorized(t *testing.T) {
 func TestAuthService_Login_NonExistentEmail_Unauthorized(t *testing.T) {
 	repo := &stubUserRepo{
 		byEmailFn: func(_ string) (*domain.User, error) {
-			return nil, sentinels.ErrRecordNotFound
+			return nil, sentinels.ErrNotFound
 		},
 	}
 
@@ -65,7 +65,7 @@ func TestAuthService_Login_NonExistentEmail_Unauthorized(t *testing.T) {
 	_, err := svc.Login("nobody@borscht.app", "any-password")
 
 	require.ErrorIs(t, err, sentinels.ErrUnauthorized,
-		"non-existent user must produce ErrUnauthorized, not ErrRecordNotFound")
+		"non-existent user must produce ErrUnauthorized, not ErrNotFound")
 }
 
 func TestAuthService_Login_DBError_PropagatesError(t *testing.T) {
@@ -187,7 +187,7 @@ func TestAuthService_RotateRefreshToken_ExpiredToken_Unauthorized(t *testing.T) 
 func TestAuthService_RotateRefreshToken_TokenNotFound_Unauthorized(t *testing.T) {
 	repo := &stubUserRepo{
 		findTokenFn: func(_, _ string) (*domain.UserToken, error) {
-			return nil, sentinels.ErrRecordNotFound
+			return nil, sentinels.ErrNotFound
 		},
 	}
 
@@ -258,11 +258,11 @@ func TestAuthService_Logout_DeletesHashedToken(t *testing.T) {
 
 func TestAuthService_Logout_PropagatesDeleteError(t *testing.T) {
 	repo := &stubUserRepo{
-		deleteTokenFn: func(_ string) (bool, error) { return false, sentinels.ErrRecordNotFound },
+		deleteTokenFn: func(_ string) (bool, error) { return false, sentinels.ErrNotFound },
 	}
 
 	svc := newTestAuthService(repo)
 	err := svc.Logout("any-token")
 
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }

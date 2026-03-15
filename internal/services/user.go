@@ -8,15 +8,15 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type UserService struct {
+type userService struct {
 	repo domain.UserRepository
 }
 
 func NewUserService(repo domain.UserRepository) domain.UserService {
-	return &UserService{repo: repo}
+	return &userService{repo: repo}
 }
 
-func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
+func (s *userService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -24,7 +24,7 @@ func (s *UserService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 }
 
 // Update fetches the user, applies the non-nil patches, and persists the result.
-func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*domain.User, error) {
+func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*domain.User, error) {
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -53,7 +53,7 @@ func (s *UserService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	return user, s.repo.Update(user)
 }
 
-func (s *UserService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
+func (s *userService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 	if id != requesterID {
 		return sentinels.ErrForbidden
 	}

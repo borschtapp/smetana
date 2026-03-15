@@ -11,18 +11,18 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
-type ShoppingListService struct {
+type shoppingListService struct {
 	repo     domain.ShoppingListRepository
 	foodRepo domain.FoodRepository
 	unitRepo domain.UnitRepository
 }
 
 func NewShoppingListService(repo domain.ShoppingListRepository, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository) domain.ShoppingListService {
-	return &ShoppingListService{repo: repo, foodRepo: foodRepo, unitRepo: unitRepo}
+	return &shoppingListService{repo: repo, foodRepo: foodRepo, unitRepo: unitRepo}
 }
 
 // ensureOwned fetches a list by ID and verifies household ownership.
-func (s *ShoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+func (s *shoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
 	list, err := s.repo.ByID(listID)
 	if err != nil {
 		return nil, err
@@ -33,17 +33,17 @@ func (s *ShoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUI
 	return list, nil
 }
 
-func (s *ShoppingListService) Lists(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
+func (s *shoppingListService) Lists(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
 	return s.repo.ListByHousehold(householdID, offset, limit)
 }
 
-func (s *ShoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
+func (s *shoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
 	return s.ensureOwned(listID, householdID)
 }
 
-func (s *ShoppingListService) CreateList(list *domain.ShoppingList, householdID uuid.UUID) error {
+func (s *shoppingListService) CreateList(list *domain.ShoppingList, householdID uuid.UUID) error {
 	defaultList, err := s.repo.DefaultForHousehold(householdID)
-	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return err
 	}
 
@@ -52,7 +52,7 @@ func (s *ShoppingListService) CreateList(list *domain.ShoppingList, householdID 
 	return s.repo.CreateList(list)
 }
 
-func (s *ShoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID) error {
 	list, err := s.ensureOwned(listID, householdID)
 	if err != nil {
 		return err
@@ -63,14 +63,14 @@ func (s *ShoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID
 	return s.repo.DeleteList(listID)
 }
 
-func (s *ShoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
+func (s *shoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return nil, 0, err
 	}
 	return s.repo.ListItems(listID, offset, limit)
 }
 
-func (s *ShoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (s *ShoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid
 }
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.
-func (s *ShoppingListService) parseItemText(item *domain.ShoppingItem) {
+func (s *shoppingListService) parseItemText(item *domain.ShoppingItem) {
 	parsed, err := kapusta.ParseIngredient(item.Text, "")
 	if err != nil || parsed == nil {
 		return
@@ -149,7 +149,7 @@ func (s *ShoppingListService) parseItemText(item *domain.ShoppingItem) {
 	}
 }
 
-func (s *ShoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (s *ShoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.
 	return s.repo.UpdateItem(item)
 }
 
-func (s *ShoppingListService) DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return err
 	}

@@ -13,15 +13,15 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type PublisherRepository struct {
+type publisherRepository struct {
 	db *gorm.DB
 }
 
 func NewPublisherRepository(db *gorm.DB) domain.PublisherRepository {
-	return &PublisherRepository{db: db}
+	return &publisherRepository{db: db}
 }
 
-func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
+func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
 	var publishers []domain.Publisher
 
 	q := r.db.Model(&domain.Publisher{})
@@ -42,6 +42,10 @@ func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 	if len(opts.Preload) != 0 {
 		if slices.Contains(opts.Preload, "feeds") {
 			q = q.Preload("Feeds")
+		}
+
+		if slices.Contains(opts.Preload, "images") {
+			q = q.Preload("Images")
 		}
 
 		if slices.Contains(opts.Preload, "recipes:5") {
@@ -74,7 +78,7 @@ func (r *PublisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 	return publishers, total, nil
 }
 
-func (r *PublisherRepository) FindOrCreate(pub *domain.Publisher) error {
+func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 	if err := r.find(pub); err == nil {
 		return nil
 	}
@@ -90,7 +94,7 @@ func (r *PublisherRepository) FindOrCreate(pub *domain.Publisher) error {
 	return nil
 }
 
-func (r *PublisherRepository) find(pub *domain.Publisher) error {
+func (r *publisherRepository) find(pub *domain.Publisher) error {
 	if pub.ID != uuid.Nil {
 		return nil
 	}

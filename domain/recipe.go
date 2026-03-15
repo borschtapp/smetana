@@ -22,8 +22,8 @@ type Recipe struct {
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
 	Language    *string         `json:"language,omitempty" example:"en"`
 	Author      *Author         `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
-	PublisherID *uuid.UUID      `gorm:"type:char(36)" json:"-"`
-	FeedID      *uuid.UUID      `gorm:"type:char(36)" json:"feed_id,omitempty"`
+	PublisherID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
+	FeedID      *uuid.UUID      `gorm:"type:char(36);index" json:"feed_id,omitempty"`
 	Text        *string         `json:"text,omitempty"`
 	PrepTime    *types.Duration `json:"prep_time,omitempty" swaggertype:"integer" example:"900"`
 	CookTime    *types.Duration `json:"cook_time,omitempty" swaggertype:"integer" example:"1200"`

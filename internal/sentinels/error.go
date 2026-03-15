@@ -26,5 +26,5 @@ func (e *Error) Is(target error) bool {
 
 var ErrUnauthorized = &Error{Status: fiber.StatusUnauthorized, Message: "Invalid credentials"}
 var ErrForbidden = &Error{Status: fiber.StatusForbidden, Message: "Access denied"}
-var ErrRecordNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
+var ErrNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
 var ErrAlreadyExists = &Error{Status: fiber.StatusConflict, Message: "The entity already exists"}

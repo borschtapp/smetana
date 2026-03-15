@@ -21,7 +21,7 @@ type Food struct {
 	RemoteImage *string `gorm:"-" json:"-"`
 
 	DefaultUnit *Unit       `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
-	Images      []*Image    `gorm:"polymorphic:Entity;" json:"images,omitempty"`
+	Images      []*Image    `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Taxonomies  []*Taxonomy `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
 }
 

@@ -14,7 +14,7 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type FeedService struct {
+type feedService struct {
 	repo           domain.FeedRepository
 	publisherRepo  domain.PublisherRepository
 	recipeRepo     domain.RecipeRepository
@@ -23,7 +23,7 @@ type FeedService struct {
 }
 
 func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
-	return &FeedService{
+	return &feedService{
 		repo:           repo,
 		publisherRepo:  pubRepo,
 		recipeRepo:     recipeRepo,
@@ -32,11 +32,11 @@ func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherReposito
 	}
 }
 
-func (s *FeedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
+func (s *feedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
 	return s.repo.Search(householdID, opts)
 }
 
-func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
 	recipes, total, err := s.recipeRepo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
 	if err != nil || len(recipes) == 0 {
 		return recipes, total, err
@@ -72,13 +72,13 @@ func (s *FeedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 	return recipes, total, nil
 }
 
-func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string) (*domain.Feed, error) {
+func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string) (*domain.Feed, error) {
 	feed, err := s.repo.ByUrl(url)
-	if err != nil && !errors.Is(err, sentinels.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
 	}
 
-	if errors.Is(err, sentinels.ErrRecordNotFound) {
+	if errors.Is(err, sentinels.ErrNotFound) {
 		feed, err = s.createFeed(url)
 		if err != nil {
 			log.Warnw("subscribe scrape feed failed", "url", url, "error", err)
@@ -112,11 +112,11 @@ func (s *FeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	return feed, nil
 }
 
-func (s *FeedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error {
+func (s *feedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error {
 	return s.repo.DeleteFeed(householdID, feedID)
 }
 
-func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
+func (s *feedService) createFeed(url string) (*domain.Feed, error) {
 	scrapeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -147,7 +147,7 @@ func (s *FeedService) createFeed(url string) (*domain.Feed, error) {
 	return feed, nil
 }
 
-func (s *FeedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, int, error) {
+func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, int, error) {
 	imported := 0
 	feed.LastSyncAt = time.Now()
 

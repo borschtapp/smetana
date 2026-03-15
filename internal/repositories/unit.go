@@ -8,15 +8,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type UnitRepository struct {
+type unitRepository struct {
 	db *gorm.DB
 }
 
 func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
-	return &UnitRepository{db: db}
+	return &unitRepository{db: db}
 }
 
-func (r *UnitRepository) FindOrCreate(unit *domain.Unit) error {
+func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 	if unit.Slug != "" {
 		if err := r.db.First(unit, "slug = ?", unit.Slug).Error; err == nil {
 			return nil

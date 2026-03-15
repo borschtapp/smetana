@@ -12,15 +12,15 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type FeedRepository struct {
+type feedRepository struct {
 	db *gorm.DB
 }
 
 func NewFeedRepository(db *gorm.DB) domain.FeedRepository {
-	return &FeedRepository{db: db}
+	return &feedRepository{db: db}
 }
 
-func (r *FeedRepository) ByUrl(url string) (*domain.Feed, error) {
+func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 	var feed domain.Feed
 	if err := r.db.Where("url = ?", url).First(&feed).Error; err != nil {
 		return nil, mapErr(err)
@@ -28,7 +28,7 @@ func (r *FeedRepository) ByUrl(url string) (*domain.Feed, error) {
 	return &feed, nil
 }
 
-func (r *FeedRepository) ListActive() ([]domain.Feed, error) {
+func (r *feedRepository) ListActive() ([]domain.Feed, error) {
 	var feeds []domain.Feed
 	if err := r.db.Select("feeds.*").Where("active = ?", true).Find(&feeds).Error; err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (r *FeedRepository) ListActive() ([]domain.Feed, error) {
 	return feeds, nil
 }
 
-func (r *FeedRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
+func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
 	var feeds []domain.Feed
 
 	q := r.db.Model(&domain.Feed{}).
@@ -91,23 +91,23 @@ func (r *FeedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	return feeds, total, nil
 }
 
-func (r *FeedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
+func (r *feedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
 	return r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed)
 }
 
-func (r *FeedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error {
+func (r *feedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error {
 	return r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Delete(&domain.Feed{ID: feedID})
 }
 
-func (r *FeedRepository) Create(feed *domain.Feed) error {
+func (r *feedRepository) Create(feed *domain.Feed) error {
 	return r.db.Create(feed).Error
 }
 
-func (r *FeedRepository) Update(feed *domain.Feed) error {
+func (r *feedRepository) Update(feed *domain.Feed) error {
 	// Explicitly select mutable columns so that zero-value fields like are persisted correctly
 	return r.db.Model(feed).Select("active", "error_count", "last_sync_at", "last_sync_success", "name").Updates(feed).Error
 }
 
-func (r *FeedRepository) Delete(id uuid.UUID) error {
+func (r *feedRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&domain.Feed{}, id).Error
 }

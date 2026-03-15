@@ -88,7 +88,7 @@ func TestRecipeRepository_ByID_NotFound_ReturnsErrRecordNotFound(t *testing.T) {
 
 	_, err := repo.ByID(uuid.New())
 
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestRecipeRepository_ByUrl_FindsByIsBasedOn(t *testing.T) {
@@ -110,7 +110,7 @@ func TestRecipeRepository_ByUrl_NotFound_ReturnsErrRecordNotFound(t *testing.T) 
 
 	_, err := repo.ByUrl("https://example.com/no-such-recipe")
 
-	require.ErrorIs(t, err, sentinels.ErrRecordNotFound)
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestRecipeRepository_ByParentIDsAndHousehold_EmptyIDs_ReturnsNil(t *testing.T) {

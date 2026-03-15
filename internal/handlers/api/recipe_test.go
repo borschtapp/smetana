@@ -106,7 +106,7 @@ func TestRecipeHandler_GetRecipe_RecipeNotFound_Returns404(t *testing.T) {
 	hid := uuid.New()
 	svc := &stubRecipeService{
 		byIDFn: func(_, _ uuid.UUID) (*domain.Recipe, error) {
-			return nil, sentinels.ErrRecordNotFound
+			return nil, sentinels.ErrNotFound
 		},
 	}
 	app := buildApp(t, svc)

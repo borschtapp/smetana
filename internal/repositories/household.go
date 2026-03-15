@@ -9,15 +9,15 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type HouseholdRepository struct {
+type householdRepository struct {
 	db *gorm.DB
 }
 
 func NewHouseholdRepository(db *gorm.DB) domain.HouseholdRepository {
-	return &HouseholdRepository{db: db}
+	return &householdRepository{db: db}
 }
 
-func (r *HouseholdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
+func (r *householdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -25,19 +25,19 @@ func (r *HouseholdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	return &household, nil
 }
 
-func (r *HouseholdRepository) Create(household *domain.Household) error {
+func (r *householdRepository) Create(household *domain.Household) error {
 	return r.db.Model(household).Create(household).Error
 }
 
-func (r *HouseholdRepository) Update(household *domain.Household) error {
+func (r *householdRepository) Update(household *domain.Household) error {
 	return r.db.Model(household).Updates(household).Error
 }
 
-func (r *HouseholdRepository) Delete(id uuid.UUID) error {
+func (r *householdRepository) Delete(id uuid.UUID) error {
 	return mapErr(r.db.Delete(&domain.Household{}, id).Error)
 }
 
-func (r *HouseholdRepository) FirstOtherMember(householdID uuid.UUID, excludeUserID uuid.UUID) (*domain.User, error) {
+func (r *householdRepository) FirstOtherMember(householdID uuid.UUID, excludeUserID uuid.UUID) (*domain.User, error) {
 	var user domain.User
 	err := r.db.Where("household_id = ? AND id != ?", householdID, excludeUserID).
 		Order("created ASC").
@@ -51,7 +51,7 @@ func (r *HouseholdRepository) FirstOtherMember(householdID uuid.UUID, excludeUse
 	return &user, nil
 }
 
-func (r *HouseholdRepository) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
+func (r *householdRepository) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
 	query := r.db.Where("household_id = ?", householdID)
 
 	var total int64

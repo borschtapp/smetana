@@ -6,18 +6,18 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type SchedulerRepository struct {
+type schedulerRepository struct {
 	db *gorm.DB
 }
 
 func NewSchedulerRepository(db *gorm.DB) domain.SchedulerRepository {
-	return &SchedulerRepository{db: db}
+	return &schedulerRepository{db: db}
 }
 
-func (r *SchedulerRepository) CreateLog(log *domain.SchedulerLog) error {
+func (r *schedulerRepository) CreateLog(log *domain.SchedulerLog) error {
 	return r.db.Create(log).Error
 }
 
-func (r *SchedulerRepository) UpdateLog(log *domain.SchedulerLog) error {
+func (r *schedulerRepository) UpdateLog(log *domain.SchedulerLog) error {
 	return r.db.Model(log).Updates(log).Error
 }
