@@ -13,14 +13,14 @@ import (
 type Feed struct {
 	ID              uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	Active          bool      `json:"active"`
-	PublisherID     uuid.UUID `gorm:"type:char(36);index" json:"-"`
+	PublisherID     uuid.UUID `gorm:"type:char(36);index" json:"publisher_id"`
 	Url             string    `gorm:"uniqueIndex" json:"url"`
 	Name            string    `json:"name"`
-	ErrorCount      int       `json:"error_count"`
+	ErrorCount      int       `json:"-"`
 	LastSyncAt      time.Time `json:"last_sync_at"`
 	LastSyncSuccess bool      `json:"last_sync_success"`
-	Created         time.Time `gorm:"autoCreateTime" json:"created"`
-	Updated         time.Time `gorm:"autoUpdateTime" json:"updated"`
+	Updated         time.Time `gorm:"autoUpdateTime" json:"-"`
+	Created         time.Time `gorm:"autoCreateTime" json:"-"`
 
 	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
 	Publisher    *Publisher `json:"publisher,omitempty"`

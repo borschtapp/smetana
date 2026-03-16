@@ -3262,16 +3262,7 @@ const docTemplate = `{
                 "access_token": {
                     "type": "string"
                 },
-                "created": {
-                    "type": "string"
-                },
                 "email": {
-                    "type": "string"
-                },
-                "household": {
-                    "$ref": "#/definitions/domain.Household"
-                },
-                "household_id": {
                     "type": "string"
                 },
                 "id": {
@@ -3290,9 +3281,6 @@ const docTemplate = `{
                     }
                 },
                 "refresh_token": {
-                    "type": "string"
-                },
-                "updated": {
                     "type": "string"
                 }
             }
@@ -3607,12 +3595,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "household": {
-                    "$ref": "#/definitions/domain.Household"
-                },
-                "household_id": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -3639,12 +3621,6 @@ const docTemplate = `{
                 "active": {
                     "type": "boolean"
                 },
-                "created": {
-                    "type": "string"
-                },
-                "error_count": {
-                    "type": "integer"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -3660,6 +3636,9 @@ const docTemplate = `{
                 "publisher": {
                     "$ref": "#/definitions/domain.Publisher"
                 },
+                "publisher_id": {
+                    "type": "string"
+                },
                 "recipes": {
                     "type": "array",
                     "items": {
@@ -3668,9 +3647,6 @@ const docTemplate = `{
                 },
                 "total_recipes": {
                     "type": "integer"
-                },
-                "updated": {
-                    "type": "string"
                 },
                 "url": {
                     "type": "string"
@@ -3684,6 +3660,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/domain.Unit"
                 },
                 "default_unit_id": {
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "id": {
@@ -3788,9 +3767,6 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "household_id": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -3812,6 +3788,10 @@ const docTemplate = `{
         "domain.Nutrition": {
             "type": "object",
             "properties": {
+                "calcium": {
+                    "description": "The number of milligrams of calcium.",
+                    "type": "number"
+                },
                 "calories": {
                     "description": "The number of calories.",
                     "type": "number",
@@ -3837,6 +3817,10 @@ const docTemplate = `{
                     "type": "number",
                     "example": 35
                 },
+                "copper": {
+                    "description": "The number of milligrams of copper.",
+                    "type": "number"
+                },
                 "fat": {
                     "description": "The number of grams of fat.",
                     "type": "number",
@@ -3852,10 +3836,38 @@ const docTemplate = `{
                     "type": "number",
                     "example": 0.1
                 },
+                "iron": {
+                    "description": "The number of milligrams of iron.",
+                    "type": "number"
+                },
+                "magnesium": {
+                    "description": "The number of milligrams of magnesium.",
+                    "type": "number"
+                },
+                "manganese": {
+                    "description": "The number of milligrams of manganese.",
+                    "type": "number"
+                },
+                "phosphorus": {
+                    "description": "The number of milligrams of phosphorus.",
+                    "type": "number"
+                },
+                "potassium": {
+                    "description": "The number of milligrams of potassium.",
+                    "type": "number"
+                },
                 "protein": {
                     "description": "The number of grams of protein.",
                     "type": "number",
                     "example": 22
+                },
+                "salt": {
+                    "description": "other minerals commonly found in recipes, not covered by schema.org",
+                    "type": "number"
+                },
+                "selenium": {
+                    "description": "The number of micrograms of selenium.",
+                    "type": "number"
                 },
                 "serving_size": {
                     "description": "The serving size, in terms of the number of volume or mass.",
@@ -3866,6 +3878,10 @@ const docTemplate = `{
                     "description": "The number of milligrams of sodium.",
                     "type": "number",
                     "example": 250
+                },
+                "zinc": {
+                    "description": "The number of milligrams of zinc.",
+                    "type": "number"
                 }
             }
         },
@@ -3874,6 +3890,12 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string"
+                },
+                "feeds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Feed"
+                    }
                 },
                 "id": {
                     "type": "string"
@@ -3889,6 +3911,12 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "recipes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Recipe"
+                    }
                 },
                 "total_recipes": {
                     "type": "integer"
@@ -3928,10 +3956,6 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1200
                 },
-                "created": {
-                    "type": "string",
-                    "format": "date-time"
-                },
                 "description": {
                     "type": "string",
                     "example": "A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."
@@ -3950,13 +3974,7 @@ const docTemplate = `{
                         " \"Frying pan\"]"
                     ]
                 },
-                "feed": {
-                    "$ref": "#/definitions/domain.Feed"
-                },
                 "feed_id": {
-                    "type": "string"
-                },
-                "household_id": {
                     "type": "string"
                 },
                 "id": {
@@ -4004,9 +4022,6 @@ const docTemplate = `{
                 "nutrition": {
                     "$ref": "#/definitions/domain.Nutrition"
                 },
-                "parent_id": {
-                    "type": "string"
-                },
                 "prep_time": {
                     "type": "integer",
                     "example": 900
@@ -4018,8 +4033,14 @@ const docTemplate = `{
                 "publisher": {
                     "$ref": "#/definitions/domain.Publisher"
                 },
+                "publisher_id": {
+                    "type": "string"
+                },
                 "rating": {
                     "$ref": "#/definitions/domain.Rating"
+                },
+                "source_url": {
+                    "type": "string"
                 },
                 "taxonomies": {
                     "type": "array",
@@ -4033,10 +4054,6 @@ const docTemplate = `{
                 "total_time": {
                     "type": "integer",
                     "example": 2100
-                },
-                "updated": {
-                    "type": "string",
-                    "format": "date-time"
                 },
                 "url": {
                     "type": "string"
@@ -4153,9 +4170,6 @@ const docTemplate = `{
                 "is_bought": {
                     "type": "boolean"
                 },
-                "shopping_list_id": {
-                    "type": "string"
-                },
                 "text": {
                     "description": "raw user input",
                     "type": "string"
@@ -4171,9 +4185,6 @@ const docTemplate = `{
         "domain.ShoppingList": {
             "type": "object",
             "properties": {
-                "household_id": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -4283,23 +4294,20 @@ const docTemplate = `{
         "domain.User": {
             "type": "object",
             "properties": {
-                "created": {
-                    "type": "string"
-                },
                 "email": {
-                    "type": "string"
-                },
-                "household": {
-                    "$ref": "#/definitions/domain.Household"
-                },
-                "household_id": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "image": {
+                "image_url": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
                 },
                 "name": {
                     "type": "string"
@@ -4309,9 +4317,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.Recipe"
                     }
-                },
-                "updated": {
-                    "type": "string"
                 }
             }
         },

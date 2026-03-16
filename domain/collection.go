@@ -11,7 +11,7 @@ import (
 
 type Collection struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"household_id"`
+	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"-"`
 	UserID      uuid.UUID `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Name        string    `json:"name"`
 	Description string    `json:"description,omitempty"`
@@ -19,7 +19,7 @@ type Collection struct {
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
 
 	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
-	Household    *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
+	Household    *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Recipes      []*Recipe  `gorm:"many2many:collection_recipes;" json:"recipes,omitempty"`
 }
 

@@ -12,6 +12,7 @@ type Food struct {
 	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	Slug          string        `gorm:"uniqueIndex:idx_food_slug,sort:desc" json:"slug"`
 	Name          string        `json:"name"`
+	Description   *string       `json:"description,omitempty"`
 	ImagePath     *storage.Path `json:"image_url,omitempty"`
 	DefaultUnitID *uuid.UUID    `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
 	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`

@@ -12,8 +12,8 @@ import (
 
 type Recipe struct {
 	ID          uuid.UUID       `gorm:"type:char(36);primaryKey" json:"id"`
-	ParentID    *uuid.UUID      `gorm:"type:char(36);index" json:"parent_id,omitempty"`
-	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"household_id,omitempty"`
+	ParentID    *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
+	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
 	UserID      *uuid.UUID      `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Url         *string         `gorm:"-" json:"url,omitempty"`
 	IsBasedOn   *string         `gorm:"index" json:"is_based_on,omitempty"`
@@ -22,7 +22,7 @@ type Recipe struct {
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
 	Language    *string         `json:"language,omitempty" example:"en"`
 	Author      *Author         `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
-	PublisherID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
+	PublisherID *uuid.UUID      `gorm:"type:char(36);index" json:"publisher_id,omitempty"`
 	FeedID      *uuid.UUID      `gorm:"type:char(36);index" json:"feed_id,omitempty"`
 	Text        *string         `json:"text,omitempty"`
 	PrepTime    *types.Duration `json:"prep_time,omitempty" swaggertype:"integer" example:"900"`
@@ -36,12 +36,13 @@ type Recipe struct {
 	Rating      *Rating         `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
 	Video       *Video          `gorm:"embedded;embeddedPrefix:video_" json:"video,omitempty"`
 	Published   *time.Time      `json:"published,omitempty" swaggertype:"string" format:"date-time"`
-	Updated     time.Time       `gorm:"autoUpdateTime" json:"updated" swaggertype:"string" format:"date-time"`
-	Created     time.Time       `gorm:"autoCreateTime" json:"created" swaggertype:"string" format:"date-time"`
+	Updated     time.Time       `gorm:"autoUpdateTime" json:"-"`
+	Created     time.Time       `gorm:"autoCreateTime" json:"-"`
 
 	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
 	Publisher    *Publisher           `json:"publisher,omitempty"`
-	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"feed,omitempty"`
+	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
+	Parent       *Recipe              `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
 	Images       []*Image             `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Ingredients  []*RecipeIngredient  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"ingredients,omitempty"`
 	Instructions []*RecipeInstruction `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"instructions,omitempty"`
@@ -61,6 +62,17 @@ type Nutrition struct {
 	CarbSugar   *float64 `json:"carbs_sugar,omitempty" example:"10.0"`     // The number of grams of sugar.
 	CarbFiber   *float64 `json:"carbs_fiber,omitempty" example:"4.5"`      // The number of grams of fiber.
 	Protein     *float64 `json:"protein,omitempty" example:"22.0"`         // The number of grams of protein.
+	// other minerals commonly found in recipes, not covered by schema.org
+	Salt       *float64 `json:"salt,omitempty"`       // The number of grams of salt.
+	Iron       *float64 `json:"iron,omitempty"`       // The number of milligrams of iron.
+	Potassium  *float64 `json:"potassium,omitempty"`  // The number of milligrams of potassium.
+	Calcium    *float64 `json:"calcium,omitempty"`    // The number of milligrams of calcium.
+	Phosphorus *float64 `json:"phosphorus,omitempty"` // The number of milligrams of phosphorus.
+	Magnesium  *float64 `json:"magnesium,omitempty"`  // The number of milligrams of magnesium.
+	Zinc       *float64 `json:"zinc,omitempty"`       // The number of milligrams of zinc.
+	Copper     *float64 `json:"copper,omitempty"`     // The number of milligrams of copper.
+	Selenium   *float64 `json:"selenium,omitempty"`   // The number of micrograms of selenium.
+	Manganese  *float64 `json:"manganese,omitempty"`  // The number of milligrams of manganese.
 }
 
 type Rating struct {

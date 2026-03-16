@@ -9,10 +9,10 @@ import (
 type RecipeSaved struct {
 	UserID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"user_id"`
 	RecipeID    uuid.UUID `gorm:"type:char(36);primaryKey" json:"recipe_id"`
-	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"household_id"`
+	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"-"`
 	IsFavorite  bool      `json:"is_favorite"`
-	Updated     time.Time `gorm:"autoUpdateTime" json:"updated"`
-	Created     time.Time `gorm:"autoCreateTime" json:"created"`
+	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
+	Created     time.Time `gorm:"autoCreateTime" json:"-"`
 
 	User      *User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Recipe    *Recipe    `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`

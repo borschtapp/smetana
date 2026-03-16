@@ -9,7 +9,7 @@ import (
 
 type MealPlan struct {
 	ID          uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
-	HouseholdID uuid.UUID  `gorm:"type:char(36);index" json:"household_id"`
+	HouseholdID uuid.UUID  `gorm:"type:char(36);index" json:"-"`
 	Date        time.Time  `gorm:"index" json:"date"`
 	MealType    string     `json:"meal_type"` // breakfast, lunch, dinner
 	RecipeID    *uuid.UUID `gorm:"type:char(36);index" json:"recipe_id,omitempty"`

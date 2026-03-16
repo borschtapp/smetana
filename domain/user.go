@@ -9,16 +9,16 @@ import (
 
 type User struct {
 	ID            uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	HouseholdID   uuid.UUID `gorm:"type:char(36);index" json:"household_id"`
+	HouseholdID   uuid.UUID `gorm:"type:char(36);index" json:"-"`
 	Name          string    `json:"name"`
 	Email         string    `gorm:"uniqueIndex;not null" json:"email"`
 	EmailVerified bool      `gorm:"default:false" json:"-"`
 	Password      string    `json:"-"`
 	Image         string    `json:"image,omitempty"`
-	Updated       time.Time `gorm:"autoUpdateTime" json:"updated"`
-	Created       time.Time `gorm:"autoCreateTime" json:"created"`
+	Updated       time.Time `gorm:"autoUpdateTime" json:"-"`
+	Created       time.Time `gorm:"autoCreateTime" json:"-"`
 
-	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"household,omitempty"`
+	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
 }
