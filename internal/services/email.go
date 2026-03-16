@@ -6,6 +6,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/configs"
+	"github.com/gofiber/fiber/v3/log"
 )
 
 type EmailService struct {
@@ -17,6 +18,8 @@ func NewEmailService() (domain.EmailService, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Tracew("EmailService initialized", "emailHost", cfg.Host, "emailFrom", cfg.From, "baseURL", cfg.BaseURL)
 	return &EmailService{cfg: cfg}, nil
 }
 

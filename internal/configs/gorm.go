@@ -65,5 +65,6 @@ func GormConfig() (gorm.Config, gorm.Dialector) {
 	if !ok {
 		log.Fatalw("unsupported DB_TYPE", "type", envVars.Type, "supported", "sqlite, mysql, postgres")
 	}
+	log.Infow("Database initialized", "type", envVars.Type, "host", envVars.Host, "name", envVars.Name)
 	return config, factory(envVars)
 }

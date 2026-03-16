@@ -71,10 +71,16 @@ Copy `.env.example` to `.env` and adjust as needed. All variables are optional; 
 
 #### Database
 
-| Variable    | Default           | Description                            |
-|-------------|-------------------|----------------------------------------|
-| `DB_DRIVER` | `sqlite`          | `sqlite`, `mysql`, or `postgres`       |
-| `DB_DSN`    | `data/smetana.db` | DSN or file path for the chosen driver |
+| Variable             | Default             | Description                                        |
+|----------------------|---------------------|----------------------------------------------------|
+| `DB_TYPE`            | `sqlite`            | `sqlite`, `mysql`, or `postgres`                   |
+| `DB_HOST`            | `localhost`         | Database host (MySQL/Postgres only)                |
+| `DB_PORT`            | `3306`              | Database port (MySQL/Postgres only)                |
+| `DB_NAME`            | `./data/borscht.db` | Database name or file path                         |
+| `DB_USER`            | —                   | Database user (MySQL/Postgres only)                |
+| `DB_PASSWORD`        | —                   | Database password (MySQL/Postgres only)            |
+| `DB_SSLMODE`         | `disable`           | SSL mode for Postgres (`disable`, `require`, etc.) |
+| `GORM_ENABLE_LOGGER` | `false`             | Enable GORM SQL query logging                      |
 
 #### Storage
 

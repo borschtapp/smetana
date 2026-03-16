@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gofiber/fiber/v3/log"
 	fiberS3 "github.com/gofiber/storage/s3/v2"
 
 	"borscht.app/smetana/internal/storage"
@@ -18,16 +19,14 @@ type StorageConfig struct {
 }
 
 func NewStorage(serverHost string, serverPort int) StorageConfig {
-	baseURL := os.Getenv("BASE_URL")
-
 	if os.Getenv("S3_BUCKET") != "" {
 		s3Endpoint := utils.Getenv("S3_ENDPOINT", os.Getenv("S3_HOST"))
 		if s3Endpoint != "" && !strings.Contains(s3Endpoint, "://") {
 			s3Endpoint = "https://" + s3Endpoint
 		}
-		if baseURL == "" {
-			baseURL = fmt.Sprintf("%s/%s", s3Endpoint, os.Getenv("S3_BUCKET"))
-		}
+		baseURL := fmt.Sprintf("%s/%s", s3Endpoint, os.Getenv("S3_BUCKET"))
+
+		log.Infow("Cloud storage initialized", "baseURL", baseURL)
 		return StorageConfig{
 			Storage: storage.NewS3Storage(fiberS3.Config{
 				Bucket:   os.Getenv("S3_BUCKET"),
@@ -42,6 +41,7 @@ func NewStorage(serverHost string, serverPort int) StorageConfig {
 		}
 	}
 
+	baseURL := os.Getenv("BASE_URL")
 	storageRoot := utils.Getenv("STORAGE_ROOT", "./data/uploads")
 	if baseURL == "" {
 		uploadsHost := serverHost
@@ -51,6 +51,7 @@ func NewStorage(serverHost string, serverPort int) StorageConfig {
 		baseURL = fmt.Sprintf("http://%s:%d/uploads", uploadsHost, serverPort)
 	}
 
+	log.Infow("Storage initialized", "baseURL", baseURL, "storageRoot", storageRoot)
 	return StorageConfig{
 		Storage:     storage.NewLocalStorage(storageRoot, baseURL),
 		BaseURL:     baseURL,
