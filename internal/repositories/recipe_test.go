@@ -94,7 +94,7 @@ func TestRecipeRepository_ByID_NotFound_ReturnsErrRecordNotFound(t *testing.T) {
 func TestRecipeRepository_ByUrl_FindsByIsBasedOn(t *testing.T) {
 	db := openTestDB(t)
 	testURL := "https://example.com/recipe/borsch"
-	r := &domain.Recipe{IsBasedOn: &testURL}
+	r := &domain.Recipe{SourceUrl: &testURL}
 	seedRecipe(t, db, r)
 
 	repo := repositories.NewRecipeRepository(db)

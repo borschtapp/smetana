@@ -101,7 +101,7 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 
 func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	recipe := &domain.Recipe{}
-	recipe.IsBasedOn = &kripRecipe.Url
+	recipe.SourceUrl = &kripRecipe.Url
 	if len(kripRecipe.Name) > 0 {
 		recipe.Name = &kripRecipe.Name
 	}

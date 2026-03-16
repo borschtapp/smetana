@@ -34,7 +34,7 @@ func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 
 func (r *recipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 	var recipe domain.Recipe
-	if err := r.db.Where(&domain.Recipe{IsBasedOn: &url}).
+	if err := r.db.Where(&domain.Recipe{SourceUrl: &url}).
 		Preload(clause.Associations).
 		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
 			return db.Joins("Food").Joins("Unit")

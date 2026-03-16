@@ -149,7 +149,7 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{IsBasedOn: new("https://recipe.example.com/borsch")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/borsch")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -183,7 +183,7 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{IsBasedOn: new("https://recipe.example.com/new")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/new")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -216,10 +216,10 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 }
 
 func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
-	// Recipes without IsBasedOn (no URL) cannot be deduplicated and must be
+	// Recipes without SourceUrl (no URL) cannot be deduplicated and must be
 	// skipped to avoid importing the same recipe repeatedly.
 	feed := domain.Feed{ID: uuid.New(), Active: true, Url: "https://good.feed"}
-	noURLRecipe := &domain.Recipe{IsBasedOn: nil}
+	noURLRecipe := &domain.Recipe{SourceUrl: nil}
 
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },

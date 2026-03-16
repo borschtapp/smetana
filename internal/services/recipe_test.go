@@ -444,7 +444,7 @@ func TestRecipeService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 	hid := uuid.New()
 	testURL := "https://example.com/recipe/borsch"
 
-	existing := &domain.Recipe{ID: existingID, IsBasedOn: &testURL}
+	existing := &domain.Recipe{ID: existingID, SourceUrl: &testURL}
 
 	userSaveCalled := false
 	repo := &stubRecipeRepo{
@@ -479,7 +479,7 @@ func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 
 	scraper := &stubScraperService{
 		scrapeRecipeFn: func(_ context.Context, _ string) (*domain.Recipe, error) {
-			return &domain.Recipe{Name: &scrapedName, IsBasedOn: &testURL}, nil
+			return &domain.Recipe{Name: &scrapedName, SourceUrl: &testURL}, nil
 		},
 	}
 	repo := &stubRecipeRepo{

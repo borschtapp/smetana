@@ -179,8 +179,8 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 
 	for _, recipe := range recipes {
 		url := ""
-		if recipe.IsBasedOn != nil {
-			url = *recipe.IsBasedOn
+		if recipe.SourceUrl != nil {
+			url = *recipe.SourceUrl
 		}
 		if url == "" {
 			continue

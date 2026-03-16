@@ -16,7 +16,7 @@ type Recipe struct {
 	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
 	UserID      *uuid.UUID      `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Url         *string         `gorm:"-" json:"url,omitempty"`
-	IsBasedOn   *string         `gorm:"index" json:"is_based_on,omitempty"`
+	SourceUrl   *string         `gorm:"index" json:"source_url,omitempty"`
 	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
 	ImagePath   *storage.Path   `json:"image_url,omitempty"`
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
