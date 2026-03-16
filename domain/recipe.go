@@ -21,7 +21,7 @@ type Recipe struct {
 	ImagePath   *storage.Path   `json:"image_url,omitempty"`
 	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
 	Language    *string         `json:"language,omitempty" example:"en"`
-	Author      *Author         `gorm:"embedded;embeddedPrefix:author_" json:"author,omitempty"`
+	AuthorID    *uuid.UUID      `gorm:"type:char(36);index" json:"author_id,omitempty"`
 	PublisherID *uuid.UUID      `gorm:"type:char(36);index" json:"publisher_id,omitempty"`
 	FeedID      *uuid.UUID      `gorm:"type:char(36);index" json:"feed_id,omitempty"`
 	Text        *string         `json:"text,omitempty"`
@@ -31,61 +31,30 @@ type Recipe struct {
 	Difficulty  *string         `json:"difficulty,omitempty" example:"Medium"`
 	Method      *string         `json:"method,omitempty" example:"Stovetop"`
 	Yield       *int            `json:"yield,omitempty" example:"4"`
-	Equipment   *[]string       `gorm:"serializer:json" json:"equipment,omitempty" example:"[\"Large pot\", \"Frying pan\"]"`
-	Nutrition   *Nutrition      `gorm:"embedded;embeddedPrefix:nutrition_" json:"nutrition,omitempty"`
 	Rating      *Rating         `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
-	Video       *Video          `gorm:"embedded;embeddedPrefix:video_" json:"video,omitempty"`
+	Video       *Video          `gorm:"serializer:json" json:"video,omitempty"`
 	Published   *time.Time      `json:"published,omitempty" swaggertype:"string" format:"date-time"`
 	Updated     time.Time       `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time       `gorm:"autoCreateTime" json:"-"`
 
 	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
-	Publisher    *Publisher           `json:"publisher,omitempty"`
-	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
 	Parent       *Recipe              `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
+	Author       *RecipeAuthor        `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"author,omitempty"`
+	Publisher    *Publisher           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"publisher,omitempty"`
+	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
+	Nutrition    *RecipeNutrition     `gorm:"foreignKey:RecipeID" json:"nutrition,omitempty"`
 	Images       []*Image             `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Ingredients  []*RecipeIngredient  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"ingredients,omitempty"`
 	Instructions []*RecipeInstruction `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"instructions,omitempty"`
+	Equipment    []*Equipment         `gorm:"many2many:recipe_equipment;" json:"equipment,omitempty"`
 	Taxonomies   []*Taxonomy          `gorm:"many2many:recipe_taxonomies;" json:"taxonomies,omitempty"`
 	Collections  []*Collection        `gorm:"many2many:collection_recipes;" json:"collections,omitempty"`
-}
-
-type Nutrition struct {
-	ServingSize string   `json:"serving_size,omitempty" example:"1 plate"` // The serving size, in terms of the number of volume or mass.
-	Calories    *float64 `json:"calories,omitempty" example:"450.5"`       // The number of calories.
-	Fats        *float64 `json:"fat,omitempty" example:"15.2"`             // The number of grams of fat.
-	FatSat      *float64 `json:"fat_saturated,omitempty" example:"5.1"`    // The number of grams of saturated fat.
-	FatTrans    *float64 `json:"fat_trans,omitempty" example:"0.1"`        // The number of grams of trans fat.
-	Cholesterol *float64 `json:"cholesterol,omitempty" example:"35.0"`     // The number of milligrams of cholesterol.
-	Sodium      *float64 `json:"sodium,omitempty" example:"250.0"`         // The number of milligrams of sodium.
-	Carbs       *float64 `json:"carbs,omitempty" example:"60.0"`           // The number of grams of carbohydrates.
-	CarbSugar   *float64 `json:"carbs_sugar,omitempty" example:"10.0"`     // The number of grams of sugar.
-	CarbFiber   *float64 `json:"carbs_fiber,omitempty" example:"4.5"`      // The number of grams of fiber.
-	Protein     *float64 `json:"protein,omitempty" example:"22.0"`         // The number of grams of protein.
-	// other minerals commonly found in recipes, not covered by schema.org
-	Salt       *float64 `json:"salt,omitempty"`       // The number of grams of salt.
-	Iron       *float64 `json:"iron,omitempty"`       // The number of milligrams of iron.
-	Potassium  *float64 `json:"potassium,omitempty"`  // The number of milligrams of potassium.
-	Calcium    *float64 `json:"calcium,omitempty"`    // The number of milligrams of calcium.
-	Phosphorus *float64 `json:"phosphorus,omitempty"` // The number of milligrams of phosphorus.
-	Magnesium  *float64 `json:"magnesium,omitempty"`  // The number of milligrams of magnesium.
-	Zinc       *float64 `json:"zinc,omitempty"`       // The number of milligrams of zinc.
-	Copper     *float64 `json:"copper,omitempty"`     // The number of milligrams of copper.
-	Selenium   *float64 `json:"selenium,omitempty"`   // The number of micrograms of selenium.
-	Manganese  *float64 `json:"manganese,omitempty"`  // The number of milligrams of manganese.
 }
 
 type Rating struct {
 	Reviews int     `json:"reviews,omitempty"`
 	Count   int     `json:"count,omitempty"`
 	Value   float64 `json:"value,omitempty"`
-}
-
-type Author struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	Url         string `json:"url,omitempty"`
-	Image       string `json:"image,omitempty"`
 }
 
 type Video struct {
@@ -133,6 +102,9 @@ type RecipeRepository interface {
 	UpdateIngredient(ingredient *RecipeIngredient) error
 	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error
 
+	AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error
+	RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error
+
 	CreateInstruction(instruction *RecipeInstruction) error
 	UpdateInstruction(instruction *RecipeInstruction) error
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error
@@ -154,6 +126,9 @@ type RecipeService interface {
 	CreateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
 	UpdateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
 	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
+
+	AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID, householdID uuid.UUID) error
+	RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID, householdID uuid.UUID) error
 
 	CreateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
 	UpdateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error

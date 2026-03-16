@@ -112,6 +112,19 @@ func (s *stubPublisherService) FindOrCreate(ctx context.Context, pub *domain.Pub
 	return nil
 }
 
+type stubRecipeAuthorService struct {
+	domain.RecipeAuthorService
+
+	findOrCreateFn func(context.Context, *domain.RecipeAuthor) error
+}
+
+func (s *stubRecipeAuthorService) FindOrCreate(ctx context.Context, author *domain.RecipeAuthor) error {
+	if s.findOrCreateFn != nil {
+		return s.findOrCreateFn(ctx, author)
+	}
+	return nil
+}
+
 type stubFoodRepo struct {
 	domain.FoodRepository
 

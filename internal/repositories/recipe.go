@@ -91,6 +91,10 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 			q = q.Preload("Publisher")
 		}
 
+		if slices.Contains(opts.Preload, "author") {
+			q = q.Preload("Author")
+		}
+
 		if slices.Contains(opts.Preload, "feed") {
 			q = q.Preload("Feed")
 		}
@@ -105,8 +109,16 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 			})
 		}
 
+		if slices.Contains(opts.Preload, "equipment") {
+			q = q.Preload("Equipment")
+		}
+
 		if slices.Contains(opts.Preload, "instructions") {
 			q = q.Preload("Instructions")
+		}
+
+		if slices.Contains(opts.Preload, "nutrition") {
+			q = q.Preload("Nutrition")
 		}
 
 		if slices.Contains(opts.Preload, "taxonomies") {
@@ -147,7 +159,7 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 }
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
-	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit", "Taxonomies.*").Create(recipe).Error
+	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit", "Taxonomies.*", "Equipment.*").Create(recipe).Error
 }
 
 func (r *recipeRepository) Update(recipe *domain.Recipe) error {
@@ -198,6 +210,14 @@ func (r *recipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient)
 
 func (r *recipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
 	return r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error
+}
+
+func (r *recipeRepository) AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {
+	return r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Append(&domain.Equipment{ID: equipmentID})
+}
+
+func (r *recipeRepository) RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {
+	return r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Delete(&domain.Equipment{ID: equipmentID})
 }
 
 func (r *recipeRepository) CreateInstruction(instruction *domain.RecipeInstruction) error {

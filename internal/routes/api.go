@@ -26,6 +26,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	imageRepo := repositories.NewImageRepository(db)
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
+	recipeAuthorRepo := repositories.NewRecipeAuthorRepository(db)
 	recipeRepo := repositories.NewRecipeRepository(db)
 	foodRepo := repositories.NewFoodRepository(db)
 	unitRepo := repositories.NewUnitRepository(db)
@@ -36,12 +37,14 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	mealPlanRepo := repositories.NewMealPlanRepository(db)
 	shoppingListRepo := repositories.NewShoppingListRepository(db)
 	taxonomyRepo := repositories.NewTaxonomyRepository(db)
+	equipmentRepo := repositories.NewEquipmentRepository(db)
 
 	// Services with business logic (need repos injected)
+	scraperService := services.NewScraperService()
 	imageService := services.NewImageService(fileStorage, imageRepo)
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
-	scraperService := services.NewScraperService()
-	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, foodRepo, unitRepo, taxonomyRepo, scraperService)
+	recipeAuthorService := services.NewRecipeAuthorService(recipeAuthorRepo, imageService)
+	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, recipeAuthorService, foodRepo, unitRepo, taxonomyRepo, equipmentRepo, scraperService)
 	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
 	userService := services.NewUserService(userRepo)
 	oidcService, err := services.NewOIDCService(userRepo)
@@ -136,6 +139,9 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup.Patch("/:id/ingredients/:ingredientId", recipeHandler.UpdateIngredient)
 	recipesGroup.Delete("/:id/ingredients/:ingredientId", recipeHandler.DeleteIngredient)
 
+	recipesGroup.Post("/:id/equipment/:equipmentId", recipeHandler.AddEquipment)
+	recipesGroup.Delete("/:id/equipment/:equipmentId", recipeHandler.RemoveEquipment)
+
 	recipesGroup.Post("/:id/instructions", recipeHandler.CreateInstruction)
 	recipesGroup.Patch("/:id/instructions/:instructionId", recipeHandler.UpdateInstruction)
 	recipesGroup.Delete("/:id/instructions/:instructionId", recipeHandler.DeleteInstruction)
@@ -146,6 +152,9 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 
 	taxonomyHandler := api.NewTaxonomyHandler(services.NewTaxonomyService(taxonomyRepo))
 	router.Get("/taxonomies", taxonomyHandler.GetTaxonomies, middlewares.Protected())
+
+	equipmentHandler := api.NewEquipmentHandler(db)
+	router.Get("/equipment", equipmentHandler.Search, middlewares.Protected())
 
 	feedHandler := api.NewFeedHandler(feedService)
 	feedsGroup := router.Group("/feeds", middlewares.Protected())

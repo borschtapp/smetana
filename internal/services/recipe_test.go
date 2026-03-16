@@ -15,14 +15,15 @@ import (
 )
 
 type recipeServiceDeps struct {
-	repo       *stubRecipeRepo
-	userRepo   *stubUserRepo
-	imgService *stubImageService
-	pubService *stubPublisherService
-	foodRepo   *stubFoodRepo
-	unitRepo   *stubUnitRepo
-	taxRepo    *stubTaxonomyRepo
-	scraper    *stubScraperService
+	repo          *stubRecipeRepo
+	userRepo      *stubUserRepo
+	imgService    *stubImageService
+	pubService    *stubPublisherService
+	authorService *stubRecipeAuthorService
+	foodRepo      *stubFoodRepo
+	unitRepo      *stubUnitRepo
+	taxRepo       *stubTaxonomyRepo
+	scraper       *stubScraperService
 }
 
 // newTestRecipeService builds a recipeService wired up with the provided stubs.
@@ -32,6 +33,9 @@ func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
 	}
 	if deps.pubService == nil {
 		deps.pubService = &stubPublisherService{}
+	}
+	if deps.authorService == nil {
+		deps.authorService = &stubRecipeAuthorService{}
 	}
 	if deps.foodRepo == nil {
 		deps.foodRepo = &stubFoodRepo{}
@@ -45,7 +49,7 @@ func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
 	if deps.scraper == nil {
 		deps.scraper = &stubScraperService{}
 	}
-	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.pubService, deps.foodRepo, deps.unitRepo, deps.taxRepo, deps.scraper)
+	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.pubService, deps.authorService, deps.foodRepo, deps.unitRepo, deps.taxRepo, deps.scraper)
 }
 
 func TestRecipeService_ByID_GlobalRecipe_AnyHouseholdCanRead(t *testing.T) {

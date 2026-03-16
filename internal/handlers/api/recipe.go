@@ -24,7 +24,7 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Produce json
 // @Param q query string false "Text search"
 // @Param taxonomies query string false "Comma-separated taxonomy IDs to filter by (using OR logic)"
-// @Param preload query string false "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved"
+// @Param preload query string false "Comma-separated extras to include: publisher, author, feed, images, ingredients, instructions, nutrition, taxonomies, collections and saved"
 // @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param page query int false "Page number"
@@ -355,6 +355,68 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 	}
 
 	if err := h.recipeService.DeleteIngredient(ingredientID, id, tokenData.HouseholdID); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// AddEquipment godoc
+// @Summary Add equipment to a recipe.
+// @Description Associate existing equipment with a recipe.
+// @Tags recipes
+// @Accept */*
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Param equipmentId path string true "Equipment ID"
+// @Success 201
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/recipes/{id}/equipment/{equipmentId} [post]
+func (h *RecipeHandler) AddEquipment(c fiber.Ctx) error {
+	id, equipmentID, err := types.UuidParams(c, "id", "equipmentId")
+	if err != nil {
+		return err
+	}
+
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.recipeService.AddEquipment(id, equipmentID, tokenData.HouseholdID); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusCreated)
+}
+
+// RemoveEquipment godoc
+// @Summary Remove equipment from a recipe.
+// @Description Remove equipment association from a recipe.
+// @Tags recipes
+// @Accept */*
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Param equipmentId path string true "Equipment ID"
+// @Success 204
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/recipes/{id}/equipment/{equipmentId} [delete]
+func (h *RecipeHandler) RemoveEquipment(c fiber.Ctx) error {
+	id, equipmentID, err := types.UuidParams(c, "id", "equipmentId")
+	if err != nil {
+		return err
+	}
+
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.recipeService.RemoveEquipment(id, equipmentID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.SendStatus(fiber.StatusNoContent)

@@ -846,6 +846,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/equipment": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Search for equipment by name or slug.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "equipment"
+                ],
+                "summary": "Search equipment.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query (matches name or slug)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (alternative to page)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_Equipment"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/feeds": {
             "get": {
                 "security": [
@@ -1897,7 +1957,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved",
+                        "description": "Comma-separated extras to include: publisher, author, feed, images, ingredients, instructions, nutrition, taxonomies, collections and saved",
                         "name": "preload",
                         "in": "query"
                     },
@@ -2198,6 +2258,122 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/recipes/{id}/equipment/{equipmentId}": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Associate existing equipment with a recipe.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recipes"
+                ],
+                "summary": "Add equipment to a recipe.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Equipment ID",
+                        "name": "equipmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Remove equipment association from a recipe.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recipes"
+                ],
+                "summary": "Remove equipment from a recipe.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Equipment ID",
+                        "name": "equipmentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -3578,23 +3754,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Author": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.Collection": {
             "type": "object",
             "properties": {
@@ -3617,6 +3776,32 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.Equipment": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
                     "type": "string"
                 }
             }
@@ -3791,106 +3976,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Nutrition": {
-            "type": "object",
-            "properties": {
-                "calcium": {
-                    "description": "The number of milligrams of calcium.",
-                    "type": "number"
-                },
-                "calories": {
-                    "description": "The number of calories.",
-                    "type": "number",
-                    "example": 450.5
-                },
-                "carbs": {
-                    "description": "The number of grams of carbohydrates.",
-                    "type": "number",
-                    "example": 60
-                },
-                "carbs_fiber": {
-                    "description": "The number of grams of fiber.",
-                    "type": "number",
-                    "example": 4.5
-                },
-                "carbs_sugar": {
-                    "description": "The number of grams of sugar.",
-                    "type": "number",
-                    "example": 10
-                },
-                "cholesterol": {
-                    "description": "The number of milligrams of cholesterol.",
-                    "type": "number",
-                    "example": 35
-                },
-                "copper": {
-                    "description": "The number of milligrams of copper.",
-                    "type": "number"
-                },
-                "fat": {
-                    "description": "The number of grams of fat.",
-                    "type": "number",
-                    "example": 15.2
-                },
-                "fat_saturated": {
-                    "description": "The number of grams of saturated fat.",
-                    "type": "number",
-                    "example": 5.1
-                },
-                "fat_trans": {
-                    "description": "The number of grams of trans fat.",
-                    "type": "number",
-                    "example": 0.1
-                },
-                "iron": {
-                    "description": "The number of milligrams of iron.",
-                    "type": "number"
-                },
-                "magnesium": {
-                    "description": "The number of milligrams of magnesium.",
-                    "type": "number"
-                },
-                "manganese": {
-                    "description": "The number of milligrams of manganese.",
-                    "type": "number"
-                },
-                "phosphorus": {
-                    "description": "The number of milligrams of phosphorus.",
-                    "type": "number"
-                },
-                "potassium": {
-                    "description": "The number of milligrams of potassium.",
-                    "type": "number"
-                },
-                "protein": {
-                    "description": "The number of grams of protein.",
-                    "type": "number",
-                    "example": 22
-                },
-                "salt": {
-                    "description": "other minerals commonly found in recipes, not covered by schema.org",
-                    "type": "number"
-                },
-                "selenium": {
-                    "description": "The number of micrograms of selenium.",
-                    "type": "number"
-                },
-                "serving_size": {
-                    "description": "The serving size, in terms of the number of volume or mass.",
-                    "type": "string",
-                    "example": "1 plate"
-                },
-                "sodium": {
-                    "description": "The number of milligrams of sodium.",
-                    "type": "number",
-                    "example": 250
-                },
-                "zinc": {
-                    "description": "The number of milligrams of zinc.",
-                    "type": "number"
-                }
-            }
-        },
         "domain.Publisher": {
             "type": "object",
             "properties": {
@@ -3950,7 +4035,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/domain.Author"
+                    "$ref": "#/definitions/domain.RecipeAuthor"
+                },
+                "author_id": {
+                    "type": "string"
                 },
                 "collections": {
                     "type": "array",
@@ -3973,12 +4061,8 @@ const docTemplate = `{
                 "equipment": {
                     "type": "array",
                     "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "[\"Large pot\"",
-                        " \"Frying pan\"]"
-                    ]
+                        "$ref": "#/definitions/domain.Equipment"
+                    }
                 },
                 "feed_id": {
                     "type": "string"
@@ -4023,7 +4107,7 @@ const docTemplate = `{
                     "example": "Spaghetti Carbonara"
                 },
                 "nutrition": {
-                    "$ref": "#/definitions/domain.Nutrition"
+                    "$ref": "#/definitions/domain.RecipeNutrition"
                 },
                 "prep_time": {
                     "type": "integer",
@@ -4070,6 +4154,38 @@ const docTemplate = `{
                 "yield": {
                     "type": "integer",
                     "example": 4
+                }
+            }
+        },
+        "domain.RecipeAuthor": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "recipes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Recipe"
+                    }
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },
@@ -4152,6 +4268,106 @@ const docTemplate = `{
                 },
                 "video_url": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.RecipeNutrition": {
+            "type": "object",
+            "properties": {
+                "calcium": {
+                    "description": "The number of milligrams of calcium.",
+                    "type": "number"
+                },
+                "calories": {
+                    "description": "The number of calories.",
+                    "type": "number",
+                    "example": 450.5
+                },
+                "carbs": {
+                    "description": "The number of grams of carbohydrates.",
+                    "type": "number",
+                    "example": 60
+                },
+                "carbs_fiber": {
+                    "description": "The number of grams of fiber.",
+                    "type": "number",
+                    "example": 4.5
+                },
+                "carbs_sugar": {
+                    "description": "The number of grams of sugar.",
+                    "type": "number",
+                    "example": 10
+                },
+                "cholesterol": {
+                    "description": "The number of milligrams of cholesterol.",
+                    "type": "number",
+                    "example": 35
+                },
+                "copper": {
+                    "description": "The number of milligrams of copper.",
+                    "type": "number"
+                },
+                "fat": {
+                    "description": "The number of grams of fat.",
+                    "type": "number",
+                    "example": 15.2
+                },
+                "fat_saturated": {
+                    "description": "The number of grams of saturated fat.",
+                    "type": "number",
+                    "example": 5.1
+                },
+                "fat_trans": {
+                    "description": "The number of grams of trans fat.",
+                    "type": "number",
+                    "example": 0.1
+                },
+                "iron": {
+                    "description": "The number of milligrams of iron.",
+                    "type": "number"
+                },
+                "magnesium": {
+                    "description": "The number of milligrams of magnesium.",
+                    "type": "number"
+                },
+                "manganese": {
+                    "description": "The number of milligrams of manganese.",
+                    "type": "number"
+                },
+                "phosphorus": {
+                    "description": "The number of milligrams of phosphorus.",
+                    "type": "number"
+                },
+                "potassium": {
+                    "description": "The number of milligrams of potassium.",
+                    "type": "number"
+                },
+                "protein": {
+                    "description": "The number of grams of protein.",
+                    "type": "number",
+                    "example": 22
+                },
+                "salt": {
+                    "description": "The number of grams of salt.",
+                    "type": "number"
+                },
+                "selenium": {
+                    "description": "The number of micrograms of selenium.",
+                    "type": "number"
+                },
+                "serving_size": {
+                    "description": "The serving size, in terms of the number of volume or mass.",
+                    "type": "string",
+                    "example": "1 plate"
+                },
+                "sodium": {
+                    "description": "The number of milligrams of sodium.",
+                    "type": "number",
+                    "example": 250
+                },
+                "zinc": {
+                    "description": "The number of milligrams of zinc.",
+                    "type": "number"
                 }
             }
         },
@@ -4398,6 +4614,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.Collection"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
+        "types.ListResponse-domain_Equipment": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Equipment"
                     }
                 },
                 "meta": {

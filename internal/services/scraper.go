@@ -159,7 +159,7 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		}
 	}
 	if kripRecipe.Nutrition != nil {
-		recipe.Nutrition = &domain.Nutrition{
+		recipe.Nutrition = &domain.RecipeNutrition{
 			ServingSize: kripRecipe.Nutrition.ServingSize,
 			Calories:    kripRecipe.Nutrition.Calories,
 			Carbs:       kripRecipe.Nutrition.CarbohydrateContent,
@@ -171,6 +171,10 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 			FatSat:      kripRecipe.Nutrition.SaturatedFatContent,
 			FatTrans:    kripRecipe.Nutrition.TransFatContent,
 			Protein:     kripRecipe.Nutrition.ProteinContent,
+			Salt:        kripRecipe.Nutrition.SaltContent,
+			Iron:        kripRecipe.Nutrition.IronContent,
+			Potassium:   kripRecipe.Nutrition.PotassiumContent,
+			Calcium:     kripRecipe.Nutrition.CalciumContent,
 		}
 	}
 	if kripRecipe.Rating != nil {
@@ -201,11 +205,16 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		recipe.Ingredients = append(recipe.Ingredients, s.kripToIngredient(item))
 	}
 	if len(kripRecipe.Equipment) > 0 {
-		equipment := make([]string, 0, len(kripRecipe.Equipment))
+		equipment := make([]*domain.Equipment, 0, len(kripRecipe.Equipment))
 		for _, eq := range kripRecipe.Equipment {
-			equipment = append(equipment, eq.Name)
+			equipment = append(equipment, &domain.Equipment{
+				Name: eq.Name,
+				Slug: utils.CreateTag(eq.Name),
+				//Description: eq.Description,
+				RemoteImage: &eq.Image,
+			})
 		}
-		recipe.Equipment = &equipment
+		recipe.Equipment = equipment
 	}
 	for _, item := range kripRecipe.Instructions {
 		recipe.Instructions = append(recipe.Instructions, s.kripToInstruction(&item.HowToStep))
@@ -216,13 +225,18 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	return recipe
 }
 
-func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
-	return &domain.Author{
-		Name:        person.Name,
-		Description: person.Description,
-		Url:         person.Url,
-		Image:       person.Image,
+func (s *scraperService) kripToAuthor(person *krip.Person) *domain.RecipeAuthor {
+	author := &domain.RecipeAuthor{
+		Name: person.Name,
+		Url:  person.Url,
 	}
+	if len(person.Description) > 0 {
+		author.Description = &person.Description
+	}
+	if len(person.Image) > 0 {
+		author.RemoteImage = &person.Image
+	}
+	return author
 }
 
 func (s *scraperService) kripToImage(image *krip.ImageObject) *domain.Image {
