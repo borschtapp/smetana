@@ -3,24 +3,26 @@ package domain
 import (
 	"time"
 
+	"borscht.app/smetana/internal/storage"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	ID            uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	HouseholdID   uuid.UUID `gorm:"type:char(36);index" json:"-"`
-	Name          string    `json:"name"`
-	Email         string    `gorm:"uniqueIndex;not null" json:"email"`
-	EmailVerified bool      `gorm:"default:false" json:"-"`
-	Password      string    `json:"-"`
-	Image         string    `json:"image,omitempty"`
-	Updated       time.Time `gorm:"autoUpdateTime" json:"-"`
-	Created       time.Time `gorm:"autoCreateTime" json:"-"`
+	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
+	HouseholdID   uuid.UUID     `gorm:"type:char(36);index" json:"-"`
+	Name          string        `json:"name"`
+	Email         string        `gorm:"uniqueIndex;not null" json:"email"`
+	EmailVerified bool          `gorm:"default:false" json:"-"`
+	Password      string        `json:"-"`
+	ImagePath     *storage.Path `json:"image_url,omitempty"`
+	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
+	Created       time.Time     `gorm:"autoCreateTime" json:"-"`
 
 	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
+	Images    []*Image     `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 }
 
 func (u *User) BeforeCreate(_ *gorm.DB) error {

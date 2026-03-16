@@ -3268,8 +3268,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "image": {
+                "image_url": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Image"
+                    }
                 },
                 "name": {
                     "type": "string"
@@ -4000,9 +4006,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.RecipeInstruction"
                     }
-                },
-                "is_based_on": {
-                    "type": "string"
                 },
                 "is_saved": {
                     "type": "boolean"

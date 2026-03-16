@@ -18,5 +18,5 @@ type UserToken struct {
 	Expires time.Time
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
-	User *User `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	User *User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
