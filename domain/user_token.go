@@ -12,7 +12,7 @@ const TokenTypePasswordReset = "password_reset"
 
 type UserToken struct {
 	ID      uuid.UUID `gorm:"type:char(36);primaryKey"`
-	UserID  uuid.UUID `gorm:"type:char(36);index"`
+	UserID  uuid.UUID `gorm:"type:char(36);index" json:"user_id"`
 	Type    string    `gorm:"index:idx_token_type"`
 	Token   string    `gorm:"index:idx_token_type"`
 	Expires time.Time

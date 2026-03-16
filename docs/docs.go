@@ -4077,7 +4077,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "maxAmount": {
+                "max_amount": {
                     "description": "upper bound for range quantities (e.g. \"1–2 cups\")",
                     "type": "number"
                 },
@@ -4330,7 +4330,7 @@ const docTemplate = `{
                 "type": {
                     "type": "string"
                 },
-                "userID": {
+                "user_id": {
                     "type": "string"
                 }
             }

@@ -10,8 +10,8 @@ import (
 type RecipeIngredient struct {
 	ID        uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	RecipeID  uuid.UUID  `gorm:"type:char(36);index" json:"-"`
-	Amount    *float64   `json:"amount,omitempty"`    // nil when unquantified (e.g. "to taste", "a pinch of")
-	MaxAmount *float64   `json:"maxAmount,omitempty"` // upper bound for range quantities (e.g. "1–2 cups")
+	Amount    *float64   `json:"amount,omitempty"`     // nil when unquantified (e.g. "to taste", "a pinch of")
+	MaxAmount *float64   `json:"max_amount,omitempty"` // upper bound for range quantities (e.g. "1–2 cups")
 	UnitID    *uuid.UUID `gorm:"type:char(36);index" json:"unit_id,omitempty"`
 	FoodID    *uuid.UUID `gorm:"type:char(36);index" json:"food_id,omitempty"`
 	// Name is the ingredient name as written in this recipe (e.g. "carrots", "all-purpose flour").
