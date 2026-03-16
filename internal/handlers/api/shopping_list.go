@@ -42,8 +42,8 @@ func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.ShoppingList]{
 		Data: lists,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  p.Page,
+			Pagination: p,
+			Total:      int(total),
 		},
 	})
 }
@@ -110,8 +110,8 @@ func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.ShoppingItem]{
 		Data: items,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  p.Page,
+			Pagination: p,
+			Total:      int(total),
 		},
 	})
 }

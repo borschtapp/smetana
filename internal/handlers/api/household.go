@@ -133,8 +133,8 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.User]{
 		Data: members,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  p.Page,
+			Pagination: p,
+			Total:      int(total),
 		},
 	})
 }

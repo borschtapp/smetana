@@ -4,8 +4,8 @@ import "encoding/json"
 
 // Meta contains pagination metadata.
 type Meta struct {
+	Pagination
 	Total int `json:"total"`
-	Page  int `json:"page"`
 }
 
 // ListResponse wraps a list of items with metadata.

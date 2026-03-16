@@ -46,8 +46,8 @@ func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.Publisher]{
 		Data: publishers,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  opts.Page,
+			Pagination: opts.Pagination,
+			Total:      int(total),
 		},
 	})
 }

@@ -41,8 +41,8 @@ func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.Taxonomy]{
 		Data: taxonomies,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  p.Page,
+			Pagination: p,
+			Total:      int(total),
 		},
 	})
 }

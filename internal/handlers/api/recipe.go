@@ -53,8 +53,8 @@ func (h *RecipeHandler) Search(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.Recipe]{
 		Data: recipes,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  opts.Page,
+			Pagination: opts.Pagination,
+			Total:      int(total),
 		},
 	})
 }

@@ -4512,6 +4512,12 @@ const docTemplate = `{
         "types.Meta": {
             "type": "object",
             "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
                 "page": {
                     "type": "integer"
                 },

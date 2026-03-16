@@ -69,8 +69,8 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	return c.JSON(types.ListResponse[domain.MealPlan]{
 		Data: mealPlans,
 		Meta: types.Meta{
-			Total: int(total),
-			Page:  p.Page,
+			Pagination: p,
+			Total:      int(total),
 		},
 	})
 }
