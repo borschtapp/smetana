@@ -159,18 +159,42 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 }
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
-	return r.db.Omit(
-		"Parent",
-		"Author",
-		"Publisher",
-		"Feed",
-		"Images",
-		"Ingredients.*",
-		"Instructions.*",
-		"Equipment.*",
-		"Taxonomies.*",
-		"Collection.*",
-	).Create(recipe).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit(
+			"Parent",
+			"Author",
+			"Publisher",
+			"Feed",
+			"Images",
+			"Ingredients",
+			"Instructions",
+			"Equipment.*",
+			"Taxonomies.*",
+			"Collection.*",
+		).Create(recipe).Error; err != nil {
+			return err
+		}
+
+		if len(recipe.Ingredients) > 0 {
+			for _, ing := range recipe.Ingredients {
+				ing.RecipeID = recipe.ID
+			}
+			if err := tx.Omit(clause.Associations).Create(&recipe.Ingredients).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(recipe.Instructions) > 0 {
+			for _, inst := range recipe.Instructions {
+				inst.RecipeID = recipe.ID
+			}
+			if err := tx.Omit(clause.Associations).Create(&recipe.Instructions).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *recipeRepository) Update(recipe *domain.Recipe) error {
