@@ -39,7 +39,7 @@ type Recipe struct {
 
 	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
 	Parent       *Recipe              `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
-	Author       *RecipeAuthor        `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"author,omitempty"`
+	Author       *Author              `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"author,omitempty"`
 	Publisher    *Publisher           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"publisher,omitempty"`
 	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
 	Nutrition    *RecipeNutrition     `gorm:"foreignKey:RecipeID" json:"nutrition,omitempty"`

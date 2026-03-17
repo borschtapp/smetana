@@ -3441,17 +3441,14 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "household_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "image_url": {
                     "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Image"
-                    }
                 },
                 "name": {
                     "type": "string"
@@ -3754,6 +3751,32 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.Author": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "recipes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Recipe"
+                    }
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Collection": {
             "type": "object",
             "properties": {
@@ -3861,12 +3884,6 @@ const docTemplate = `{
                 },
                 "image_url": {
                     "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Image"
-                    }
                 },
                 "name": {
                     "type": "string"
@@ -3994,12 +4011,6 @@ const docTemplate = `{
                 "image_url": {
                     "type": "string"
                 },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Image"
-                    }
-                },
                 "name": {
                     "type": "string"
                 },
@@ -4035,7 +4046,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/domain.RecipeAuthor"
+                    "$ref": "#/definitions/domain.Author"
                 },
                 "author_id": {
                     "type": "string"
@@ -4154,38 +4165,6 @@ const docTemplate = `{
                 "yield": {
                     "type": "integer",
                     "example": 4
-                }
-            }
-        },
-        "domain.RecipeAuthor": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "image_url": {
-                    "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Image"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "recipes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Recipe"
-                    }
-                },
-                "url": {
-                    "type": "string"
                 }
             }
         },
@@ -4431,12 +4410,6 @@ const docTemplate = `{
                     "description": "For merging/aliases",
                     "type": "string"
                 },
-                "foods": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Food"
-                    }
-                },
                 "id": {
                     "type": "string"
                 },
@@ -4449,24 +4422,12 @@ const docTemplate = `{
                 "parent_id": {
                     "type": "string"
                 },
-                "recipes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Recipe"
-                    }
-                },
                 "slug": {
                     "type": "string"
                 },
                 "type": {
                     "description": "diet, category, cuisine, keyword",
                     "type": "string"
-                },
-                "units": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Unit"
-                    }
                 }
             }
         },
@@ -4516,17 +4477,14 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "household_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "image_url": {
                     "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Image"
-                    }
                 },
                 "name": {
                     "type": "string"

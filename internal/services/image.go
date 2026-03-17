@@ -64,6 +64,25 @@ func (s *imageService) PersistRemote(ctx context.Context, img *domain.Image, pat
 	return s.fillFromRemote(ctx, img, pathPrefix)
 }
 
+func (s *imageService) PersistRemoteAsDefault(ctx context.Context, img *domain.Image, entityType string, entityID uuid.UUID, pathPrefix string) (*storage.Path, error) {
+	if img == nil || img.SourceURL == "" {
+		return nil, nil // exit gracefully, do not fail
+	}
+	if img.ID != uuid.Nil || img.Path != nil {
+		return img.Path, nil // the image was saved before
+	}
+
+	img.EntityType = entityType
+	img.EntityID = entityID
+	if err := s.PersistRemote(ctx, img, pathPrefix); err != nil {
+		return nil, err
+	}
+	if err := s.SetDefault(img); err != nil {
+		return nil, err
+	}
+	return img.Path, nil
+}
+
 // fillFromRemote downloads img.SourceURL, saves the file, and updates image with path + metadata.
 // On failure the DB record is left intact (empty Path) so the caller can retry later.
 func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pathPrefix string) error {

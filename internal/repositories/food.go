@@ -27,7 +27,7 @@ func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(food).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(food).Error; err != nil {
 		return err
 	}
 

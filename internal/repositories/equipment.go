@@ -27,7 +27,7 @@ func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(equipment).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(equipment).Error; err != nil {
 		return err
 	}
 

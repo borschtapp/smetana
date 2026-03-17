@@ -17,12 +17,12 @@ import (
 
 func newTestFeedService(
 	feedRepo *stubFeedRepo,
-	pubRepo *stubPublisherRepo,
+	pubSvc *stubPublisherService,
 	recipeRepo *stubRecipeRepo,
 	recipeSvc *stubRecipeService,
 	scraper *stubScraperService,
 ) domain.FeedService {
-	return services.NewFeedService(feedRepo, pubRepo, recipeRepo, recipeSvc, scraper)
+	return services.NewFeedService(feedRepo, pubSvc, recipeRepo, recipeSvc, scraper)
 }
 
 func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
@@ -32,7 +32,7 @@ func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherRepo{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
 	recipes, total, err := svc.Stream(uuid.New(), uuid.New(), types.SearchOptions{})
 
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestFeedService_Stream_SwapsGlobalWithHouseholdOverrides(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherRepo{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
 	got, total, err := svc.Stream(uuid.New(), hid, types.SearchOptions{})
 
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestFeedService_Stream_OverrideLookupFailure_ReturnsOriginalResults(t *test
 		},
 	}
 
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherRepo{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeRepo, &stubRecipeService{}, &stubScraperService{})
 	got, total, err := svc.Stream(uuid.New(), uuid.New(), types.SearchOptions{})
 
 	require.NoError(t, err, "override lookup failure must not propagate as an error")
@@ -113,7 +113,7 @@ func TestFeedService_FetchFeed_ScrapeError_IncrementsErrorCount(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.Error(t, err)
@@ -136,7 +136,7 @@ func TestFeedService_FetchFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing.T
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeRepo{}, &stubRecipeService{}, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.Error(t, err)
@@ -172,7 +172,7 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, recipeRepo, recipeSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeRepo, recipeSvc, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
@@ -207,7 +207,7 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, recipeRepo, recipeSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeRepo, recipeSvc, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
@@ -237,7 +237,7 @@ func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherRepo{}, &stubRecipeRepo{}, recipeSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeRepo{}, recipeSvc, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)

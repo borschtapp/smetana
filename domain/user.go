@@ -10,7 +10,7 @@ import (
 
 type User struct {
 	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	HouseholdID   uuid.UUID     `gorm:"type:char(36);index" json:"-"`
+	HouseholdID   uuid.UUID     `gorm:"type:char(36);index" json:"household_id"`
 	Name          string        `json:"name"`
 	Email         string        `gorm:"uniqueIndex;not null" json:"email"`
 	EmailVerified bool          `gorm:"default:false" json:"-"`
@@ -22,7 +22,7 @@ type User struct {
 	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
-	Images    []*Image     `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
+	Images    []*Image     `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (u *User) BeforeCreate(_ *gorm.DB) error {

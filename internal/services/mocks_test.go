@@ -112,46 +112,49 @@ func (s *stubPublisherService) FindOrCreate(ctx context.Context, pub *domain.Pub
 	return nil
 }
 
-type stubRecipeAuthorService struct {
-	domain.RecipeAuthorService
+type stubAuthorService struct {
+	domain.AuthorService
 
-	findOrCreateFn func(context.Context, *domain.RecipeAuthor) error
+	findOrCreateFn func(context.Context, *domain.Author) error
 }
 
-func (s *stubRecipeAuthorService) FindOrCreate(ctx context.Context, author *domain.RecipeAuthor) error {
+func (s *stubAuthorService) FindOrCreate(ctx context.Context, author *domain.Author) error {
 	if s.findOrCreateFn != nil {
 		return s.findOrCreateFn(ctx, author)
 	}
 	return nil
 }
 
-type stubFoodRepo struct {
-	domain.FoodRepository
+type stubFoodService struct {
+	domain.FoodService
 
-	findOrCreateFn func(*domain.Food) error
+	findOrCreateFn func(context.Context, *domain.Food) error
 	updateFn       func(*domain.Food) error
 }
 
-func (s *stubFoodRepo) FindOrCreate(f *domain.Food) error {
+func (s *stubFoodService) FindOrCreate(ctx context.Context, f *domain.Food) error {
 	if s.findOrCreateFn != nil {
-		return s.findOrCreateFn(f)
+		return s.findOrCreateFn(ctx, f)
 	}
 	return nil
 }
-func (s *stubFoodRepo) Update(f *domain.Food) error {
+func (s *stubFoodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
+	return nil
+}
+func (s *stubFoodService) Update(f *domain.Food) error {
 	if s.updateFn != nil {
 		return s.updateFn(f)
 	}
 	return nil
 }
 
-type stubUnitRepo struct {
-	domain.UnitRepository
+type stubUnitService struct {
+	domain.UnitService
 
 	findOrCreateFn func(*domain.Unit) error
 }
 
-func (s *stubUnitRepo) FindOrCreate(u *domain.Unit) error {
+func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
 	if s.findOrCreateFn != nil {
 		return s.findOrCreateFn(u)
 	}
@@ -167,6 +170,19 @@ type stubTaxonomyRepo struct {
 func (s *stubTaxonomyRepo) FindOrCreate(t *domain.Taxonomy) error {
 	if s.findOrCreateFn != nil {
 		return s.findOrCreateFn(t)
+	}
+	return nil
+}
+
+type stubEquipmentService struct {
+	domain.EquipmentService
+
+	findOrCreateFn func(context.Context, *domain.Equipment) error
+}
+
+func (s *stubEquipmentService) FindOrCreate(ctx context.Context, e *domain.Equipment) error {
+	if s.findOrCreateFn != nil {
+		return s.findOrCreateFn(ctx, e)
 	}
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type RecipeAuthor struct {
+type Author struct {
 	ID          uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	Name        string        `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"name,omitempty"`
 	Description *string       `json:"description,omitempty"`
@@ -18,14 +18,11 @@ type RecipeAuthor struct {
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	// Transient: remote image URL from import, not persisted.
-	RemoteImage *string `gorm:"-" json:"-"`
-
-	Images  []*Image  `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Recipes []*Recipe `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
+	Images  []*Image  `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
-func (a *RecipeAuthor) BeforeCreate(_ *gorm.DB) error {
+func (a *Author) BeforeCreate(_ *gorm.DB) error {
 	if a.ID == uuid.Nil {
 		var err error
 		a.ID, err = uuid.NewV7()
@@ -34,10 +31,10 @@ func (a *RecipeAuthor) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
-type RecipeAuthorRepository interface {
-	FindOrCreate(author *RecipeAuthor) error
+type AuthorRepository interface {
+	FindOrCreate(author *Author) error
 }
 
-type RecipeAuthorService interface {
-	FindOrCreate(ctx context.Context, author *RecipeAuthor) error
+type AuthorService interface {
+	FindOrCreate(ctx context.Context, author *Author) error
 }

@@ -21,9 +21,6 @@ type RecipeInstruction struct {
 	Updated   time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created   time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	// Transient: remote image URL from import, not persisted.
-	RemoteImage *string `gorm:"-" json:"-"`
-
 	Recipe *Recipe            `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Images []*Image           `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Parent *RecipeInstruction `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"parent,omitempty"`

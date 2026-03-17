@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 
 	"github.com/borschtapp/kapusta"
@@ -12,13 +13,13 @@ import (
 )
 
 type shoppingListService struct {
-	repo     domain.ShoppingListRepository
-	foodRepo domain.FoodRepository
-	unitRepo domain.UnitRepository
+	repo        domain.ShoppingListRepository
+	foodService domain.FoodService
+	unitService domain.UnitService
 }
 
-func NewShoppingListService(repo domain.ShoppingListRepository, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository) domain.ShoppingListService {
-	return &shoppingListService{repo: repo, foodRepo: foodRepo, unitRepo: unitRepo}
+func NewShoppingListService(repo domain.ShoppingListRepository, foodService domain.FoodService, unitService domain.UnitService) domain.ShoppingListService {
+	return &shoppingListService{repo: repo, foodService: foodService, unitService: unitService}
 }
 
 // ensureOwned fetches a list by ID and verifies household ownership.
@@ -70,7 +71,7 @@ func (s *shoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, off
 	return s.repo.ListItems(listID, offset, limit)
 }
 
-func (s *shoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (s *shoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid
 	for _, item := range items {
 		item.ShoppingListID = listID
 		if item.FoodID == nil && item.Text != "" {
-			s.parseItemText(item)
+			s.parseItemText(ctx, item)
 		}
 
 		if item.FoodID != nil {
@@ -125,7 +126,7 @@ func (s *shoppingListService) AddItems(items []*domain.ShoppingItem, listID uuid
 }
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.
-func (s *shoppingListService) parseItemText(item *domain.ShoppingItem) {
+func (s *shoppingListService) parseItemText(ctx context.Context, item *domain.ShoppingItem) {
 	parsed, err := kapusta.ParseIngredient(item.Text, "")
 	if err != nil || parsed == nil {
 		return
@@ -135,14 +136,14 @@ func (s *shoppingListService) parseItemText(item *domain.ShoppingItem) {
 	}
 	if parsed.Name != "" {
 		food := &domain.Food{Name: parsed.Name, Slug: utils.CreateTag(parsed.Name)}
-		if err := s.foodRepo.FindOrCreate(food); err == nil {
+		if err := s.foodService.FindOrCreate(ctx, food); err == nil {
 			item.FoodID = &food.ID
 			item.Food = food
 		}
 	}
 	if parsed.Unit != "" {
 		unit := &domain.Unit{Name: parsed.Unit, Slug: utils.CreateTag(parsed.UnitCode)}
-		if err := s.unitRepo.FindOrCreate(unit); err == nil {
+		if err := s.unitService.FindOrCreate(unit); err == nil {
 			item.UnitID = &unit.ID
 			item.Unit = unit
 		}

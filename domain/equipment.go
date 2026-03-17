@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"borscht.app/smetana/internal/storage"
@@ -17,9 +18,6 @@ type Equipment struct {
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	// Transient: remote image URL from import, not persisted.
-	RemoteImage *string `gorm:"-" json:"-"`
-
 	Images []*Image `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 }
 
@@ -34,4 +32,8 @@ func (e *Equipment) BeforeCreate(_ *gorm.DB) error {
 
 type EquipmentRepository interface {
 	FindOrCreate(equipment *Equipment) error
+}
+
+type EquipmentService interface {
+	FindOrCreate(ctx context.Context, equipment *Equipment) error
 }

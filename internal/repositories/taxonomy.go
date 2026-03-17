@@ -40,7 +40,7 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(taxonomy).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(taxonomy).Error; err != nil {
 		return err
 	}
 

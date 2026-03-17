@@ -15,20 +15,20 @@ import (
 )
 
 type feedService struct {
-	repo           domain.FeedRepository
-	publisherRepo  domain.PublisherRepository
-	recipeRepo     domain.RecipeRepository
-	recipeService  domain.RecipeService
-	scraperService domain.ScraperService
+	repo             domain.FeedRepository
+	publisherService domain.PublisherService
+	recipeRepo       domain.RecipeRepository
+	recipeService    domain.RecipeService
+	scraperService   domain.ScraperService
 }
 
-func NewFeedService(repo domain.FeedRepository, pubRepo domain.PublisherRepository, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
+func NewFeedService(repo domain.FeedRepository, publisherService domain.PublisherService, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
 	return &feedService{
-		repo:           repo,
-		publisherRepo:  pubRepo,
-		recipeRepo:     recipeRepo,
-		recipeService:  recipeService,
-		scraperService: scraperService,
+		repo:             repo,
+		publisherService: publisherService,
+		recipeRepo:       recipeRepo,
+		recipeService:    recipeService,
+		scraperService:   scraperService,
 	}
 }
 
@@ -79,7 +79,7 @@ func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	}
 
 	if errors.Is(err, sentinels.ErrNotFound) {
-		feed, err = s.createFeed(url)
+		feed, err = s.createFeed(ctx, url)
 		if err != nil {
 			log.Warnw("subscribe scrape feed failed", "url", url, "error", err)
 			return nil, sentinels.Unprocessable("can't scrape feed url")
@@ -116,7 +116,7 @@ func (s *feedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 	return s.repo.DeleteFeed(householdID, feedID)
 }
 
-func (s *feedService) createFeed(url string) (*domain.Feed, error) {
+func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed, error) {
 	scrapeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -133,7 +133,7 @@ func (s *feedService) createFeed(url string) (*domain.Feed, error) {
 		pub = &domain.Publisher{Url: url, Name: url}
 	}
 
-	if err := s.publisherRepo.FindOrCreate(pub); err != nil {
+	if err := s.publisherService.FindOrCreate(ctx, pub); err != nil {
 		log.Warnw("error creating publisher", "publisher", pub, "error", err)
 	} else {
 		feed.PublisherID = pub.ID

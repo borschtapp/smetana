@@ -22,10 +22,10 @@ type Feed struct {
 	Updated         time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created         time.Time `gorm:"autoCreateTime" json:"-"`
 
-	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
-	Publisher    *Publisher `json:"publisher,omitempty"`
-	Recipes      []*Recipe  `json:"recipes,omitempty"`
-	// Households []*Household `gorm:"many2many:feed_subscriptions;" json:"households,omitempty"`
+	TotalRecipes *int64       `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Publisher    *Publisher   `json:"publisher,omitempty"`
+	Recipes      []*Recipe    `json:"recipes,omitempty"`
+	Households   []*Household `gorm:"many2many:feed_subscriptions;" json:"-"`
 }
 
 func (f *Feed) BeforeCreate(_ *gorm.DB) error {

@@ -27,7 +27,7 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(unit).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(unit).Error; err != nil {
 		return err
 	}
 
@@ -36,4 +36,12 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 	}
 
 	return nil
+}
+
+func (r *unitRepository) Update(unit *domain.Unit) error {
+	return r.db.Model(unit).Select("name").Updates(unit).Error
+}
+
+func (r *unitRepository) AddTaxonomy(unitID uuid.UUID, taxonomy *domain.Taxonomy) error {
+	return r.db.Model(&domain.Unit{ID: unitID}).Association("Taxonomies").Append(taxonomy)
 }

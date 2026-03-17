@@ -206,13 +206,16 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	}
 	if len(kripRecipe.Equipment) > 0 {
 		equipment := make([]*domain.Equipment, 0, len(kripRecipe.Equipment))
-		for _, eq := range kripRecipe.Equipment {
-			equipment = append(equipment, &domain.Equipment{
-				Name: eq.Name,
-				Slug: utils.CreateTag(eq.Name),
-				//Description: eq.Description,
-				RemoteImage: &eq.Image,
-			})
+		for _, item := range kripRecipe.Equipment {
+			eq := &domain.Equipment{
+				Name: item.Name,
+				Slug: utils.CreateTag(item.Name),
+				//Description: item.Description,
+			}
+			if len(item.Image) != 0 {
+				eq.Images = []*domain.Image{{SourceURL: item.Image}}
+			}
+			equipment = append(equipment, eq)
 		}
 		recipe.Equipment = equipment
 	}
@@ -225,8 +228,8 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	return recipe
 }
 
-func (s *scraperService) kripToAuthor(person *krip.Person) *domain.RecipeAuthor {
-	author := &domain.RecipeAuthor{
+func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
+	author := &domain.Author{
 		Name: person.Name,
 		Url:  person.Url,
 	}
@@ -234,7 +237,7 @@ func (s *scraperService) kripToAuthor(person *krip.Person) *domain.RecipeAuthor 
 		author.Description = &person.Description
 	}
 	if len(person.Image) > 0 {
-		author.RemoteImage = &person.Image
+		author.Images = []*domain.Image{{SourceURL: person.Image}}
 	}
 	return author
 }
@@ -260,7 +263,7 @@ func (s *scraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeI
 		ins.Url = &item.Url
 	}
 	if len(item.Image) != 0 {
-		ins.RemoteImage = &item.Image
+		ins.Images = []*domain.Image{{SourceURL: item.Image}}
 	}
 	if len(item.Video) != 0 {
 		ins.VideoUrl = &item.Video
@@ -306,7 +309,7 @@ func (s *scraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 		ing.Food.Taxonomies = []*domain.Taxonomy{{Type: "group", Label: "Pantry", Slug: "pantry"}}
 	}
 	if item.Image != "" && ing.Food != nil {
-		ing.Food.RemoteImage = &item.Image
+		ing.Food.Images = []*domain.Image{{SourceURL: item.Image}}
 	}
 
 	return ing
@@ -321,7 +324,7 @@ func (s *scraperService) kripToPublisher(org *krip.Organization) *domain.Publish
 		pub.Url = org.Url
 	}
 	if len(org.Logo) != 0 {
-		pub.RemoteImage = &org.Logo
+		pub.Images = []*domain.Image{{SourceURL: org.Logo}}
 	}
 	return pub
 }

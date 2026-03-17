@@ -8,40 +8,26 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type recipeAuthorService struct {
-	repo         domain.RecipeAuthorRepository
+type authorService struct {
+	repo         domain.AuthorRepository
 	imageService domain.ImageService
 }
 
-func NewRecipeAuthorService(repo domain.RecipeAuthorRepository, imageService domain.ImageService) domain.RecipeAuthorService {
-	return &recipeAuthorService{repo: repo, imageService: imageService}
+func NewAuthorService(repo domain.AuthorRepository, imageService domain.ImageService) domain.AuthorService {
+	return &authorService{repo: repo, imageService: imageService}
 }
 
-func (s *recipeAuthorService) FindOrCreate(ctx context.Context, author *domain.RecipeAuthor) error {
+func (s *authorService) FindOrCreate(ctx context.Context, author *domain.Author) error {
 	if err := s.repo.FindOrCreate(author); err != nil {
 		return err
 	}
 
-	if author.RemoteImage == nil || *author.RemoteImage == "" {
-		return nil
+	if author != nil && author.ImagePath == nil && len(author.Images) > 0 {
+		path, err := s.imageService.PersistRemoteAsDefault(ctx, author.Images[0], "recipe_authors", author.ID, "")
+		if err != nil {
+			log.Warnw("unable to process recipe author image, skipping", "author_id", author.ID, "image", author.Images[0], "error", err)
+		}
+		author.ImagePath = path
 	}
-
-	image := &domain.Image{
-		EntityType: "recipe_authors",
-		EntityID:   author.ID,
-		SourceURL:  *author.RemoteImage,
-	}
-
-	if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
-		log.Warnw("unable to download recipe author image, skipping", "author_id", author.ID, "url", *author.RemoteImage, "error", err)
-		return nil
-	}
-
-	if err := s.imageService.SetDefault(image); err != nil {
-		log.Warnw("unable to set recipe author default image", "author_id", author.ID, "error", err)
-		return nil
-	}
-
-	author.ImagePath = image.Path
 	return nil
 }

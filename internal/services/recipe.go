@@ -17,32 +17,32 @@ import (
 )
 
 type recipeService struct {
-	repo                domain.RecipeRepository
-	userRepo            domain.UserRepository
-	imageService        domain.ImageService
-	publisherService    domain.PublisherService
-	recipeAuthorService domain.RecipeAuthorService
-	foodRepo            domain.FoodRepository
-	unitRepo            domain.UnitRepository
-	taxonomyRepo        domain.TaxonomyRepository
-	equipmentRepo       domain.EquipmentRepository
-	scraperService      domain.ScraperService
-	fetchConcurrency    int
+	repo             domain.RecipeRepository
+	userRepo         domain.UserRepository
+	imageService     domain.ImageService
+	publisherService domain.PublisherService
+	authorService    domain.AuthorService
+	foodService      domain.FoodService
+	unitService      domain.UnitService
+	taxonomyService  domain.TaxonomyService
+	equipmentService domain.EquipmentService
+	scraperService   domain.ScraperService
+	fetchConcurrency int
 }
 
-func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, recipeAuthorService domain.RecipeAuthorService, foodRepo domain.FoodRepository, unitRepo domain.UnitRepository, taxonomyRepo domain.TaxonomyRepository, equipmentRepo domain.EquipmentRepository, scraperService domain.ScraperService) domain.RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, publisherService domain.PublisherService, authorService domain.AuthorService, foodService domain.FoodService, unitService domain.UnitService, taxonomyService domain.TaxonomyService, equipmentService domain.EquipmentService, scraperService domain.ScraperService) domain.RecipeService {
 	return &recipeService{
-		repo:                repo,
-		userRepo:            userRepo,
-		imageService:        imageService,
-		publisherService:    publisherService,
-		recipeAuthorService: recipeAuthorService,
-		foodRepo:            foodRepo,
-		unitRepo:            unitRepo,
-		taxonomyRepo:        taxonomyRepo,
-		equipmentRepo:       equipmentRepo,
-		scraperService:      scraperService,
-		fetchConcurrency:    utils.GetenvInt("FETCH_CONCURRENCY", 5),
+		repo:             repo,
+		userRepo:         userRepo,
+		imageService:     imageService,
+		publisherService: publisherService,
+		authorService:    authorService,
+		foodService:      foodService,
+		unitService:      unitService,
+		taxonomyService:  taxonomyService,
+		equipmentService: equipmentService,
+		scraperService:   scraperService,
+		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
 	}
 }
 
@@ -275,11 +275,11 @@ func (s *recipeService) ImportFromURL(ctx context.Context, url string, forceUpda
 func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
 	for _, ing := range recipe.Ingredients {
 		if ing.Food != nil {
-			if err := s.foodRepo.FindOrCreate(ing.Food); err == nil {
+			if err := s.foodService.FindOrCreate(ctx, ing.Food); err == nil {
 				ing.FoodID = &ing.Food.ID
 				for _, tax := range ing.Food.Taxonomies {
-					if err := s.taxonomyRepo.FindOrCreate(tax); err == nil {
-						_ = s.foodRepo.AddTaxonomy(ing.Food.ID, tax)
+					if err := s.taxonomyService.FindOrCreate(tax); err == nil {
+						_ = s.foodService.AddTaxonomy(ing.Food.ID, tax)
 					} else {
 						log.Warnw("error creating food taxonomy", "taxonomy", tax, "error", err)
 					}
@@ -290,7 +290,7 @@ func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 			}
 		}
 		if ing.Unit != nil {
-			if err := s.unitRepo.FindOrCreate(ing.Unit); err == nil {
+			if err := s.unitService.FindOrCreate(ing.Unit); err == nil {
 				ing.UnitID = &ing.Unit.ID
 			} else {
 				log.Warnw("error creating unit", "unit", ing.Unit, "error", err)
@@ -301,7 +301,7 @@ func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	resolved := recipe.Taxonomies[:0]
 	for _, taxonomy := range recipe.Taxonomies {
-		if err := s.taxonomyRepo.FindOrCreate(taxonomy); err == nil {
+		if err := s.taxonomyService.FindOrCreate(taxonomy); err == nil {
 			resolved = append(resolved, taxonomy)
 		} else {
 			log.Warnw("error creating taxonomy", "taxonomy", taxonomy, "error", err)
@@ -311,9 +311,7 @@ func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	resolvedEquipment := recipe.Equipment[:0]
 	for _, equipment := range recipe.Equipment {
-		remoteImage := equipment.RemoteImage
-		if err := s.equipmentRepo.FindOrCreate(equipment); err == nil {
-			equipment.RemoteImage = remoteImage // restore for processEquipmentImages
+		if err := s.equipmentService.FindOrCreate(ctx, equipment); err == nil {
 			resolvedEquipment = append(resolvedEquipment, equipment)
 		} else {
 			log.Warnw("error creating equipment", "equipment", equipment, "error", err)
@@ -330,7 +328,7 @@ func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 	}
 
 	if recipe.Author != nil {
-		if err := s.recipeAuthorService.FindOrCreate(ctx, recipe.Author); err != nil {
+		if err := s.authorService.FindOrCreate(ctx, recipe.Author); err != nil {
 			log.Warnw("error creating recipe author", "author", recipe.Author, "error", err)
 		} else {
 			recipe.AuthorID = &recipe.Author.ID
@@ -343,8 +341,6 @@ func (s *recipeService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	s.processRecipeImages(ctx, recipe)
 	s.processInstructionImages(ctx, recipe)
-	s.processEquipmentImages(ctx, recipe)
-	s.processFoodIcons(ctx, recipe)
 	return recipe, nil
 }
 
@@ -430,108 +426,27 @@ func selectBestImage(images []*domain.Image) *domain.Image {
 	return fallback
 }
 
-func (s *recipeService) processEquipmentImages(ctx context.Context, recipe *domain.Recipe) {
-	var g errgroup.Group
-	g.SetLimit(s.fetchConcurrency)
-
-	for _, equipment := range recipe.Equipment {
-		if equipment == nil || equipment.RemoteImage == nil || *equipment.RemoteImage == "" {
-			continue
-		}
-		// Skip if equipment already has an image
-		if equipment.ImagePath != nil {
-			continue
-		}
-		eq := equipment // capture for closure
-		g.Go(func() error {
-			image := &domain.Image{
-				EntityType: "equipment",
-				EntityID:   eq.ID,
-				SourceURL:  *eq.RemoteImage,
-			}
-
-			if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
-				return fmt.Errorf("failed to download equipment image %s: %w", *eq.RemoteImage, err)
-			}
-
-			if err := s.imageService.SetDefault(image); err != nil {
-				return fmt.Errorf("failed to set equipment image default: %w", err)
-			}
-
-			eq.ImagePath = image.Path
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Warnw("equipment image processing completed with errors", "error", err)
-	}
-}
-
 func (s *recipeService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
 	var g errgroup.Group
 	g.SetLimit(s.fetchConcurrency)
 
 	for _, instruction := range recipe.Instructions {
-		if instruction.RemoteImage == nil || *instruction.RemoteImage == "" {
-			continue
+		ins := instruction // capture for closure
+		if ins == nil || ins.ImagePath != nil || len(ins.Images) < 1 {
+			continue // already has image, or has no new images
 		}
 		g.Go(func() error {
-			image := &domain.Image{
-				EntityType: "recipe_instructions",
-				EntityID:   instruction.ID,
-				SourceURL:  *instruction.RemoteImage,
-			}
-
 			// Group instruction images under recipes/{recipeID}/ alongside recipe images.
-			if err := s.imageService.PersistRemote(ctx, image, "recipes/"+recipe.ID.String()); err != nil {
-				return fmt.Errorf("failed to download instruction image %v: %w", instruction.RemoteImage, err)
+			path, err := s.imageService.PersistRemoteAsDefault(ctx, ins.Images[0], "recipe_instructions", ins.ID, "recipes/"+recipe.ID.String())
+			if err != nil {
+				return fmt.Errorf("failed to process instruction image %v: %w", ins.Images[0].SourceURL, err)
 			}
-
-			if err := s.imageService.SetDefault(image); err != nil {
-				return fmt.Errorf("failed to set instruction image default: %w", err)
-			}
-
-			instruction.ImagePath = image.Path
+			ins.ImagePath = path
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
 		log.Warnw("instruction image processing completed with errors", "error", err)
-	}
-}
-
-func (s *recipeService) processFoodIcons(ctx context.Context, recipe *domain.Recipe) {
-	var g errgroup.Group
-	g.SetLimit(s.fetchConcurrency)
-
-	for _, ingredient := range recipe.Ingredients {
-		food := ingredient.Food
-		if food == nil || food.RemoteImage == nil || food.ImagePath != nil {
-			continue // skip if no remote icon, or food already has a local image
-		}
-		g.Go(func() error {
-			image := &domain.Image{
-				EntityType: "food",
-				EntityID:   food.ID,
-				SourceURL:  *food.RemoteImage,
-			}
-
-			if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
-				return fmt.Errorf("failed to download food icon %s: %w", *food.RemoteImage, err)
-			}
-
-			if err := s.imageService.SetDefault(image); err != nil {
-				return fmt.Errorf("failed to set food icon default: %w", err)
-			}
-
-			food.ImagePath = image.Path
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Warnw("food icon processing completed with errors", "error", err)
 	}
 }

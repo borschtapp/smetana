@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -74,7 +75,7 @@ type ShoppingListService interface {
 	DeleteList(listID uuid.UUID, householdID uuid.UUID) error
 
 	Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
-	AddItems(items []*ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
+	AddItems(ctx context.Context, items []*ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
 	UpdateItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
 	DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error
 }

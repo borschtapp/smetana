@@ -20,9 +20,9 @@ type Taxonomy struct {
 	Parent    *Taxonomy `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"parent,omitempty"`
 	Canonical *Taxonomy `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"canonical,omitempty"`
 
-	Recipes []*Recipe `gorm:"many2many:recipe_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
-	Foods   []*Food   `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"foods,omitempty"`
-	Units   []*Unit   `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"units,omitempty"`
+	Recipes []*Recipe `gorm:"many2many:recipe_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Foods   []*Food   `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Units   []*Unit   `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (t *Taxonomy) BeforeCreate(_ *gorm.DB) error {
@@ -41,4 +41,5 @@ type TaxonomyRepository interface {
 
 type TaxonomyService interface {
 	List(taxonomyType string, offset, limit int) ([]Taxonomy, int64, error)
+	FindOrCreate(taxonomy *Taxonomy) error
 }

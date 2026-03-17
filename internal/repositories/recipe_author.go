@@ -10,20 +10,20 @@ import (
 	"borscht.app/smetana/domain"
 )
 
-type recipeAuthorRepository struct {
+type authorRepository struct {
 	db *gorm.DB
 }
 
-func NewRecipeAuthorRepository(db *gorm.DB) domain.RecipeAuthorRepository {
-	return &recipeAuthorRepository{db: db}
+func NewAuthorRepository(db *gorm.DB) domain.AuthorRepository {
+	return &authorRepository{db: db}
 }
 
-func (r *recipeAuthorRepository) FindOrCreate(author *domain.RecipeAuthor) error {
+func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 	if err := r.findAuthor(author); err == nil {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&author).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&author).Error; err != nil {
 		return err
 	}
 
@@ -34,19 +34,19 @@ func (r *recipeAuthorRepository) FindOrCreate(author *domain.RecipeAuthor) error
 	return nil
 }
 
-func (r *recipeAuthorRepository) findAuthor(author *domain.RecipeAuthor) error {
+func (r *authorRepository) findAuthor(author *domain.Author) error {
 	if author.ID != uuid.Nil {
 		return nil
 	}
 	if len(author.Url) > 0 {
-		var existing domain.RecipeAuthor
+		var existing domain.Author
 		if err := r.db.First(&existing, "url = ?", author.Url).Error; err == nil {
 			*author = existing
 			return nil
 		}
 	}
 	if len(author.Name) > 0 {
-		var existing domain.RecipeAuthor
+		var existing domain.Author
 		if err := r.db.First(&existing, "name = ?", author.Name).Error; err == nil {
 			*author = existing
 			return nil

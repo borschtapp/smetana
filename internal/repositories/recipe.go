@@ -159,7 +159,18 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 }
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
-	return r.db.Omit("Publisher", "Images", "Ingredients.Food", "Ingredients.Unit", "Taxonomies.*", "Equipment.*").Create(recipe).Error
+	return r.db.Omit(
+		"Parent",
+		"Author",
+		"Publisher",
+		"Feed",
+		"Images",
+		"Ingredients.*",
+		"Instructions.*",
+		"Equipment.*",
+		"Taxonomies.*",
+		"Collection.*",
+	).Create(recipe).Error
 }
 
 func (r *recipeRepository) Update(recipe *domain.Recipe) error {
@@ -171,7 +182,7 @@ func (r *recipeRepository) Delete(id uuid.UUID) error {
 }
 
 func (r *recipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&domain.RecipeSaved{
+	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&domain.RecipeSaved{
 		UserID:      userID,
 		RecipeID:    recipeID,
 		HouseholdID: householdID,

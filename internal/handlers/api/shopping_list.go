@@ -191,7 +191,7 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 		items[i] = &domain.ShoppingItem{Text: form.Text, Amount: form.Amount, FoodID: form.FoodID, UnitID: form.UnitID}
 	}
 
-	if err := h.service.AddItems(items, id, tokenData.HouseholdID); err != nil {
+	if err := h.service.AddItems(c.Context(), items, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	if isArray {

@@ -27,26 +27,12 @@ func (s *publisherService) FindOrCreate(ctx context.Context, pub *domain.Publish
 		return err
 	}
 
-	if pub.RemoteImage == nil || *pub.RemoteImage == "" {
-		return nil
+	if pub != nil && pub.ImagePath == nil && len(pub.Images) > 0 {
+		path, err := s.imageService.PersistRemoteAsDefault(ctx, pub.Images[0], "publishers", pub.ID, "")
+		if err != nil {
+			log.Warnw("unable to process publisher image, skipping", "publisher_id", pub.ID, "image", pub.Images[0], "error", err)
+		}
+		pub.ImagePath = path
 	}
-
-	image := &domain.Image{
-		EntityType: "publishers",
-		EntityID:   pub.ID,
-		SourceURL:  *pub.RemoteImage,
-	}
-
-	if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
-		log.Warnw("unable to download publisher image, skipping", "publisher_id", pub.ID, "url", *pub.RemoteImage, "error", err)
-		return nil
-	}
-
-	if err := s.imageService.SetDefault(image); err != nil {
-		log.Warnw("unable to set publisher default image", "publisher_id", pub.ID, "error", err)
-		return nil
-	}
-
-	pub.ImagePath = image.Path
 	return nil
 }

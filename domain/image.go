@@ -63,6 +63,8 @@ type ImageService interface {
 	// pathPrefix sets the storage subdirectory; if empty, it is resolved as image.EntityType + "/" + image.EntityID.
 	// Deduplicates by SourceURL: if the URL was already downloaded, the existing record is returned.
 	PersistRemote(ctx context.Context, image *Image, pathPrefix string) error
+	// PersistRemoteAsDefault downloads and persists the image if it has a SourceURL and hasn't been saved yet.
+	PersistRemoteAsDefault(ctx context.Context, image *Image, entityType string, entityID uuid.UUID, pathPrefix string) (*storage.Path, error)
 	// PersistUploaded stores bytes to storage (no DB record).
 	PersistUploaded(ctx context.Context, data []byte, contentType string) (*UploadedImage, error)
 	// SetDefault marks the image as default in the DB and returns its storage path.

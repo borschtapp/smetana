@@ -15,15 +15,16 @@ import (
 )
 
 type recipeServiceDeps struct {
-	repo          *stubRecipeRepo
-	userRepo      *stubUserRepo
-	imgService    *stubImageService
-	pubService    *stubPublisherService
-	authorService *stubRecipeAuthorService
-	foodRepo      *stubFoodRepo
-	unitRepo      *stubUnitRepo
-	taxRepo       *stubTaxonomyRepo
-	scraper       *stubScraperService
+	repo             *stubRecipeRepo
+	userRepo         *stubUserRepo
+	imgService       *stubImageService
+	pubService       *stubPublisherService
+	authorService    *stubAuthorService
+	foodService      *stubFoodService
+	unitService      *stubUnitService
+	taxRepo          *stubTaxonomyRepo
+	equipmentService *stubEquipmentService
+	scraper          *stubScraperService
 }
 
 // newTestRecipeService builds a recipeService wired up with the provided stubs.
@@ -35,21 +36,24 @@ func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
 		deps.pubService = &stubPublisherService{}
 	}
 	if deps.authorService == nil {
-		deps.authorService = &stubRecipeAuthorService{}
+		deps.authorService = &stubAuthorService{}
 	}
-	if deps.foodRepo == nil {
-		deps.foodRepo = &stubFoodRepo{}
+	if deps.foodService == nil {
+		deps.foodService = &stubFoodService{}
 	}
-	if deps.unitRepo == nil {
-		deps.unitRepo = &stubUnitRepo{}
+	if deps.unitService == nil {
+		deps.unitService = &stubUnitService{}
 	}
 	if deps.taxRepo == nil {
 		deps.taxRepo = &stubTaxonomyRepo{}
 	}
+	if deps.equipmentService == nil {
+		deps.equipmentService = &stubEquipmentService{}
+	}
 	if deps.scraper == nil {
 		deps.scraper = &stubScraperService{}
 	}
-	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.pubService, deps.authorService, deps.foodRepo, deps.unitRepo, deps.taxRepo, deps.scraper)
+	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.pubService, deps.authorService, deps.foodService, deps.unitService, deps.taxRepo, deps.equipmentService, deps.scraper)
 }
 
 func TestRecipeService_ByID_GlobalRecipe_AnyHouseholdCanRead(t *testing.T) {
@@ -371,8 +375,8 @@ func TestRecipeService_ImportRecipe_ResolvesFood(t *testing.T) {
 		},
 	}
 
-	foodRepo := &stubFoodRepo{
-		findOrCreateFn: func(f *domain.Food) error {
+	foodService := &stubFoodService{
+		findOrCreateFn: func(_ context.Context, f *domain.Food) error {
 			f.ID = assignedFoodID
 			return nil
 		},
@@ -381,7 +385,7 @@ func TestRecipeService_ImportRecipe_ResolvesFood(t *testing.T) {
 		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodService: foodService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -399,7 +403,7 @@ func TestRecipeService_ImportRecipe_ResolvesUnit(t *testing.T) {
 		},
 	}
 
-	unitRepo := &stubUnitRepo{
+	unitService := &stubUnitService{
 		findOrCreateFn: func(u *domain.Unit) error {
 			u.ID = assignedUnitID
 			return nil
@@ -409,7 +413,7 @@ func TestRecipeService_ImportRecipe_ResolvesUnit(t *testing.T) {
 		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo, unitRepo: unitRepo})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, unitService: unitService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -425,14 +429,14 @@ func TestRecipeService_ImportRecipe_FoodError_NilsFood(t *testing.T) {
 		Ingredients: []*domain.RecipeIngredient{{Food: food}},
 	}
 
-	foodRepo := &stubFoodRepo{
-		findOrCreateFn: func(_ *domain.Food) error { return errors.New("db error") },
+	foodService := &stubFoodService{
+		findOrCreateFn: func(_ context.Context, _ *domain.Food) error { return errors.New("db error") },
 	}
 	repo := &stubRecipeRepo{
 		importFn: func(_ *domain.Recipe) error { return nil },
 	}
 
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodRepo: foodRepo})
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodService: foodService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "Food resolution failure must not abort the import")

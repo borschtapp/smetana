@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"borscht.app/smetana/internal/storage"
@@ -18,12 +19,9 @@ type Food struct {
 	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created       time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	// Transient: remote image URL from import, not persisted.
-	RemoteImage *string `gorm:"-" json:"-"`
-
 	DefaultUnit *Unit       `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
-	Images      []*Image    `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Taxonomies  []*Taxonomy `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
+	Images      []*Image    `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (f Food) TableName() string {
@@ -46,5 +44,7 @@ type FoodRepository interface {
 }
 
 type FoodService interface {
-	FindOrCreate(food *Food) error
+	FindOrCreate(ctx context.Context, food *Food) error
+	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
+	Update(food *Food) error
 }

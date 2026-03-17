@@ -26,7 +26,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	imageRepo := repositories.NewImageRepository(db)
 	userRepo := repositories.NewUserRepository(db)
 	publisherRepo := repositories.NewPublisherRepository(db)
-	recipeAuthorRepo := repositories.NewRecipeAuthorRepository(db)
+	authorRepo := repositories.NewAuthorRepository(db)
 	recipeRepo := repositories.NewRecipeRepository(db)
 	foodRepo := repositories.NewFoodRepository(db)
 	unitRepo := repositories.NewUnitRepository(db)
@@ -41,12 +41,21 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 
 	// Services with business logic (need repos injected)
 	scraperService := services.NewScraperService()
+	taxonomyService := services.NewTaxonomyService(taxonomyRepo)
 	imageService := services.NewImageService(fileStorage, imageRepo)
+	equipmentService := services.NewEquipmentService(equipmentRepo, imageService)
+	foodService := services.NewFoodService(foodRepo, imageService)
+	unitService := services.NewUnitService(unitRepo)
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
-	recipeAuthorService := services.NewRecipeAuthorService(recipeAuthorRepo, imageService)
-	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, recipeAuthorService, foodRepo, unitRepo, taxonomyRepo, equipmentRepo, scraperService)
-	feedService := services.NewFeedService(feedRepo, publisherRepo, recipeRepo, recipeService, scraperService)
+	authorService := services.NewAuthorService(authorRepo, imageService)
+	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, publisherService, authorService, foodService, unitService, taxonomyService, equipmentService, scraperService)
+	feedService := services.NewFeedService(feedRepo, publisherService, recipeRepo, recipeService, scraperService)
 	userService := services.NewUserService(userRepo)
+	collectionService := services.NewCollectionService(collectionRepo, recipeRepo)
+	mealPlanService := services.NewMealPlanService(mealPlanRepo)
+	householdService := services.NewHouseholdService(householdRepo, userRepo)
+	shoppingListService := services.NewShoppingListService(shoppingListRepo, foodService, unitService)
+
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
 		log.Warnw("OIDC service not initialized", "error", err)
@@ -80,7 +89,6 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	usersGroup.Patch("/:id", userHandler.UpdateUser)
 	usersGroup.Delete("/:id", userHandler.DeleteUser)
 
-	householdService := services.NewHouseholdService(householdRepo, userRepo)
 	householdHandler := api.NewHouseholdHandler(householdService)
 	householdsGroup := router.Group("/households", middlewares.Protected())
 	householdsGroup.Get("/:id", householdHandler.GetHousehold)
@@ -92,7 +100,6 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	householdsGroup.Delete("/:id/invites/:code", householdHandler.RevokeHouseholdInvite)
 	householdsGroup.Post("/invites/join", householdHandler.JoinHousehold)
 
-	collectionService := services.NewCollectionService(collectionRepo, recipeRepo)
 	collectionHandler := api.NewCollectionHandler(collectionService)
 	collectionsGroup := router.Group("/collections", middlewares.Protected())
 	collectionsGroup.Get("/", collectionHandler.GetCollections)
@@ -104,7 +111,6 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	collectionsGroup.Post("/:id/recipes/:recipeId", collectionHandler.AddRecipeToCollection)
 	collectionsGroup.Delete("/:id/recipes/:recipeId", collectionHandler.RemoveRecipeFromCollection)
 
-	mealPlanService := services.NewMealPlanService(mealPlanRepo)
 	mealPlanHandler := api.NewMealPlanHandler(mealPlanService)
 	mealPlanGroup := router.Group("/mealplan", middlewares.Protected())
 	mealPlanGroup.Get("/", mealPlanHandler.GetMealPlan)
@@ -112,7 +118,6 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	mealPlanGroup.Patch("/:id", mealPlanHandler.UpdateMealPlan)
 	mealPlanGroup.Delete("/:id", mealPlanHandler.DeleteMealPlan)
 
-	shoppingListService := services.NewShoppingListService(shoppingListRepo, foodRepo, unitRepo)
 	shoppingListHandler := api.NewShoppingListHandler(shoppingListService)
 	shoppingListGroup := router.Group("/shoppinglists", middlewares.Protected())
 	shoppingListGroup.Get("/", shoppingListHandler.GetShoppingLists)
@@ -150,7 +155,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	publishersGroup := router.Group("/publishers", middlewares.Protected())
 	publishersGroup.Get("/", publisherHandler.GetPublishers)
 
-	taxonomyHandler := api.NewTaxonomyHandler(services.NewTaxonomyService(taxonomyRepo))
+	taxonomyHandler := api.NewTaxonomyHandler(taxonomyService)
 	router.Get("/taxonomies", taxonomyHandler.GetTaxonomies, middlewares.Protected())
 
 	equipmentHandler := api.NewEquipmentHandler(db)

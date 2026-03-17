@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
 )
@@ -26,7 +27,7 @@ func (r *householdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 }
 
 func (r *householdRepository) Create(household *domain.Household) error {
-	return r.db.Model(household).Create(household).Error
+	return r.db.Model(household).Omit(clause.Associations).Create(household).Error
 }
 
 func (r *householdRepository) Update(household *domain.Household) error {

@@ -15,3 +15,7 @@ func NewTaxonomyService(repo domain.TaxonomyRepository) domain.TaxonomyService {
 func (s *taxonomyService) List(taxonomyType string, offset, limit int) ([]domain.Taxonomy, int64, error) {
 	return s.repo.List(taxonomyType, offset, limit)
 }
+
+func (s *taxonomyService) FindOrCreate(taxonomy *domain.Taxonomy) error {
+	return s.repo.FindOrCreate(taxonomy)
+}

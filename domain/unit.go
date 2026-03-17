@@ -28,6 +28,8 @@ func (u *Unit) BeforeCreate(_ *gorm.DB) error {
 
 type UnitRepository interface {
 	FindOrCreate(unit *Unit) error
+	AddTaxonomy(unitID uuid.UUID, taxonomy *Taxonomy) error
+	Update(unit *Unit) error
 }
 
 type UnitService interface {

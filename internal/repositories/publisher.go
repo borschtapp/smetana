@@ -83,7 +83,7 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&pub).Error; err != nil {
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&pub).Error; err != nil {
 		return err
 	}
 
