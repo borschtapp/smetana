@@ -2,7 +2,6 @@ package api
 
 import (
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
@@ -28,9 +27,8 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Param preload query string false "Comma-separated extras to include: recipes:5, recipes.images and total_recipes"
 // @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Collection]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
@@ -79,12 +77,8 @@ type CollectionForm struct {
 // @Router /api/v1/collections [post]
 func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 	var form CollectionForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -162,8 +156,8 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 	}
 
 	var form UpdateCollectionForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -199,9 +193,8 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 // @Param preload query string false "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved"
 // @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Recipe]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth

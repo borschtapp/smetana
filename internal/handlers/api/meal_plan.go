@@ -3,13 +3,11 @@ package api
 import (
 	"time"
 
+	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/tokens"
+	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
-
-	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
-	"borscht.app/smetana/internal/types"
 )
 
 const dateFmt = "2006-01-02"
@@ -32,9 +30,8 @@ func NewMealPlanHandler(mealPlanService domain.MealPlanService) *MealPlanHandler
 // @Produce json
 // @Param from query string false "Start date (YYYY-MM-DD)"
 // @Param to query string false "End date (YYYY-MM-DD)"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.MealPlan]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
@@ -97,12 +94,8 @@ type MealPlanForm struct {
 // @Router /api/v1/mealplan [post]
 func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 	var form MealPlanForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -156,8 +149,8 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	}
 
 	var form UpdateMealPlanForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

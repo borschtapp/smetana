@@ -400,19 +400,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -699,19 +693,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -873,19 +861,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page (default: 20)",
+                        "description": "Maximum number of records to return (default: 10) (default: 20)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -951,19 +933,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1077,19 +1053,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1501,19 +1471,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1638,19 +1602,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1891,19 +1849,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1975,19 +1927,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -2899,19 +2845,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -3013,13 +2953,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -3188,19 +3122,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (alternative to page)",
+                        "description": "Number of records to skip (default: 0)",
                         "name": "offset",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -4712,9 +4640,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "offset": {
-                    "type": "integer"
-                },
-                "page": {
                     "type": "integer"
                 },
                 "total": {

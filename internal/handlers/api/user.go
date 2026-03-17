@@ -2,7 +2,6 @@ package api
 
 import (
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
@@ -74,11 +73,8 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 	}
 
 	var body UpdateUserForm
-	if err := c.Bind().Body(&body); err != nil {
+	if err := bindBody(c, &body); err != nil {
 		return err
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

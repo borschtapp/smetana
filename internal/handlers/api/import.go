@@ -3,11 +3,9 @@ package api
 import (
 	"net/http"
 
+	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/tokens"
 	"github.com/gofiber/fiber/v3"
-
-	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 )
 
 type ImportHandler struct {
@@ -39,12 +37,8 @@ type ImportRequest struct {
 // @Router /api/v1/recipes/import [post]
 func (h *ImportHandler) Import(c fiber.Ctx) error {
 	var request ImportRequest
-	if err := c.Bind().Body(&request); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-
-	if err := validate.Struct(request); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &request); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

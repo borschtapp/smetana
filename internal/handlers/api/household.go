@@ -2,7 +2,6 @@ package api
 
 import (
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
@@ -72,12 +71,8 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 	}
 
 	var form UpdateHouseholdForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -105,9 +100,8 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 // @Accept */*
 // @Produce json
 // @Param id path string true "Household ID"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.User]
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
@@ -247,12 +241,8 @@ type JoinHouseholdForm struct {
 // @Router /api/v1/households/invites/join [post]
 func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
 	var form JoinHouseholdForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)

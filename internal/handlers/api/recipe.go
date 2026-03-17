@@ -2,7 +2,6 @@ package api
 
 import (
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
@@ -27,9 +26,8 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Param preload query string false "Comma-separated extras to include: publisher, author, feed, images, ingredients, instructions, nutrition, taxonomies, collections and saved"
 // @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Recipe]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
@@ -109,7 +107,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 	}
 
 	recipe := new(domain.Recipe)
-	if err := c.Bind().Body(&recipe); err != nil {
+	if err := bindBody(c, recipe); err != nil {
 		return err
 	}
 
@@ -147,8 +145,8 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	}
 
 	var recipe domain.Recipe
-	if err := c.Bind().Body(&recipe); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, &recipe); err != nil {
+		return err
 	}
 	recipe.ID = id
 
@@ -278,8 +276,8 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	}
 
 	ingredient := new(domain.RecipeIngredient)
-	if err := c.Bind().Body(&ingredient); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, ingredient); err != nil {
+		return err
 	}
 	ingredient.RecipeID = id
 
@@ -317,8 +315,8 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	}
 
 	ingredient := new(domain.RecipeIngredient)
-	if err := c.Bind().Body(&ingredient); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, ingredient); err != nil {
+		return err
 	}
 	ingredient.ID = ingredientID
 	ingredient.RecipeID = id
@@ -448,8 +446,8 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 	}
 
 	instruction := new(domain.RecipeInstruction)
-	if err := c.Bind().Body(&instruction); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, instruction); err != nil {
+		return err
 	}
 	instruction.RecipeID = id
 
@@ -487,8 +485,8 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 	}
 
 	instruction := new(domain.RecipeInstruction)
-	if err := c.Bind().Body(&instruction); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, instruction); err != nil {
+		return err
 	}
 	instruction.ID = instructionID
 	instruction.RecipeID = id

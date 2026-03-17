@@ -22,9 +22,8 @@ func NewShoppingListHandler(service domain.ShoppingListService) *ShoppingListHan
 // @Summary List all shopping lists for the household.
 // @Tags shopping-lists
 // @Produce json
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists [get]
@@ -63,11 +62,8 @@ type ShoppingListForm struct {
 // @Router /api/v1/shoppinglists [post]
 func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 	var form ShoppingListForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(form); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
@@ -86,8 +82,7 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 // @Tags shopping-lists
 // @Produce json
 // @Param id path string true "List ID"
-// @Param page query int false "Page number"
-// @Param limit query int false "Items per page"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.ShoppingItem]
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items [get]
@@ -172,13 +167,13 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 
 	var forms []ShoppingItemForm
 	if isArray {
-		if err := c.Bind().Body(&forms); err != nil {
-			return sentinels.BadRequest(err.Error())
+		if err := bindBody(c, &forms); err != nil {
+			return err
 		}
 	} else {
 		var form ShoppingItemForm
-		if err := c.Bind().Body(&form); err != nil {
-			return sentinels.BadRequest(err.Error())
+		if err := bindBody(c, &form); err != nil {
+			return err
 		}
 		forms = []ShoppingItemForm{form}
 	}
@@ -224,8 +219,8 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	}
 
 	var form UpdateShoppingItemForm
-	if err := c.Bind().Body(&form); err != nil {
-		return sentinels.BadRequest(err.Error())
+	if err := bindBody(c, &form); err != nil {
+		return err
 	}
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {

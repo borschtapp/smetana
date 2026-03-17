@@ -41,11 +41,8 @@ type LoginForm struct {
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var body LoginForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 
 	user, err := h.authService.Login(body.Email, body.Password)
@@ -76,11 +73,8 @@ type RenewForm struct {
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	var body RenewForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 
 	user, tokens, err := h.authService.RotateRefreshToken(body.RefreshToken)
@@ -102,11 +96,8 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 // @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
 	var body RenewForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 	if err := h.authService.Logout(body.RefreshToken); err != nil {
 		return err
@@ -133,11 +124,8 @@ type RegisterForm struct {
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var body RegisterForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 
 	user, err := h.authService.Register(body.Name, body.Email, body.Password)
@@ -167,11 +155,8 @@ type ForgotPasswordForm struct {
 // @Router /api/v1/auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(c fiber.Ctx) error {
 	var body ForgotPasswordForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 
 	if err := h.authService.ForgotPassword(body.Email); err != nil {
@@ -198,11 +183,8 @@ type ResetPasswordForm struct {
 // @Router /api/v1/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c fiber.Ctx) error {
 	var body ResetPasswordForm
-	if err := c.Bind().Body(&body); err != nil {
-		return sentinels.BadRequest(err.Error())
-	}
-	if err := validate.Struct(body); err != nil {
-		return sentinels.BadRequestVal(err)
+	if err := bindBody(c, &body); err != nil {
+		return err
 	}
 
 	if err := h.authService.ResetPassword(body.Token, body.NewPassword); err != nil {

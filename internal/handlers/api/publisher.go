@@ -25,9 +25,8 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Param preload query string false "Comma-separated extras to include: feeds, recipes:5, recipes.images and total_recipes"
 // @Param sort query string false "Sort by field: id, name, created (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
-// @Param page query int false "Page number"
-// @Param offset query int false "Offset for pagination (alternative to page)"
-// @Param limit query int false "Items per page"
+// @Param offset query int false "Number of records to skip (default: 0)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Publisher]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
