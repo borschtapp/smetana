@@ -112,7 +112,9 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		recipe.Language = &kripRecipe.Language
 	}
 	for _, image := range kripRecipe.Images {
-		recipe.Images = append(recipe.Images, s.kripToImage(image))
+		if len(image.Url) != 0 {
+			recipe.Images = append(recipe.Images, s.kripToImage(image))
+		}
 	}
 	if kripRecipe.Author != nil {
 		recipe.Author = s.kripToAuthor(kripRecipe.Author)
@@ -208,9 +210,9 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		equipment := make([]*domain.Equipment, 0, len(kripRecipe.Equipment))
 		for _, item := range kripRecipe.Equipment {
 			eq := &domain.Equipment{
-				Name: item.Name,
-				Slug: utils.CreateTag(item.Name),
-				//Description: item.Description,
+				Name:        item.Name,
+				Slug:        utils.CreateTag(item.Name),
+				Description: &item.Description,
 			}
 			if len(item.Image) != 0 {
 				eq.Images = []*domain.Image{{SourceURL: item.Image}}

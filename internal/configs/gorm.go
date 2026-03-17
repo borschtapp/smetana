@@ -43,7 +43,7 @@ var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
 }
 
 func GormConfig() (gorm.Config, gorm.Dialector) {
-	enableLogger := utils.GetenvBool("GORM_ENABLE_LOGGER", false)
+	enableLogger := utils.GetenvBool("LOG_DB_QUERIES", false)
 	envVars := databaseEnvVars{
 		Type:     utils.Getenv("DB_TYPE", "sqlite"),
 		Host:     utils.Getenv("DB_HOST", "localhost"),

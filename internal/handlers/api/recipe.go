@@ -218,7 +218,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 	if err := h.recipeService.UserSave(id, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
-	return c.SendStatus(fiber.StatusCreated)
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // UnsaveRecipe godoc
@@ -386,7 +386,7 @@ func (h *RecipeHandler) AddEquipment(c fiber.Ctx) error {
 	if err := h.recipeService.AddEquipment(id, equipmentID, tokenData.HouseholdID); err != nil {
 		return err
 	}
-	return c.SendStatus(fiber.StatusCreated)
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // RemoveEquipment godoc

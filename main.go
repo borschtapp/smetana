@@ -7,6 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "borscht.app/smetana/docs"
+	"borscht.app/smetana/internal/configs"
+	"borscht.app/smetana/internal/database"
+	"borscht.app/smetana/internal/handlers"
+	"borscht.app/smetana/internal/routes"
+	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/utils"
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
@@ -15,18 +22,9 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
-	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/joho/godotenv"
-
-	_ "borscht.app/smetana/docs"
-	"borscht.app/smetana/internal/configs"
-	"borscht.app/smetana/internal/database"
-	"borscht.app/smetana/internal/handlers"
-	"borscht.app/smetana/internal/routes"
-	"borscht.app/smetana/internal/storage"
-	"borscht.app/smetana/internal/utils"
 )
 
 // @title Smetana API
@@ -69,6 +67,7 @@ func main() {
 	}
 
 	app := fiber.New(configs.FiberConfig())
+	app.Use(configs.LoggerConfig())
 	app.Use(cors.New())
 	app.Use(recover.New(configs.RecoverConfig()))
 	app.Use(helmet.New())
@@ -79,9 +78,6 @@ func main() {
 	}
 	if utils.GetenvBool("ENABLE_COMPRESS", false) {
 		app.Use(compress.New())
-	}
-	if utils.GetenvBool("ENABLE_LOGGER", true) {
-		app.Use(logger.New())
 	}
 
 	apiGroup := app.Group("/api/v1")
