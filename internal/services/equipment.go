@@ -17,6 +17,10 @@ func NewEquipmentService(repo domain.EquipmentRepository, imageService domain.Im
 	return &equipmentService{repo: repo, imageService: imageService}
 }
 
+func (s *equipmentService) Search(query string, offset, limit int) ([]domain.Equipment, int64, error) {
+	return s.repo.Search(query, offset, limit)
+}
+
 func (s *equipmentService) FindOrCreate(ctx context.Context, equipment *domain.Equipment) error {
 	if err := s.repo.FindOrCreate(equipment); err != nil {
 		return err

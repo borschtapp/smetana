@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 const TokenTypeRefresh = "refresh"
@@ -19,4 +20,13 @@ type UserToken struct {
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
 	User *User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+}
+
+func (t *UserToken) BeforeCreate(_ *gorm.DB) error {
+	if t.ID == uuid.Nil {
+		var err error
+		t.ID, err = uuid.NewV7()
+		return err
+	}
+	return nil
 }

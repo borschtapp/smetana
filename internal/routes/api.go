@@ -158,7 +158,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	taxonomyHandler := api.NewTaxonomyHandler(taxonomyService)
 	router.Get("/taxonomies", taxonomyHandler.GetTaxonomies, middlewares.Protected())
 
-	equipmentHandler := api.NewEquipmentHandler(db)
+	equipmentHandler := api.NewEquipmentHandler(equipmentService)
 	router.Get("/equipment", equipmentHandler.Search, middlewares.Protected())
 
 	feedHandler := api.NewFeedHandler(feedService)

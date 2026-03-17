@@ -211,10 +211,6 @@ type stubFeedRepo struct {
 func (s *stubFeedRepo) ListActive() ([]domain.Feed, error) { return s.listActiveFn() }
 func (s *stubFeedRepo) Update(f *domain.Feed) error        { return s.updateFn(f) }
 
-type stubPublisherRepo struct {
-	domain.PublisherRepository
-}
-
 type stubRecipeService struct {
 	domain.RecipeService
 

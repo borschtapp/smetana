@@ -32,8 +32,10 @@ func (e *Equipment) BeforeCreate(_ *gorm.DB) error {
 
 type EquipmentRepository interface {
 	FindOrCreate(equipment *Equipment) error
+	Search(query string, offset, limit int) ([]Equipment, int64, error)
 }
 
 type EquipmentService interface {
 	FindOrCreate(ctx context.Context, equipment *Equipment) error
+	Search(query string, offset, limit int) ([]Equipment, int64, error)
 }
