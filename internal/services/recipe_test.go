@@ -478,6 +478,226 @@ func TestRecipeService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 	assert.True(t, userSaveCalled, "existing recipe must be saved for the user")
 }
 
+func TestRecipeService_Create_SetsHouseholdAndUserAndSaves(t *testing.T) {
+	hid := uuid.New()
+	uid := uuid.New()
+
+	createCalled := false
+	userSaveCalled := false
+
+	repo := &stubRecipeRepo{
+		createFn: func(r *domain.Recipe) error {
+			createCalled = true
+			assert.Equal(t, hid, *r.HouseholdID)
+			assert.Equal(t, uid, *r.UserID)
+			r.ID, _ = uuid.NewV7()
+			return nil
+		},
+		userSaveFn: func(rid, u, h uuid.UUID) error {
+			userSaveCalled = true
+			assert.Equal(t, uid, u)
+			assert.Equal(t, hid, h)
+			return nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
+	recipe := &domain.Recipe{}
+	err := svc.Create(recipe, uid, hid)
+
+	require.NoError(t, err)
+	assert.True(t, createCalled)
+	assert.True(t, userSaveCalled, "newly created recipe must be saved for the creator")
+	assert.NotEqual(t, uuid.Nil, recipe.ID)
+}
+
+func TestRecipeService_AddEquipment_WrongHousehold_Forbidden(t *testing.T) {
+	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
+	addCalled := false
+
+	repo := &stubRecipeRepo{
+		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
+	}
+	// We intentionally don't set addEquipmentFn — if it's reached, the test panics.
+	_ = addCalled
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
+	err := svc.AddEquipment(recipe.ID, uuid.New(), uuid.New() /* different household */)
+
+	require.ErrorIs(t, err, sentinels.ErrForbidden)
+}
+
+func TestRecipeService_AddEquipment_SameHousehold_DelegatestoRepo(t *testing.T) {
+	hid := uuid.New()
+	recipeID := uuid.New()
+	equipmentID := uuid.New()
+	recipe := &domain.Recipe{ID: recipeID, HouseholdID: &hid}
+
+	addCalled := false
+	repo := &stubRecipeRepo{
+		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
+		addEquipmentFn: func(rid, eid uuid.UUID) error {
+			addCalled = true
+			assert.Equal(t, recipeID, rid)
+			assert.Equal(t, equipmentID, eid)
+			return nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
+	err := svc.AddEquipment(recipeID, equipmentID, hid)
+
+	require.NoError(t, err)
+	assert.True(t, addCalled)
+}
+
+func TestRecipeService_ImportRecipe_ResolvesEquipment(t *testing.T) {
+	// Equipment must be resolved via FindOrCreate. Only successfully resolved
+	// equipment should remain in recipe.Equipment after import.
+	assignedID := uuid.New()
+	equip := &domain.Equipment{Name: "Dutch Oven"}
+
+	recipe := &domain.Recipe{
+		Equipment: []*domain.Equipment{equip},
+	}
+
+	equipService := &stubEquipmentService{
+		findOrCreateFn: func(_ context.Context, e *domain.Equipment) error {
+			e.ID = assignedID
+			return nil
+		},
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, equipmentService: equipService})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err)
+	require.Len(t, result.Equipment, 1)
+	assert.Equal(t, assignedID, result.Equipment[0].ID)
+}
+
+func TestRecipeService_ImportRecipe_EquipmentError_DropsItem(t *testing.T) {
+	// When FindOrCreate fails for a piece of equipment, that item must be silently
+	// dropped from the slice rather than aborting the whole import.
+	recipe := &domain.Recipe{
+		Equipment: []*domain.Equipment{{Name: "Wok"}},
+	}
+
+	equipService := &stubEquipmentService{
+		findOrCreateFn: func(_ context.Context, _ *domain.Equipment) error {
+			return errors.New("db error")
+		},
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, equipmentService: equipService})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err, "equipment resolution failure must not abort import")
+	assert.Empty(t, result.Equipment, "failed equipment must be dropped")
+}
+
+func TestRecipeService_ImportRecipe_ResolvesTaxonomy(t *testing.T) {
+	// Taxonomies must be resolved via FindOrCreate; only successfully resolved
+	// ones are kept on the recipe.
+	taxID := uuid.New()
+	tax := &domain.Taxonomy{Label: "Italian"}
+
+	recipe := &domain.Recipe{
+		Taxonomies: []*domain.Taxonomy{tax},
+	}
+
+	taxRepo := &stubTaxonomyRepo{
+		findOrCreateFn: func(t *domain.Taxonomy) error {
+			t.ID = taxID
+			return nil
+		},
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, taxRepo: taxRepo})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err)
+	require.Len(t, result.Taxonomies, 1)
+	assert.Equal(t, taxID, result.Taxonomies[0].ID)
+}
+
+func TestRecipeService_ImportRecipe_TaxonomyError_DropsItem(t *testing.T) {
+	recipe := &domain.Recipe{
+		Taxonomies: []*domain.Taxonomy{{Label: "Unknown"}},
+	}
+
+	taxRepo := &stubTaxonomyRepo{
+		findOrCreateFn: func(_ *domain.Taxonomy) error { return errors.New("db error") },
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, taxRepo: taxRepo})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err, "taxonomy error must not abort import")
+	assert.Empty(t, result.Taxonomies)
+}
+
+func TestRecipeService_ImportRecipe_ResolvesPublisher(t *testing.T) {
+	pubID := uuid.New()
+	publisher := &domain.Publisher{Name: "Food Network", Url: ptr("https://foodnetwork.com")}
+
+	recipe := &domain.Recipe{
+		Publisher: publisher,
+	}
+
+	pubService := &stubPublisherService{
+		findOrCreateFn: func(_ context.Context, p *domain.Publisher) error {
+			p.ID = pubID
+			return nil
+		},
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, pubService: pubService})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err)
+	require.NotNil(t, result.PublisherID)
+	assert.Equal(t, pubID, *result.PublisherID)
+}
+
+func TestRecipeService_ImportRecipe_UnitError_NilsUnit(t *testing.T) {
+	// When FindOrCreate for Unit fails, the ingredient's Unit field is nilled
+	// so the import proceeds without an invalid FK reference.
+	unit := &domain.Unit{Name: "pinch"}
+	recipe := &domain.Recipe{
+		Ingredients: []*domain.RecipeIngredient{{Unit: unit}},
+	}
+
+	unitService := &stubUnitService{
+		findOrCreateFn: func(_ *domain.Unit) error { return errors.New("db error") },
+	}
+	repo := &stubRecipeRepo{
+		importFn: func(_ *domain.Recipe) error { return nil },
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, unitService: unitService})
+	result, err := svc.ImportRecipe(context.Background(), recipe)
+
+	require.NoError(t, err, "unit resolution failure must not abort import")
+	assert.Nil(t, result.Ingredients[0].Unit)
+	assert.Nil(t, result.Ingredients[0].UnitID)
+}
+
 func TestRecipeService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 	uid := uuid.New()
 	hid := uuid.New()

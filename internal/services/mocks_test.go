@@ -22,6 +22,10 @@ type stubRecipeRepo struct {
 	userSaveFn                func(uuid.UUID, uuid.UUID, uuid.UUID) error
 	userUnsaveFn              func(uuid.UUID, uuid.UUID) error
 	updateIngredientFn        func(*domain.RecipeIngredient) error
+	deleteIngredientFn        func(uuid.UUID, uuid.UUID) error
+	createIngredientFn        func(*domain.RecipeIngredient) error
+	addEquipmentFn            func(uuid.UUID, uuid.UUID) error
+	removeEquipmentFn         func(uuid.UUID, uuid.UUID) error
 	updateInstructionFn       func(*domain.RecipeInstruction) error
 	transactionFn             func(func(domain.RecipeRepository) error) error
 	replaceRecipePointersFn   func(uuid.UUID, uuid.UUID, uuid.UUID) error
@@ -41,8 +45,32 @@ func (s *stubRecipeRepo) Update(r *domain.Recipe) error          { return s.upda
 func (s *stubRecipeRepo) Delete(id uuid.UUID) error              { return s.deleteFn(id) }
 func (s *stubRecipeRepo) UserSave(rid, uid, hid uuid.UUID) error { return s.userSaveFn(rid, uid, hid) }
 func (s *stubRecipeRepo) UserUnsave(rid, uid uuid.UUID) error    { return s.userUnsaveFn(rid, uid) }
+func (s *stubRecipeRepo) CreateIngredient(i *domain.RecipeIngredient) error {
+	if s.createIngredientFn != nil {
+		return s.createIngredientFn(i)
+	}
+	return nil
+}
 func (s *stubRecipeRepo) UpdateIngredient(i *domain.RecipeIngredient) error {
 	return s.updateIngredientFn(i)
+}
+func (s *stubRecipeRepo) DeleteIngredient(id, recipeID uuid.UUID) error {
+	if s.deleteIngredientFn != nil {
+		return s.deleteIngredientFn(id, recipeID)
+	}
+	return nil
+}
+func (s *stubRecipeRepo) AddEquipment(recipeID, equipmentID uuid.UUID) error {
+	if s.addEquipmentFn != nil {
+		return s.addEquipmentFn(recipeID, equipmentID)
+	}
+	return nil
+}
+func (s *stubRecipeRepo) RemoveEquipment(recipeID, equipmentID uuid.UUID) error {
+	if s.removeEquipmentFn != nil {
+		return s.removeEquipmentFn(recipeID, equipmentID)
+	}
+	return nil
 }
 func (s *stubRecipeRepo) UpdateInstruction(i *domain.RecipeInstruction) error {
 	return s.updateInstructionFn(i)

@@ -44,6 +44,15 @@ func seedHousehold(t *testing.T, db *gorm.DB) uuid.UUID {
 	return hid
 }
 
+// seedEquipment creates a unique Equipment row and returns it.
+func seedEquipment(t *testing.T, db *gorm.DB, name string) *domain.Equipment {
+	t.Helper()
+	slug := uuid.New().String()
+	e := &domain.Equipment{Name: name, Slug: slug}
+	require.NoError(t, db.Create(e).Error)
+	return e
+}
+
 // seedUser creates a User row belonging to the given household.
 func seedUser(t *testing.T, db *gorm.DB, hid uuid.UUID) *domain.User {
 	t.Helper()
@@ -173,9 +182,8 @@ func TestRecipeRepository_UserSave_Idempotent(t *testing.T) {
 
 	repo := repositories.NewRecipeRepository(db)
 
-	// Save twice — second call must not fail due to ON CONFLICT DO NOTHING.
 	require.NoError(t, repo.UserSave(r.ID, u.ID, hid))
-	require.NoError(t, repo.UserSave(r.ID, u.ID, hid), "duplicate save must be a no-op, not an error")
+	require.NoError(t, repo.UserSave(r.ID, u.ID, hid), "ON CONFLICT DO NOTHING must make duplicate saves a no-op")
 
 	var count int64
 	db.Table("recipes_saved").Where("recipe_id = ? AND user_id = ?", r.ID, u.ID).Count(&count)
@@ -232,14 +240,12 @@ func TestRecipeRepository_ReplaceRecipePointers_OtherHouseholdNotAffected(t *tes
 	err := repo.ReplaceRecipePointers(oldRecipe.ID, newRecipe.ID, hid1)
 	require.NoError(t, err)
 
-	// hid1 now points to newRecipe
 	var count int64
 	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", newRecipe.ID, hid1).Count(&count)
-	assert.EqualValues(t, 1, count)
+	assert.EqualValues(t, 1, count, "hid1 must point to newRecipe after replacement")
 
-	// hid2 must still point to oldRecipe, untouched
 	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipe.ID, hid2).Count(&count)
-	assert.EqualValues(t, 1, count, "other household's saved recipe must not be affected")
+	assert.EqualValues(t, 1, count, "hid2 must remain untouched — ReplaceRecipePointers is scoped to one household")
 }
 
 func TestRecipeRepository_Transaction_RollsBackOnError(t *testing.T) {
@@ -320,6 +326,101 @@ func TestRecipeRepository_Search_FromFeeds_NoComputedColumnError(t *testing.T) {
 	assert.EqualValues(t, 1, total)
 	require.Len(t, results, 1)
 	assert.Equal(t, r.ID, results[0].ID)
+}
+
+func TestRecipeRepository_AddEquipment_CreatesJunctionRow(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	e := seedEquipment(t, db, "Stand Mixer")
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.AddEquipment(r.ID, e.ID))
+
+	var count int64
+	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	assert.EqualValues(t, 1, count, "junction row must exist after AddEquipment")
+}
+
+func TestRecipeRepository_AddEquipment_Idempotent(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	e := seedEquipment(t, db, "Blender")
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.AddEquipment(r.ID, e.ID))
+	require.NoError(t, repo.AddEquipment(r.ID, e.ID), "ON CONFLICT DO NOTHING must make duplicate associations a no-op")
+
+	var count int64
+	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	assert.EqualValues(t, 1, count)
+}
+
+func TestRecipeRepository_RemoveEquipment_DeletesJunctionRow(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	e := seedEquipment(t, db, "Food Processor")
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.AddEquipment(r.ID, e.ID))
+	require.NoError(t, repo.RemoveEquipment(r.ID, e.ID))
+
+	var count int64
+	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	assert.EqualValues(t, 0, count, "junction row must be gone after RemoveEquipment")
+}
+
+func TestRecipeRepository_CreateIngredient_PersistsRow(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+
+	rawText := "2 cups flour"
+	ing := &domain.RecipeIngredient{RecipeID: r.ID, RawText: rawText}
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.CreateIngredient(ing))
+
+	assert.NotEqual(t, uuid.Nil, ing.ID, "GORM must auto-assign a UUID on create")
+
+	var got domain.RecipeIngredient
+	require.NoError(t, db.First(&got, ing.ID).Error)
+	assert.Equal(t, r.ID, got.RecipeID)
+	assert.Equal(t, rawText, got.RawText)
+}
+
+func TestRecipeRepository_DeleteIngredient_RemovesRow(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+
+	ing := &domain.RecipeIngredient{RecipeID: r.ID, RawText: "salt"}
+	require.NoError(t, db.Create(ing).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.DeleteIngredient(ing.ID, r.ID))
+
+	var count int64
+	db.Model(&domain.RecipeIngredient{}).Where("id = ?", ing.ID).Count(&count)
+	assert.EqualValues(t, 0, count, "ingredient must be gone after deletion")
+}
+
+func TestRecipeRepository_DeleteIngredient_WrongRecipeID_DoesNotDelete(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+
+	ing := &domain.RecipeIngredient{RecipeID: r.ID, RawText: "pepper"}
+	require.NoError(t, db.Create(ing).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.DeleteIngredient(ing.ID, uuid.New()))
+
+	var count int64
+	db.Model(&domain.RecipeIngredient{}).Where("id = ?", ing.ID).Count(&count)
+	assert.EqualValues(t, 1, count, "ingredient must not be deleted when recipe_id does not match")
 }
 
 func TestRecipeRepository_Import_CreatesRecipeWithoutPublisher(t *testing.T) {
