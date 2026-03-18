@@ -39,7 +39,9 @@ func LoggerConfig() fiber.Handler {
 		if err != nil {
 			log.Fatal("Failed to open log file:", err)
 		}
-		defer file.Close()
+		defer func(file *os.File) {
+			_ = file.Close()
+		}(file)
 
 		if logTarget == "both" {
 			iw := io.MultiWriter(os.Stdout, file)
