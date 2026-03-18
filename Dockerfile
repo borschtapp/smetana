@@ -7,6 +7,8 @@ ENV GOARCH=amd64
 # Install build tools for CGO
 RUN apk add --no-cache build-base
 
+ARG VERSION=dev
+
 WORKDIR /build
 
 COPY go.mod go.sum ./
@@ -17,7 +19,7 @@ COPY domain ./domain/
 COPY internal ./internal/
 COPY *.go .
 
-RUN go build -o main .
+RUN go build -ldflags="-X main.version=${VERSION}" -o main .
 
 FROM alpine:latest AS release
 

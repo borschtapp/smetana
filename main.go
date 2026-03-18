@@ -27,6 +27,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var version = "dev"
+
 // @title Smetana API
 // @version 1.0
 // @description The backend API for Borscht app.
@@ -54,6 +56,8 @@ func main() {
 	skipMigrations := flag.Bool("no-migrate", false, "Skip database migrations")
 	flag.Parse()
 	_ = godotenv.Load()
+
+	log.Infow("starting smetana", "version", version)
 
 	db, err := database.Connect()
 	if err != nil {
