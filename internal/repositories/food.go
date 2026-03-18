@@ -27,12 +27,13 @@ func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(food).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(food)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if food.ID == uuid.Nil { // fallback for conflict scenario
-		return r.db.First(&food, "name = ?", food.Name).Error
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
+		return r.db.First(food, "lower(name) = lower(?)", food.Name).Error
 	}
 
 	return nil

@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -40,11 +39,12 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(taxonomy).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(taxonomy)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if taxonomy.ID == uuid.Nil { // fallback for conflict scenario
+	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
 		return r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error
 	}
 

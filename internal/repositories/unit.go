@@ -27,12 +27,13 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(unit).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(unit)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if unit.ID == uuid.Nil { // fallback for conflict scenario
-		return r.db.First(&unit, "lower(name) = lower(?)", unit.Name).Error
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
+		return r.db.First(unit, "lower(name) = lower(?)", unit.Name).Error
 	}
 
 	return nil

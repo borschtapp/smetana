@@ -23,11 +23,12 @@ func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&author).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(author)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if author.ID == uuid.Nil { // fallback for conflict scenario
+	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
 		return r.findAuthor(author)
 	}
 

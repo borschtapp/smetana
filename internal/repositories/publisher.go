@@ -83,11 +83,12 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&pub).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(pub)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if pub.ID == uuid.Nil { // fallback for conflict scenario
+	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
 		return r.find(pub)
 	}
 

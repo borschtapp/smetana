@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -45,12 +44,13 @@ func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
 		return nil
 	}
 
-	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(equipment).Error; err != nil {
-		return err
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(equipment)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	if equipment.ID == uuid.Nil { // fallback for conflict scenario
-		return r.db.First(&equipment, "lower(name) = lower(?)", equipment.Name).Error
+	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
+		return r.db.First(equipment, "lower(name) = lower(?)", equipment.Name).Error
 	}
 
 	return nil
