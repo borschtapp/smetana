@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/utils"
 )
 
 type foodRepository struct {
@@ -17,13 +18,15 @@ func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
 }
 
 func (r *foodRepository) FindOrCreate(food *domain.Food) error {
-	if food.Slug != "" {
-		if err := r.db.First(food, "slug = ?", food.Slug).Error; err == nil {
-			return nil
-		}
+	if food.Slug == "" {
+		food.Slug = utils.CreateTag(food.Name)
 	}
 
-	if err := r.db.First(&food, "lower(name) = lower(?)", food.Name).Error; err == nil {
+	if err := r.db.First(food, "slug = ?", food.Slug).Error; err == nil {
+		return nil
+	}
+
+	if err := r.db.First(food, "lower(name) = lower(?)", food.Name).Error; err == nil {
 		return nil
 	}
 
@@ -33,7 +36,7 @@ func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(food, "lower(name) = lower(?)", food.Name).Error
+		return r.db.First(food, "slug = ?", food.Slug).Error
 	}
 
 	return nil

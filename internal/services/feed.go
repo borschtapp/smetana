@@ -130,7 +130,7 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	if len(recipes) > 0 && recipes[0].Publisher != nil {
 		pub = recipes[0].Publisher
 	} else {
-		pub = &domain.Publisher{Url: url, Name: url}
+		pub = &domain.Publisher{Url: &url, Name: url}
 	}
 
 	if err := s.publisherService.FindOrCreate(ctx, pub); err != nil {

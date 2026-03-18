@@ -326,7 +326,7 @@ func TestRecipeRepository_Import_CreatesRecipeWithoutPublisher(t *testing.T) {
 	db := openTestDB(t)
 	repo := repositories.NewRecipeRepository(db)
 
-	pub := &domain.Publisher{Name: "Test Publisher", Url: "https://pub.example.com"}
+	pub := &domain.Publisher{Name: "Test Publisher", Url: new("https://pub.example.com")}
 	recipe := &domain.Recipe{
 		Publisher: pub,
 	}

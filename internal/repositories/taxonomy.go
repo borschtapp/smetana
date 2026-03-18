@@ -35,7 +35,7 @@ func (r *taxonomyRepository) List(taxonomyType string, offset, limit int) ([]dom
 }
 
 func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
-	if err := r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error; err == nil {
+	if err := r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error; err == nil {
 		return nil
 	}
 
@@ -44,8 +44,8 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
-		return r.db.First(taxonomy, "lower(slug) = lower(?)", taxonomy.Slug).Error
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
+		return r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error
 	}
 
 	return nil

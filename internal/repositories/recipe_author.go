@@ -3,7 +3,6 @@ package repositories
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -19,7 +18,7 @@ func NewAuthorRepository(db *gorm.DB) domain.AuthorRepository {
 }
 
 func (r *authorRepository) FindOrCreate(author *domain.Author) error {
-	if err := r.findAuthor(author); err == nil {
+	if err := r.find(author); err == nil {
 		return nil
 	}
 
@@ -28,18 +27,15 @@ func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
-		return r.findAuthor(author)
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
+		return r.find(author)
 	}
 
 	return nil
 }
 
-func (r *authorRepository) findAuthor(author *domain.Author) error {
-	if author.ID != uuid.Nil {
-		return nil
-	}
-	if len(author.Url) > 0 {
+func (r *authorRepository) find(author *domain.Author) error {
+	if author.Url != nil && len(*author.Url) > 0 {
 		var existing domain.Author
 		if err := r.db.First(&existing, "url = ?", author.Url).Error; err == nil {
 			*author = existing

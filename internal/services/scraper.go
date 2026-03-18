@@ -233,7 +233,9 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
 	author := &domain.Author{
 		Name: person.Name,
-		Url:  person.Url,
+	}
+	if len(person.Url) > 0 {
+		author.Url = &person.Url
 	}
 	if len(person.Description) > 0 {
 		author.Description = &person.Description
@@ -323,7 +325,7 @@ func (s *scraperService) kripToPublisher(org *krip.Organization) *domain.Publish
 		pub.Description = &org.Description
 	}
 	if len(org.Url) != 0 {
-		pub.Url = org.Url
+		pub.Url = &org.Url
 	}
 	if len(org.Logo) != 0 {
 		pub.Images = []*domain.Image{{SourceURL: org.Logo}}

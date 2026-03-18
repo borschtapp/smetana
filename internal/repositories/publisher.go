@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -88,7 +87,7 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
 		return r.find(pub)
 	}
 
@@ -96,10 +95,7 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 }
 
 func (r *publisherRepository) find(pub *domain.Publisher) error {
-	if pub.ID != uuid.Nil {
-		return nil
-	}
-	if len(pub.Url) > 0 {
+	if pub.Url != nil && len(*pub.Url) > 0 {
 		var existing domain.Publisher
 		if err := r.db.First(&existing, "url = ?", pub.Url).Error; err == nil {
 			*pub = existing
@@ -108,7 +104,7 @@ func (r *publisherRepository) find(pub *domain.Publisher) error {
 	}
 	if len(pub.Name) > 0 {
 		var existing domain.Publisher
-		if err := r.db.First(&existing, "name = ?", pub.Name).Error; err == nil {
+		if err := r.db.First(&existing, "lower(name) = lower(?)", pub.Name).Error; err == nil {
 			*pub = existing
 			return nil
 		}

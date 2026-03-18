@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/utils"
 )
 
 type unitRepository struct {
@@ -17,10 +18,12 @@ func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 }
 
 func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
-	if unit.Slug != "" {
-		if err := r.db.First(unit, "slug = ?", unit.Slug).Error; err == nil {
-			return nil
-		}
+	if unit.Slug == "" {
+		unit.Slug = utils.CreateTag(unit.Name)
+	}
+
+	if err := r.db.First(unit, "slug = ?", unit.Slug).Error; err == nil {
+		return nil
 	}
 
 	if err := r.db.First(unit, "lower(name) = lower(?)", unit.Name).Error; err == nil {
@@ -33,7 +36,7 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(unit, "lower(name) = lower(?)", unit.Name).Error
+		return r.db.First(unit, "slug = ?", unit.Slug).Error
 	}
 
 	return nil

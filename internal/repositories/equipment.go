@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/utils"
 )
 
 type equipmentRepository struct {
@@ -34,13 +35,15 @@ func (r *equipmentRepository) Search(query string, offset, limit int) ([]domain.
 }
 
 func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
-	if equipment.Slug != "" {
-		if err := r.db.First(equipment, "slug = ?", equipment.Slug).Error; err == nil {
-			return nil
-		}
+	if equipment.Slug == "" {
+		equipment.Slug = utils.CreateTag(equipment.Name)
 	}
 
-	if err := r.db.First(&equipment, "lower(name) = lower(?)", equipment.Name).Error; err == nil {
+	if err := r.db.First(equipment, "slug = ?", equipment.Slug).Error; err == nil {
+		return nil
+	}
+
+	if err := r.db.First(equipment, "lower(name) = lower(?)", equipment.Name).Error; err == nil {
 		return nil
 	}
 
@@ -49,8 +52,8 @@ func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
 		return result.Error
 	}
 
-	if result.RowsAffected == 0 { // DoNothing triggered: BeforeCreate assigned a stale ID
-		return r.db.First(equipment, "lower(name) = lower(?)", equipment.Name).Error
+	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
+		return r.db.First(equipment, "slug = ?", equipment.Slug).Error
 	}
 
 	return nil
