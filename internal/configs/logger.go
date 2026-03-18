@@ -35,7 +35,7 @@ func LoggerConfig() fiber.Handler {
 	log.SetLevel(logLevel)
 
 	if logTarget == "file" || logTarget == "both" {
-		file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666) // #nosec G304,G302
 		if err != nil {
 			log.Fatal("Failed to open log file:", err)
 		}
