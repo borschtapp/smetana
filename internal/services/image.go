@@ -103,10 +103,10 @@ func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pa
 
 	w, h := decodeImageDimensions(data)
 	img.Path = new(storage.Path(fullPath))
-	img.Width = w
-	img.Height = h
-	img.ContentType = contentType
-	img.Size = int64(len(data))
+	img.Width = &w
+	img.Height = &h
+	img.ContentType = &contentType
+	img.Size = new(int64(len(data)))
 
 	if err := s.repo.Update(img); err != nil {
 		_ = s.storage.Delete(fullPath)

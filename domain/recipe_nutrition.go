@@ -4,17 +4,17 @@ import "github.com/google/uuid"
 
 type RecipeNutrition struct {
 	RecipeID    uuid.UUID `gorm:"primaryKey" json:"-"`
-	ServingSize string    `json:"serving_size,omitempty" example:"1 plate"` // The serving size, in terms of the number of volume or mass.
-	Calories    *float64  `json:"calories,omitempty" example:"450.5"`       // The number of calories.
-	Fats        *float64  `json:"fat,omitempty" example:"15.2"`             // The number of grams of fat.
-	FatSat      *float64  `json:"fat_saturated,omitempty" example:"5.1"`    // The number of grams of saturated fat.
-	FatTrans    *float64  `json:"fat_trans,omitempty" example:"0.1"`        // The number of grams of trans fat.
-	Cholesterol *float64  `json:"cholesterol,omitempty" example:"35.0"`     // The number of milligrams of cholesterol.
-	Sodium      *float64  `json:"sodium,omitempty" example:"250.0"`         // The number of milligrams of sodium.
-	Carbs       *float64  `json:"carbs,omitempty" example:"60.0"`           // The number of grams of carbohydrates.
-	CarbSugar   *float64  `json:"carbs_sugar,omitempty" example:"10.0"`     // The number of grams of sugar.
-	CarbFiber   *float64  `json:"carbs_fiber,omitempty" example:"4.5"`      // The number of grams of fiber.
-	Protein     *float64  `json:"protein,omitempty" example:"22.0"`         // The number of grams of protein.
+	ServingSize string    `json:"serving_size" example:"1 plate"`        // The serving size, in terms of the number of volume or mass.
+	Calories    *float64  `json:"calories,omitempty" example:"450.5"`    // The number of calories.
+	Fats        *float64  `json:"fat,omitempty" example:"15.2"`          // The number of grams of fat.
+	FatSat      *float64  `json:"fat_saturated,omitempty" example:"5.1"` // The number of grams of saturated fat.
+	FatTrans    *float64  `json:"fat_trans,omitempty" example:"0.1"`     // The number of grams of trans fat.
+	Cholesterol *float64  `json:"cholesterol,omitempty" example:"35.0"`  // The number of milligrams of cholesterol.
+	Sodium      *float64  `json:"sodium,omitempty" example:"250.0"`      // The number of milligrams of sodium.
+	Carbs       *float64  `json:"carbs,omitempty" example:"60.0"`        // The number of grams of carbohydrates.
+	CarbSugar   *float64  `json:"carbs_sugar,omitempty" example:"10.0"`  // The number of grams of sugar.
+	CarbFiber   *float64  `json:"carbs_fiber,omitempty" example:"4.5"`   // The number of grams of fiber.
+	Protein     *float64  `json:"protein,omitempty" example:"22.0"`      // The number of grams of protein.
 
 	// other minerals commonly found in recipes, not covered by schema.org
 

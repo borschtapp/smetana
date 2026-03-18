@@ -20,7 +20,7 @@ func makeImage(entityType string, entityID uuid.UUID) *domain.Image {
 		EntityType:  entityType,
 		EntityID:    entityID,
 		Path:        new(storage.Path(entityType + "/" + entityID.String() + "/" + id.String() + ".jpg")),
-		ContentType: "image/jpeg",
+		ContentType: new("image/jpeg"),
 	}
 }
 

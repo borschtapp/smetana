@@ -11,7 +11,7 @@ import (
 
 type Author struct {
 	ID          uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	Name        string        `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"name,omitempty"`
+	Name        string        `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"name"`
 	Description *string       `json:"description,omitempty"`
 	Url         *string       `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"url,omitempty"`
 	ImagePath   *storage.Path `json:"image_url,omitempty"`

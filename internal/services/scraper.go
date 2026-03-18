@@ -91,7 +91,7 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 		ingredient.Unit = &domain.Unit{Name: parsed.Unit, Slug: utils.CreateTag(parsed.UnitCode)}
 	}
 	if len(parsed.Name) != 0 {
-		ingredient.Name = parsed.Name
+		ingredient.Name = &parsed.Name
 		ingredient.Food = &domain.Food{Name: parsed.Name, Slug: utils.CreateTag(parsed.Name)}
 	}
 	if len(parsed.Description) != 0 {
@@ -116,7 +116,7 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 			recipe.Images = append(recipe.Images, s.kripToImage(image))
 		}
 	}
-	if kripRecipe.Author != nil {
+	if kripRecipe.Author != nil && kripRecipe.Author.Name != "" {
 		recipe.Author = s.kripToAuthor(kripRecipe.Author)
 	}
 	if len(kripRecipe.Text) > 0 {
@@ -180,19 +180,33 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		}
 	}
 	if kripRecipe.Rating != nil {
-		recipe.Rating = &domain.Rating{
-			Reviews: kripRecipe.Rating.ReviewCount,
-			Count:   kripRecipe.Rating.RatingCount,
-			Value:   kripRecipe.Rating.RatingValue,
+		recipe.Rating = &domain.Rating{}
+		if kripRecipe.Rating.ReviewCount > 0 {
+			recipe.Rating.Reviews = &kripRecipe.Rating.ReviewCount
+		}
+		if kripRecipe.Rating.RatingCount > 0 {
+			recipe.Rating.Count = &kripRecipe.Rating.RatingCount
+		}
+		if kripRecipe.Rating.RatingValue > 0 {
+			recipe.Rating.Value = &kripRecipe.Rating.RatingValue
 		}
 	}
 	if kripRecipe.Video != nil {
-		recipe.Video = &domain.Video{
-			Name:         kripRecipe.Video.Name,
-			Description:  kripRecipe.Video.Description,
-			EmbedUrl:     kripRecipe.Video.EmbedUrl,
-			ContentUrl:   kripRecipe.Video.ContentUrl,
-			ThumbnailUrl: kripRecipe.Video.ThumbnailUrl,
+		recipe.Video = &domain.Video{}
+		if len(kripRecipe.Video.Name) > 0 {
+			recipe.Video.Name = &kripRecipe.Video.Name
+		}
+		if len(kripRecipe.Video.Description) > 0 {
+			recipe.Video.Description = &kripRecipe.Video.Description
+		}
+		if len(kripRecipe.Video.EmbedUrl) > 0 {
+			recipe.Video.EmbedUrl = &kripRecipe.Video.EmbedUrl
+		}
+		if len(kripRecipe.Video.ContentUrl) > 0 {
+			recipe.Video.ContentUrl = &kripRecipe.Video.ContentUrl
+		}
+		if len(kripRecipe.Video.ThumbnailUrl) > 0 {
+			recipe.Video.ThumbnailUrl = &kripRecipe.Video.ThumbnailUrl
 		}
 	}
 	if kripRecipe.Publisher != nil {
@@ -247,12 +261,19 @@ func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
 }
 
 func (s *scraperService) kripToImage(image *krip.ImageObject) *domain.Image {
-	return &domain.Image{
+	img := &domain.Image{
 		SourceURL: image.Url,
-		Width:     image.Width,
-		Height:    image.Height,
-		Caption:   image.Caption,
 	}
+	if image.Width > 0 {
+		img.Width = &image.Width
+	}
+	if image.Height > 0 {
+		img.Height = &image.Height
+	}
+	if len(image.Caption) > 0 {
+		img.Caption = &image.Caption
+	}
+	return img
 }
 
 func (s *scraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeInstruction {
@@ -293,7 +314,7 @@ func (s *scraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 			ing.Unit = &domain.Unit{Name: item.UnitText}
 		}
 		if item.Name != "" {
-			ing.Name = item.Name
+			ing.Name = &item.Name
 			ing.Food = &domain.Food{Name: item.Name, Slug: utils.CreateTag(item.Name)}
 		}
 	} else if item.UnitText != "" {
@@ -301,7 +322,7 @@ func (s *scraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 		ing.RawText = item.UnitText + " " + item.Name
 		ing.Unit = &domain.Unit{Name: item.UnitText}
 		if item.Name != "" {
-			ing.Name = item.Name
+			ing.Name = &item.Name
 			ing.Food = &domain.Food{Name: item.Name, Slug: utils.CreateTag(item.Name)}
 		}
 	} else {

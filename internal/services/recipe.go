@@ -406,10 +406,10 @@ func selectBestImage(images []*domain.Image) *domain.Image {
 	)
 
 	for _, image := range images {
-		if image == nil || image.Path == nil {
+		if image == nil || image.Path == nil || image.Width == nil || image.Height == nil {
 			continue
 		}
-		dim := max(image.Width, image.Height)
+		dim := max(*image.Width, *image.Height)
 		if dim <= maxPreferredDim && dim > bestDim {
 			best = image
 			bestDim = dim

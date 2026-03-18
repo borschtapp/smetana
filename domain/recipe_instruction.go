@@ -12,9 +12,9 @@ type RecipeInstruction struct {
 	ID        uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	RecipeID  uuid.UUID     `gorm:"type:char(36);index:idx_recipe_order" json:"-"`
 	ParentID  *uuid.UUID    `gorm:"type:char(36);index" json:"parent_id,omitempty"`
-	Order     uint8         `gorm:"index:idx_recipe_order" json:"order,omitempty"`
+	Order     uint8         `gorm:"index:idx_recipe_order" json:"order"`
 	Title     *string       `json:"title,omitempty"`
-	Text      string        `json:"text,omitempty"`
+	Text      string        `json:"text"`
 	Url       *string       `json:"url,omitempty"`
 	ImagePath *storage.Path `json:"image_url,omitempty"`
 	VideoUrl  *string       `json:"video_url,omitempty"`

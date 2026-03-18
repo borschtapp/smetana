@@ -52,17 +52,17 @@ type Recipe struct {
 }
 
 type Rating struct {
-	Reviews int     `json:"reviews,omitempty"`
-	Count   int     `json:"count,omitempty"`
-	Value   float64 `json:"value,omitempty"`
+	Reviews *int     `json:"reviews,omitempty"`
+	Count   *int     `json:"count,omitempty"`
+	Value   *float64 `json:"value,omitempty"`
 }
 
 type Video struct {
-	Name         string `json:"name,omitempty"`
-	Description  string `json:"description,omitempty"`
-	EmbedUrl     string `json:"embed_url,omitempty"`
-	ContentUrl   string `json:"content_url,omitempty"`
-	ThumbnailUrl string `json:"thumbnail_url,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	Description  *string `json:"description,omitempty"`
+	EmbedUrl     *string `json:"embed_url,omitempty"`
+	ContentUrl   *string `json:"content_url,omitempty"`
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 }
 
 func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
