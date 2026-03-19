@@ -29,6 +29,11 @@ func (h *Household) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
+type InviteInfo struct {
+	HouseholdName string `json:"household_name"`
+	InviterName   string `json:"inviter_name,omitempty"`
+}
+
 type HouseholdRepository interface {
 	ByID(id uuid.UUID) (*Household, error)
 	Create(household *Household) error
@@ -44,10 +49,11 @@ type HouseholdService interface {
 	Update(household *Household, requesterHouseholdID uuid.UUID) error
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
-	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) error
+	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) (*User, error)
 
 	ListInvites(householdID uuid.UUID, requesterID, requesterHouseholdID uuid.UUID) ([]UserToken, error)
-	CreateInvite(householdID uuid.UUID, requesterID, requesterHouseholdID uuid.UUID) (*UserToken, error)
-	RevokeInvite(householdID uuid.UUID, requesterHouseholdID uuid.UUID, code string) error
-	JoinByInvite(joiningUserID uuid.UUID, code string) error
+	CreateInvite(householdID uuid.UUID, requesterID, requesterHouseholdID uuid.UUID, email string) (*UserToken, error)
+	JoinByInvite(joiningUserID uuid.UUID, code string) (*User, error)
+	InviteInfo(code string) (*InviteInfo, error)
+	RevokeInvite(code string) error
 }

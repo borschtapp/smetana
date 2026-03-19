@@ -90,7 +90,7 @@ func TestAuthService_Register_CreatesUserWithHousehold(t *testing.T) {
 	}
 
 	svc := newTestAuthService(repo)
-	got, err := svc.Register("User", "chef@borscht.app", "password")
+	got, err := svc.Register("User", "chef@borscht.app", "password", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -110,7 +110,7 @@ func TestAuthService_Register_EmptyName_UsesEmailPrefix(t *testing.T) {
 	}
 
 	svc := newTestAuthService(repo)
-	_, err := svc.Register("", "second@borscht.app", "pass")
+	_, err := svc.Register("", "second@borscht.app", "pass", "")
 
 	require.NoError(t, err)
 	assert.Equal(t, "second", created.Name, "empty name must fall back to the part before '@'")
@@ -122,7 +122,7 @@ func TestAuthService_Register_DuplicateEmail_ReturnsAlreadyExists(t *testing.T) 
 	}
 
 	svc := newTestAuthService(repo)
-	_, err := svc.Register("User", "chef@borscht.app", "pass")
+	_, err := svc.Register("User", "chef@borscht.app", "pass", "")
 
 	require.ErrorIs(t, err, sentinels.ErrAlreadyExists)
 }

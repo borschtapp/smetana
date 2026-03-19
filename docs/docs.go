@@ -272,7 +272,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/register": {
             "post": {
-                "description": "Register a new user with name, email, and password. Creates an associated personal Household.",
+                "description": "Register a new user with name, email, and password. If invite_code is provided and valid, the user joins the associated household.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1132,15 +1132,85 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/households/invites/join": {
+        "/api/v1/households/invites/{code}": {
+            "delete": {
+                "tags": [
+                    "households"
+                ],
+                "summary": "Revoke an invite code.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Household ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invite code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/households/invites/{code}/info": {
+            "get": {
+                "description": "Returns the household name and inviter name for a given invite code without requiring authentication.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "households"
+                ],
+                "summary": "Get public info about an invite code.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invite code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InviteInfo"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/households/invites/{code}/join": {
             "post": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Moves the authenticated user into the household identified by the invite code.",
-                "consumes": [
+                "description": "Moves the authenticated user into the household identified by the invite code. Returns updated tokens reflecting the new household_id.",
+                "produces": [
                     "application/json"
                 ],
                 "tags": [
@@ -1149,18 +1219,19 @@ const docTemplate = `{
                 "summary": "Join a household using an invite code.",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "Invite code",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.JoinHouseholdForm"
-                        }
+                        "name": "code",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AuthResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
@@ -1176,6 +1247,37 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/households/leave": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Removes the authenticated user from their household and assigns them a new personal household. Returns updated tokens reflecting the new household_id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "households"
+                ],
+                "summary": "Leave the current household.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
@@ -1352,7 +1454,10 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Generates a single-use 8-character invite code valid for 7 days.",
+                "description": "Generates a single-use 8-character invite code valid for 7 days. If email is provided, a join link is sent to that address.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1367,6 +1472,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Optional email to send the invite to",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateInviteForm"
+                        }
                     }
                 ],
                 "responses": {
@@ -1376,51 +1489,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.UserToken"
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/households/{id}/invites/{code}": {
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "tags": [
-                    "households"
-                ],
-                "summary": "Revoke an invite code.",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Household ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Invite code",
-                        "name": "code",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -1430,12 +1503,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
@@ -3407,6 +3474,14 @@ const docTemplate = `{
                 }
             }
         },
+        "api.CreateInviteForm": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
         "api.ForgotPasswordForm": {
             "type": "object",
             "required": [
@@ -3428,17 +3503,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.JoinHouseholdForm": {
-            "type": "object",
-            "required": [
-                "code"
-            ],
-            "properties": {
-                "code": {
                     "type": "string"
                 }
             }
@@ -3504,6 +3568,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string",
                     "minLength": 6
+                },
+                "invite_code": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string",
@@ -3891,6 +3958,17 @@ const docTemplate = `{
                 },
                 "width": {
                     "type": "integer"
+                }
+            }
+        },
+        "domain.InviteInfo": {
+            "type": "object",
+            "properties": {
+                "household_name": {
+                    "type": "string"
+                },
+                "inviter_name": {
+                    "type": "string"
                 }
             }
         },

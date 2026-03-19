@@ -106,14 +106,15 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 }
 
 type RegisterForm struct {
-	Name     string `validate:"min=2" json:"name"`
-	Email    string `validate:"required,email,min=6" json:"email"`
-	Password string `validate:"required,min=8" json:"password"`
+	Name       string `validate:"min=2" json:"name"`
+	Email      string `validate:"required,email,min=6" json:"email"`
+	Password   string `validate:"required,min=8" json:"password"`
+	InviteCode string `validate:"omitempty,len=8" json:"invite_code"`
 }
 
 // Register godoc
 // @Summary Create a new user.
-// @Description Register a new user with name, email, and password. Creates an associated personal Household.
+// @Description Register a new user with name, email, and password. If invite_code is provided and valid, the user joins the associated household.
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -128,7 +129,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 		return err
 	}
 
-	user, err := h.authService.Register(body.Name, body.Email, body.Password)
+	user, err := h.authService.Register(body.Name, body.Email, body.Password, body.InviteCode)
 	if err != nil {
 		return err
 	}

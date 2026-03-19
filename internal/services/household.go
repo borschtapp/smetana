@@ -12,12 +12,13 @@ import (
 )
 
 type householdService struct {
-	repo     domain.HouseholdRepository
-	userRepo domain.UserRepository
+	repo         domain.HouseholdRepository
+	userRepo     domain.UserRepository
+	emailService domain.EmailService
 }
 
-func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRepository) domain.HouseholdService {
-	return &householdService{repo: repo, userRepo: userRepo}
+func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRepository, emailService domain.EmailService) domain.HouseholdService {
+	return &householdService{repo: repo, userRepo: userRepo, emailService: emailService}
 }
 
 func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
@@ -41,7 +42,7 @@ func (s *householdService) Members(householdID uuid.UUID, requesterHouseholdID u
 	return s.repo.Members(householdID, offset, limit)
 }
 
-func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.UserToken, error) {
+func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, email string) (*domain.UserToken, error) {
 	if householdID != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -49,6 +50,7 @@ func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.
 	if code == "" {
 		return nil, fmt.Errorf("failed to generate invite code")
 	}
+
 	token := &domain.UserToken{
 		UserID:  requesterID,
 		Type:    domain.TokenTypeHouseholdInvite,
@@ -57,6 +59,12 @@ func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.
 	}
 	if err := s.userRepo.CreateToken(token); err != nil {
 		return nil, err
+	}
+
+	if email != "" && s.emailService != nil {
+		if err := s.emailService.SendHouseholdInvite(email, code); err != nil {
+			return token, fmt.Errorf("invite created but failed to send email: %w", err)
+		}
 	}
 	return token, nil
 }
@@ -68,78 +76,105 @@ func (s *householdService) ListInvites(householdID uuid.UUID, requesterID uuid.U
 	return s.userRepo.FindTokensByUser(requesterID, domain.TokenTypeHouseholdInvite)
 }
 
-func (s *householdService) RevokeInvite(householdID uuid.UUID, requesterHouseholdID uuid.UUID, code string) error {
-	if householdID != requesterHouseholdID {
-		return sentinels.ErrForbidden
+func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*domain.User, error) {
+	if len(code) != 8 {
+		return nil, sentinels.BadRequest("invalid invite code format")
 	}
 	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if token.User.HouseholdID != householdID {
-		return sentinels.ErrForbidden
+	if time.Now().After(token.Expires) {
+		return nil, sentinels.ErrNotFound
+	}
+
+	joiningUser, err := s.userRepo.ByID(joiningUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	oldHouseholdID := joiningUser.HouseholdID
+	joiningUser.HouseholdID = token.User.HouseholdID
+	if err := s.userRepo.Update(joiningUser); err != nil {
+		return nil, err
+	}
+	if _, err = s.userRepo.DeleteToken(code); err != nil {
+		return nil, err
+	}
+	return joiningUser, s.deleteIfEmpty(oldHouseholdID)
+}
+
+func (s *householdService) InviteInfo(code string) (*domain.InviteInfo, error) {
+	if len(code) != 8 {
+		return nil, sentinels.BadRequest("invalid invite code format")
+	}
+	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
+	if err != nil {
+		return nil, err
+	}
+	if time.Now().After(token.Expires) {
+		return nil, sentinels.ErrNotFound
+	}
+
+	household, err := s.repo.ByID(token.User.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.InviteInfo{
+		HouseholdName: household.Name,
+		InviterName:   token.User.Name,
+	}, nil
+}
+
+func (s *householdService) RevokeInvite(code string) error {
+	if len(code) != 8 {
+		return sentinels.BadRequest("invalid invite code format")
+	}
+
+	_, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
+	if err != nil {
+		return err
 	}
 	_, err = s.userRepo.DeleteToken(code)
 	return err
 }
 
-func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) error {
-	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
-	if err != nil {
-		return err
-	}
-	if time.Now().After(token.Expires) {
-		return sentinels.ErrNotFound
-	}
-	joiningUser, err := s.userRepo.ByID(joiningUserID)
-	if err != nil {
-		return err
-	}
-	oldHouseholdID := joiningUser.HouseholdID
-	joiningUser.HouseholdID = token.User.HouseholdID
-	if err := s.userRepo.Update(joiningUser); err != nil {
-		return err
-	}
-	if _, err = s.userRepo.DeleteToken(code); err != nil {
-		return err
-	}
-	return s.deleteIfEmpty(oldHouseholdID)
-}
-
 // RemoveMember removes targetUserID from householdID.
 // Only the household owner or the target user themselves may do this.
-func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) error {
+// Returns the updated target user with their new personal HouseholdID.
+func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, targetUserID uuid.UUID) (*domain.User, error) {
 	if householdID != requesterHouseholdID {
-		return sentinels.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 
 	household, err := s.repo.ByID(householdID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if requesterID != targetUserID && household.OwnerID != requesterID {
-		return sentinels.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 
 	target, err := s.userRepo.ByID(targetUserID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if target.HouseholdID != householdID {
-		return sentinels.ErrForbidden
+		return nil, sentinels.ErrForbidden
 	}
 
 	// Transfer ownership if the owner is being removed.
 	if household.OwnerID == targetUserID {
 		next, err := s.repo.FirstOtherMember(householdID, targetUserID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if next != nil {
 			household.OwnerID = next.ID
 			if err := s.repo.Update(household); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -147,14 +182,14 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 	// Move the removed user to a new solo household.
 	newHousehold := &domain.Household{Name: target.Name + "'s Household", OwnerID: target.ID}
 	if err := s.repo.Create(newHousehold); err != nil {
-		return err
+		return nil, err
 	}
 	target.HouseholdID = newHousehold.ID
 	if err := s.userRepo.Update(target); err != nil {
-		return err
+		return nil, err
 	}
 
-	return s.deleteIfEmpty(householdID)
+	return target, s.deleteIfEmpty(householdID)
 }
 
 func (s *householdService) deleteIfEmpty(householdID uuid.UUID) error {

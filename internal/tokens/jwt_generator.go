@@ -12,6 +12,10 @@ import (
 	"borscht.app/smetana/internal/utils"
 )
 
+func GenerateAccess(id uuid.UUID, householdID uuid.UUID) (string, error) {
+	return generateNewAccessToken(id, householdID)
+}
+
 // GenerateNew func for generate a new Access & Refresh tokens.
 func GenerateNew(id uuid.UUID, householdId uuid.UUID) (*domain.AuthTokens, error) {
 	accessToken, err := generateNewAccessToken(id, householdId)

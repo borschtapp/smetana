@@ -40,6 +40,11 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	equipmentRepo := repositories.NewEquipmentRepository(db)
 
 	// Services with business logic (need repos injected)
+	emailService, err := services.NewEmailService()
+	if err != nil {
+		log.Warnw("Email service not initialized", "error", err)
+	}
+
 	scraperService := services.NewScraperService()
 	taxonomyService := services.NewTaxonomyService(taxonomyRepo)
 	imageService := services.NewImageService(fileStorage, imageRepo)
@@ -53,17 +58,12 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	userService := services.NewUserService(userRepo)
 	collectionService := services.NewCollectionService(collectionRepo, recipeRepo)
 	mealPlanService := services.NewMealPlanService(mealPlanRepo)
-	householdService := services.NewHouseholdService(householdRepo, userRepo)
+	householdService := services.NewHouseholdService(householdRepo, userRepo, emailService)
 	shoppingListService := services.NewShoppingListService(shoppingListRepo, foodService, unitService)
 
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
 		log.Warnw("OIDC service not initialized", "error", err)
-	}
-
-	emailService, err := services.NewEmailService()
-	if err != nil {
-		log.Warnw("Email service not initialized", "error", err)
 	}
 
 	authService := services.NewAuthService(userRepo, emailService)
@@ -89,7 +89,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	usersGroup.Patch("/:id", userHandler.UpdateUser)
 	usersGroup.Delete("/:id", userHandler.DeleteUser)
 
-	householdHandler := api.NewHouseholdHandler(householdService)
+	householdHandler := api.NewHouseholdHandler(householdService, authService)
 	householdsGroup := router.Group("/households", middlewares.Protected())
 	householdsGroup.Get("/:id", householdHandler.GetHousehold)
 	householdsGroup.Patch("/:id", householdHandler.UpdateHousehold)
@@ -97,8 +97,10 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	householdsGroup.Delete("/:id/members/:userId", householdHandler.RemoveHouseholdMember)
 	householdsGroup.Post("/:id/invites", householdHandler.CreateHouseholdInvite)
 	householdsGroup.Get("/:id/invites", householdHandler.ListHouseholdInvites)
-	householdsGroup.Delete("/:id/invites/:code", householdHandler.RevokeHouseholdInvite)
-	householdsGroup.Post("/invites/join", householdHandler.JoinHousehold)
+	householdsGroup.Post("/leave", householdHandler.LeaveHousehold)
+	householdsGroup.Post("/invites/:code/join", householdHandler.JoinHousehold)
+	router.Get("/households/invites/:code/info", householdHandler.GetInviteInfo, limiter.New(limiter.Config{Max: 3}))
+	router.Delete("/households/invites/:code", householdHandler.RevokeHouseholdInvite)
 
 	collectionHandler := api.NewCollectionHandler(collectionService)
 	collectionsGroup := router.Group("/collections", middlewares.Protected())

@@ -43,8 +43,9 @@ func (s *authService) Login(email, password string) (*domain.User, error) {
 	return user, nil
 }
 
-// Register creates a new user with a personal household.
-func (s *authService) Register(name, email, password string) (*domain.User, error) {
+// Register creates a new user. If inviteCode is non-empty, the user is placed into
+// the household associated with that code; otherwise a personal household is created.
+func (s *authService) Register(name, email, password, inviteCode string) (*domain.User, error) {
 	hash, err := utils.HashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -52,12 +53,30 @@ func (s *authService) Register(name, email, password string) (*domain.User, erro
 	if name == "" {
 		name = utils.EmailToName(email)
 	}
+
 	user := &domain.User{
-		Email:     email,
-		Password:  hash,
-		Name:      name,
-		Household: &domain.Household{Name: name + "'s Household"},
+		Email:    email,
+		Password: hash,
+		Name:     name,
 	}
+
+	if inviteCode != "" {
+		token, err := s.userRepo.FindToken(inviteCode, domain.TokenTypeHouseholdInvite)
+		if err != nil || time.Now().After(token.Expires) {
+			return nil, sentinels.BadRequest("invite code is invalid or has expired")
+		}
+
+		user.HouseholdID = token.User.HouseholdID
+		if err := s.userRepo.Create(user); err != nil {
+			return nil, err
+		}
+		if _, err := s.userRepo.DeleteToken(inviteCode); err != nil {
+			return nil, err
+		}
+		return user, nil
+	}
+
+	user.Household = &domain.Household{Name: name + "'s Household"}
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
 	}
@@ -112,6 +131,11 @@ func (s *authService) RotateRefreshToken(tokenStr string) (*domain.User, *domain
 		return nil, nil, err
 	}
 	return user, generatedTokens, nil
+}
+
+// IssueAccessToken generates only a new access token without touching refresh tokens.
+func (s *authService) IssueAccessToken(user domain.User) (string, error) {
+	return tokens.GenerateAccess(user.ID, user.HouseholdID)
 }
 
 // Logout invalidates the given refresh token, ending the session.
