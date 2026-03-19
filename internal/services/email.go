@@ -24,7 +24,7 @@ func NewEmailService() (domain.EmailService, error) {
 }
 
 func (s *EmailService) SendPasswordReset(to, rawToken string) error {
-	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", s.cfg.BaseURL, rawToken)
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.cfg.BaseURL, rawToken)
 	subject := "Password Reset Request"
 	body := fmt.Sprintf("Click the link below to reset your password (valid for 1 hour):\n\n%s\n\nIf you did not request a password reset, you can ignore this email.", resetURL)
 
