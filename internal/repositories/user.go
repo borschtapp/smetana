@@ -41,18 +41,15 @@ func (r *userRepository) ByEmailWithHousehold(email string) (*domain.User, error
 
 func (r *userRepository) Create(user *domain.User) error {
 	return mapErr(r.db.Transaction(func(tx *gorm.DB) error {
-		if user.ID == uuid.Nil {
-			id, err := uuid.NewV7()
-			if err != nil {
+		if user.HouseholdID == uuid.Nil {
+			_ = user.BeforeCreate(tx) // to ensure user's ID is not empty
+			user.Household = &domain.Household{OwnerID: user.ID, Name: user.Name + "'s Household"}
+			if err := tx.Create(user.Household).Error; err != nil {
 				return err
 			}
-			user.ID = id
+			user.HouseholdID = user.Household.ID
 		}
-		user.Household.OwnerID = user.ID
-		if err := tx.Create(user.Household).Error; err != nil {
-			return err
-		}
-		user.HouseholdID = user.Household.ID
+
 		return tx.Create(user).Error
 	}))
 }
@@ -68,6 +65,17 @@ func (r *userRepository) Delete(id uuid.UUID) error {
 func (r *userRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
 	var tokens []domain.UserToken
 	if err := r.db.Where(&domain.UserToken{UserID: userID, Type: tokenType}).Find(&tokens).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return tokens, nil
+}
+
+func (r *userRepository) FindTokensByHousehold(householdID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
+	var tokens []domain.UserToken
+	err := r.db.Joins("JOIN users ON users.id = user_tokens.user_id").
+		Where("users.household_id = ? AND user_tokens.type = ?", householdID, tokenType).
+		Find(&tokens).Error
+	if err != nil {
 		return nil, mapErr(err)
 	}
 	return tokens, nil

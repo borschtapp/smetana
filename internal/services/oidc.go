@@ -91,9 +91,8 @@ func (s *oidcService) Authorize(email, name string) (*domain.User, error) {
 		name = utils.EmailToName(email)
 	}
 	newUser := &domain.User{
-		Email:     email,
-		Name:      name,
-		Household: &domain.Household{Name: name + "'s Household"},
+		Email: email,
+		Name:  name,
 	}
 	if err := s.userRepo.Create(newUser); err != nil {
 		if errors.Is(err, sentinels.ErrAlreadyExists) {

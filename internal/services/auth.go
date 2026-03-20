@@ -62,7 +62,7 @@ func (s *authService) Register(name, email, password, inviteCode string) (*domai
 
 	if inviteCode != "" {
 		token, err := s.userRepo.FindToken(inviteCode, domain.TokenTypeHouseholdInvite)
-		if err != nil || time.Now().After(token.Expires) {
+		if err != nil || time.Now().After(token.Expires) || token.User == nil {
 			return nil, sentinels.BadRequest("invite code is invalid or has expired")
 		}
 
@@ -76,7 +76,6 @@ func (s *authService) Register(name, email, password, inviteCode string) (*domai
 		return user, nil
 	}
 
-	user.Household = &domain.Household{Name: name + "'s Household"}
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, err
 	}

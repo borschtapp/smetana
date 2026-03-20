@@ -12,7 +12,7 @@ import (
 type SearchOptions struct {
 	SearchQuery string
 	Taxonomies  []uuid.UUID
-	Preload     []string
+	PreloadOptions
 
 	Sort  string
 	Order string
@@ -24,7 +24,6 @@ type SearchOptions struct {
 func GetSearchOptions(c fiber.Ctx) (SearchOptions, error) {
 	searchQuery := c.Query("q")
 	taxonomies := utils.CsvSplitUUID(c.Query("taxonomies"))
-	preload := utils.CsvSplit(c.Query("preload"))
 
 	sort := c.Query("sort", "id") // ids are UUIDv7 which are sortable by creation time
 	order := c.Query("order", "DESC")
@@ -38,11 +37,11 @@ func GetSearchOptions(c fiber.Ctx) (SearchOptions, error) {
 	}
 
 	return SearchOptions{
-		SearchQuery: searchQuery,
-		Taxonomies:  taxonomies,
-		Preload:     preload,
-		Sort:        sort,
-		Order:       order,
-		Pagination:  GetPagination(c),
+		SearchQuery:    searchQuery,
+		Taxonomies:     taxonomies,
+		PreloadOptions: GetPreloadOptions(c),
+		Sort:           sort,
+		Order:          order,
+		Pagination:     GetPagination(c),
 	}, nil
 }

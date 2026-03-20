@@ -44,6 +44,7 @@ type UserRepository interface {
 
 	FindToken(tokenStr string, tokenType string) (*UserToken, error)
 	FindTokensByUser(userID uuid.UUID, tokenType string) ([]UserToken, error)
+	FindTokensByHousehold(householdID uuid.UUID, tokenType string) ([]UserToken, error)
 	CreateToken(token *UserToken) error
 	DeleteToken(tokenStr string) (bool, error)
 }

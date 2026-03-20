@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type householdRepository struct {
@@ -21,6 +22,22 @@ func NewHouseholdRepository(db *gorm.DB) domain.HouseholdRepository {
 func (r *householdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return &household, nil
+}
+
+func (r *householdRepository) ByIDWithPreload(id uuid.UUID, opts types.PreloadOptions) (*domain.Household, error) {
+	q := r.db.Model(&domain.Household{})
+
+	if opts.Has("members") {
+		q = q.Preload("Members")
+	}
+
+	// "invites" is populated by the service layer
+
+	var household domain.Household
+	if err := q.First(&household, id).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	return &household, nil

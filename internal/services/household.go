@@ -8,6 +8,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -21,18 +22,40 @@ func NewHouseholdService(repo domain.HouseholdRepository, userRepo domain.UserRe
 	return &householdService{repo: repo, userRepo: userRepo, emailService: emailService}
 }
 
-func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*domain.Household, error) {
+func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, opts types.PreloadOptions) (*domain.Household, error) {
 	if id != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
-	return s.repo.ByID(id)
+	household, err := s.repo.ByIDWithPreload(id, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.Has("invites") {
+		household.Invites, err = s.userRepo.FindTokensByHousehold(id, domain.TokenTypeHouseholdInvite)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return household, nil
 }
 
-func (s *householdService) Update(household *domain.Household, requesterHouseholdID uuid.UUID) error {
-	if household.ID != requesterHouseholdID {
-		return sentinels.ErrForbidden
+func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, name string) (*domain.Household, error) {
+	household, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, err
 	}
-	return s.repo.Update(household)
+
+	if household.OwnerID != requesterID {
+		return nil, sentinels.ErrForbidden
+	}
+
+	household.Name = name
+	if err := s.repo.Update(household); err != nil {
+		return nil, err
+	}
+
+	return household, nil
 }
 
 func (s *householdService) Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {

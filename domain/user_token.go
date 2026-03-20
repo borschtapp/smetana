@@ -12,11 +12,11 @@ const TokenTypeHouseholdInvite = "household_invite"
 const TokenTypePasswordReset = "password_reset"
 
 type UserToken struct {
-	ID      uuid.UUID `gorm:"type:char(36);primaryKey"`
+	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	UserID  uuid.UUID `gorm:"type:char(36);index" json:"user_id"`
-	Type    string    `gorm:"index:idx_token_type"`
-	Token   string    `gorm:"index:idx_token_type"`
-	Expires time.Time
+	Type    string    `gorm:"index:idx_token_type" json:"type"`
+	Token   string    `gorm:"index:idx_token_type" json:"token"`
+	Expires time.Time `json:"expires"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 
 	User *User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`

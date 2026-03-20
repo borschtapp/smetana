@@ -61,8 +61,8 @@ type RenewForm struct {
 }
 
 // Refresh godoc
-// @Summary Refresh access token.
-// @Description Refresh access token using a valid refresh token.
+// @Summary Refresh tokens.
+// @Description Refresh tokens using a valid refresh token, returning new access and refresh tokens.
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -114,7 +114,7 @@ type RegisterForm struct {
 
 // Register godoc
 // @Summary Create a new user.
-// @Description Register a new user with name, email, and password. If invite_code is provided and valid, the user joins the associated household.
+// @Description Register a new user with name, email, and password, returning access and refresh tokens. If invite_code is provided and valid, the user joins the associated household.
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -219,7 +219,7 @@ func (h *AuthHandler) OIDCLogin(c fiber.Ctx) error {
 
 // OIDCCallback godoc
 // @Summary OIDC Consumer.
-// @Description Handles the callback from the identity provider and issues local tokens.
+// @Description Handles the callback from the identity provider, returning local access and refresh tokens.
 // @Tags auth
 // @Success 200 {object} AuthResponse
 // @Failure 400 {object} sentinels.Error

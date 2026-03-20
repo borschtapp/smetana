@@ -167,7 +167,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/oidc/callback": {
             "get": {
-                "description": "Handles the callback from the identity provider and issues local tokens.",
+                "description": "Handles the callback from the identity provider, returning local access and refresh tokens.",
                 "tags": [
                     "auth"
                 ],
@@ -226,7 +226,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/refresh": {
             "post": {
-                "description": "Refresh access token using a valid refresh token.",
+                "description": "Refresh tokens using a valid refresh token, returning new access and refresh tokens.",
                 "consumes": [
                     "application/json"
                 ],
@@ -236,7 +236,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Refresh access token.",
+                "summary": "Refresh tokens.",
                 "parameters": [
                     {
                         "description": "Refresh token",
@@ -272,7 +272,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/register": {
             "post": {
-                "description": "Register a new user with name, email, and password. If invite_code is provided and valid, the user joins the associated household.",
+                "description": "Register a new user with name, email, and password, returning access and refresh tokens. If invite_code is provided and valid, the user joins the associated household.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1209,7 +1209,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Moves the authenticated user into the household identified by the invite code. Returns updated tokens reflecting the new household_id.",
+                "description": "Moves the authenticated user into the household identified by the invite code, returns updated user and access token, reflecting the new household.",
                 "produces": [
                     "application/json"
                 ],
@@ -1261,7 +1261,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Removes the authenticated user from their household and assigns them a new personal household. Returns updated tokens reflecting the new household_id.",
+                "description": "Removes the authenticated user from their household and assigns them a new personal household, returns updated user and access token, reflecting the new household.",
                 "produces": [
                     "application/json"
                 ],
@@ -1309,6 +1309,12 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: members, invites",
+                        "name": "preload",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1354,7 +1360,7 @@ const docTemplate = `{
                 "tags": [
                     "households"
                 ],
-                "summary": "Update household by ID.",
+                "summary": "Update household by ID, owner only.",
                 "parameters": [
                     {
                         "type": "string",
@@ -3911,6 +3917,12 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "invites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.UserToken"
+                    }
                 },
                 "members": {
                     "type": "array",

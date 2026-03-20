@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"borscht.app/smetana/internal/types"
 )
 
 type Household struct {
@@ -18,6 +20,7 @@ type Household struct {
 	Feeds         []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
 	Collections   []*Collection   `gorm:"foreignKey:HouseholdID" json:"collections,omitempty"`
 	ShoppingLists []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
+	Invites       []UserToken     `gorm:"-" json:"invites,omitempty"`
 }
 
 func (h *Household) BeforeCreate(_ *gorm.DB) error {
@@ -36,6 +39,7 @@ type InviteInfo struct {
 
 type HouseholdRepository interface {
 	ByID(id uuid.UUID) (*Household, error)
+	ByIDWithPreload(id uuid.UUID, opts types.PreloadOptions) (*Household, error)
 	Create(household *Household) error
 	Update(household *Household) error
 	Delete(id uuid.UUID) error
@@ -45,8 +49,8 @@ type HouseholdRepository interface {
 }
 
 type HouseholdService interface {
-	ByID(id uuid.UUID, requesterHouseholdID uuid.UUID) (*Household, error)
-	Update(household *Household, requesterHouseholdID uuid.UUID) error
+	ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, opts types.PreloadOptions) (*Household, error)
+	Update(id uuid.UUID, requesterID uuid.UUID, name string) (*Household, error)
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
 	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) (*User, error)

@@ -22,6 +22,7 @@ func NewHouseholdHandler(householdService domain.HouseholdService, authService d
 // @Accept */*
 // @Produce json
 // @Param id path string true "Household ID"
+// @Param preload query string false "Comma-separated extras to include: members, invites"
 // @Success 200 {object} domain.Household
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
@@ -39,7 +40,12 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.ByID(id, tokenData.HouseholdID)
+	preload := types.GetPreloadOptions(c)
+	if err := preload.Validate("members", "invites"); err != nil {
+		return err
+	}
+
+	household, err := h.householdService.ByID(id, tokenData.HouseholdID, preload)
 	if err != nil {
 		return err
 	}
@@ -52,7 +58,7 @@ type UpdateHouseholdForm struct {
 }
 
 // UpdateHousehold godoc
-// @Summary Update household by ID.
+// @Summary Update household by ID, owner only.
 // @Description Rename a specific household.
 // @Tags households
 // @Accept json
@@ -81,13 +87,8 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.ByID(id, tokenData.HouseholdID)
+	household, err := h.householdService.Update(id, tokenData.ID, form.Name)
 	if err != nil {
-		return err
-	}
-
-	household.Name = form.Name
-	if err := h.householdService.Update(household, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -159,8 +160,10 @@ func (h *HouseholdHandler) CreateHouseholdInvite(c fiber.Ctx) error {
 	}
 
 	var form CreateInviteForm
-	if err := bindBody(c, &form); err != nil {
-		return err
+	if len(c.Body()) > 0 {
+		if err := bindBody(c, &form); err != nil {
+			return err
+		}
 	}
 
 	tokenData, err := tokens.ParseJwtClaims(c)
@@ -240,7 +243,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 
 // JoinHousehold godoc
 // @Summary Join a household using an invite code.
-// @Description Moves the authenticated user into the household identified by the invite code. Returns updated tokens reflecting the new household_id.
+// @Description Moves the authenticated user into the household identified by the invite code, returns updated user and access token, reflecting the new household.
 // @Tags households
 // @Produce json
 // @Param code path string true "Invite code"
@@ -273,7 +276,7 @@ func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
 
 // LeaveHousehold godoc
 // @Summary Leave the current household.
-// @Description Removes the authenticated user from their household and assigns them a new personal household. Returns updated tokens reflecting the new household_id.
+// @Description Removes the authenticated user from their household and assigns them a new personal household, returns updated user and access token, reflecting the new household.
 // @Tags households
 // @Produce json
 // @Success 200 {object} AuthResponse

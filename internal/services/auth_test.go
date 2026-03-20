@@ -97,8 +97,7 @@ func TestAuthService_Register_CreatesUserWithHousehold(t *testing.T) {
 	require.NotNil(t, created)
 	assert.Equal(t, "User", created.Name)
 	assert.Equal(t, "chef@borscht.app", created.Email)
-	require.NotNil(t, created.Household, "household must be set so UserRepository can create it in the same transaction")
-	assert.Contains(t, created.Household.Name, "User")
+	assert.Equal(t, uuid.Nil, created.HouseholdID, "service passes nil HouseholdID; repository will create household")
 	assert.NotEqual(t, "password", created.Password, "password must be hashed")
 	assert.True(t, utils.ValidatePassword(created.Password, "password"), "stored hash must validate against original password")
 }
@@ -265,4 +264,83 @@ func TestAuthService_Logout_PropagatesDeleteError(t *testing.T) {
 	err := svc.Logout("any-token")
 
 	require.ErrorIs(t, err, sentinels.ErrNotFound)
+}
+
+func TestAuthService_Register_WithInviteCode_ValidToken_JoinsHousehold(t *testing.T) {
+	inviterID := uuid.New()
+	householdID := uuid.New()
+	inviter := &domain.User{ID: inviterID, HouseholdID: householdID}
+	inviteToken := &domain.UserToken{
+		Token:   "VALIDCODE",
+		Type:    domain.TokenTypeHouseholdInvite,
+		Expires: time.Now().Add(time.Hour),
+		User:    inviter,
+	}
+
+	var created *domain.User
+	var deletedToken string
+	repo := &stubUserRepo{
+		findTokenFn: func(tok, typ string) (*domain.UserToken, error) {
+			assert.Equal(t, "VALIDCODE", tok)
+			assert.Equal(t, domain.TokenTypeHouseholdInvite, typ)
+			return inviteToken, nil
+		},
+		createFn: func(u *domain.User) error {
+			created = u
+			return nil
+		},
+		deleteTokenFn: func(tok string) (bool, error) {
+			deletedToken = tok
+			return true, nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	user, err := svc.Register("NewMember", "newmember@borscht.app", "password", "VALIDCODE")
+
+	require.NoError(t, err)
+	assert.NotNil(t, user)
+	assert.Equal(t, householdID, created.HouseholdID, "user must join the inviter's household")
+	assert.Equal(t, "VALIDCODE", deletedToken, "invite code must be consumed")
+}
+
+func TestAuthService_Register_WithInviteCode_NilUser_BadRequest(t *testing.T) {
+	// Orphaned invite token: token row exists but its User association is nil
+	orphanToken := &domain.UserToken{
+		Token:   "ORPHANCODE",
+		Type:    domain.TokenTypeHouseholdInvite,
+		Expires: time.Now().Add(time.Hour),
+		User:    nil, // no user loaded — the bug scenario
+	}
+
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return orphanToken, nil },
+	}
+
+	svc := newTestAuthService(repo)
+	_, err := svc.Register("Hacker", "hacker@borscht.app", "password", "ORPHANCODE")
+
+	var sentinelErr *sentinels.Error
+	require.ErrorAs(t, err, &sentinelErr, "nil user in token must return a sentinel error, not panic")
+	assert.Equal(t, 400, sentinelErr.Status, "must return BadRequest (400)")
+}
+
+func TestAuthService_Register_WithInviteCode_ExpiredToken_BadRequest(t *testing.T) {
+	expiredToken := &domain.UserToken{
+		Token:   "EXPIREDCODE",
+		Type:    domain.TokenTypeHouseholdInvite,
+		Expires: time.Now().Add(-time.Hour), // already expired
+		User:    &domain.User{ID: uuid.New()},
+	}
+
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return expiredToken, nil },
+	}
+
+	svc := newTestAuthService(repo)
+	_, err := svc.Register("Guest", "guest@borscht.app", "password", "EXPIREDCODE")
+
+	var sentinelErr *sentinels.Error
+	require.ErrorAs(t, err, &sentinelErr)
+	assert.Equal(t, 400, sentinelErr.Status)
 }
