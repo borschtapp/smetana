@@ -23,6 +23,11 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Produce json
 // @Param q query string false "Text search"
 // @Param taxonomies query string false "Comma-separated taxonomy IDs to filter by (using OR logic)"
+// @Param publishers query string false "Comma-separated publisher IDs to filter by"
+// @Param authors query string false "Comma-separated author IDs to filter by"
+// @Param equipment query string false "Comma-separated equipment IDs to filter by"
+// @Param cook_time_max query int false "Max cook time in seconds (e.g. 1800 = 30 min)"
+// @Param total_time_max query int false "Max total time in seconds (e.g. 3600 = 1 hour)"
 // @Param preload query string false "Comma-separated extras to include: publisher, author, feed, images, ingredients, instructions, nutrition, taxonomies, collections and saved"
 // @Param sort query string false "Sort by field: id, name, created, updated (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"

@@ -63,19 +63,39 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 			Where("recipes_saved.household_id = ?", householdID)
 	}
 
-	// primitive search by name and description
+	// apply filters/search options
 	if opts.SearchQuery != "" {
 		q = q.Where("recipes.name LIKE ? OR recipes.description LIKE ?", "%"+opts.SearchQuery+"%", "%"+opts.SearchQuery+"%")
 	}
 
-	// filter by taxonomies, if provided
 	if len(opts.Taxonomies) > 0 {
-		q = q.Joins("LEFT JOIN recipe_taxonomies ON recipe_taxonomies.recipe_id = recipes.id").
+		q = q.Joins("JOIN recipe_taxonomies ON recipe_taxonomies.recipe_id = recipes.id").
 			Where("recipe_taxonomies.taxonomy_id IN ?", opts.Taxonomies)
 	}
 
+	if len(opts.Publishers) > 0 {
+		q = q.Where("recipes.publisher_id IN ?", opts.Publishers)
+	}
+
+	if len(opts.Authors) > 0 {
+		q = q.Where("recipes.author_id IN ?", opts.Authors)
+	}
+
+	if len(opts.Equipment) > 0 {
+		q = q.Joins("JOIN recipe_equipment re_filter ON re_filter.recipe_id = recipes.id").
+			Where("re_filter.equipment_id IN ?", opts.Equipment)
+	}
+
+	if opts.CookTimeMax != nil {
+		q = q.Where("recipes.cook_time IS NOT NULL AND recipes.cook_time <= ?", int64(*opts.CookTimeMax))
+	}
+
+	if opts.TotalTimeMax != nil {
+		q = q.Where("recipes.total_time IS NOT NULL AND recipes.total_time <= ?", int64(*opts.TotalTimeMax))
+	}
+
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := q.Distinct("recipes.id").Count(&total).Error; err != nil {
 		return nil, 0, err
 	} else if total == 0 {
 		return recipes, 0, nil
@@ -83,7 +103,8 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 
 	// is_saved is not a real DB column; use explicit SELECT to prevent GORM from emitting auto-generated column list.
 	// The "saved" preload block below overrides this with the EXISTS subquery.
-	q = q.Select("recipes.*")
+	// Distinct collapses duplicate rows produced by multi-value JOINs (taxonomies, equipment).
+	q = q.Distinct().Select("recipes.*")
 
 	// preload relations
 	if len(opts.Preload) != 0 {

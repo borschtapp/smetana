@@ -1035,7 +1035,43 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated extras to include: publisher, feed, images, ingredients, instructions, taxonomies, collections and saved",
+                        "description": "Comma-separated taxonomy IDs to filter by (using OR logic)",
+                        "name": "taxonomies",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated publisher IDs to filter by",
+                        "name": "publishers",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated author IDs to filter by",
+                        "name": "authors",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated equipment IDs to filter by",
+                        "name": "equipment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max cook time in seconds (e.g. 1800 = 30 min)",
+                        "name": "cook_time_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max total time in seconds (e.g. 3600 = 1 hour)",
+                        "name": "total_time_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: publisher, author, feed, images, ingredients, equipment, instructions, nutrition, taxonomies, collections and saved",
                         "name": "preload",
                         "in": "query"
                     },
@@ -1978,6 +2014,36 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Comma-separated taxonomy IDs to filter by (using OR logic)",
                         "name": "taxonomies",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated publisher IDs to filter by",
+                        "name": "publishers",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated author IDs to filter by",
+                        "name": "authors",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated equipment IDs to filter by",
+                        "name": "equipment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max cook time in seconds (e.g. 1800 = 30 min)",
+                        "name": "cook_time_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max total time in seconds (e.g. 3600 = 1 hour)",
+                        "name": "total_time_max",
                         "in": "query"
                     },
                     {

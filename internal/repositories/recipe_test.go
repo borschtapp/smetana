@@ -2,6 +2,7 @@ package repositories_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -440,4 +441,158 @@ func TestRecipeRepository_Import_CreatesRecipeWithoutPublisher(t *testing.T) {
 	var pubCount int64
 	db.Model(&domain.Publisher{}).Where("name = ?", "Test Publisher").Count(&pubCount)
 	assert.EqualValues(t, 0, pubCount, "Import must omit Publisher association creation")
+}
+
+// seedPublisher creates a Publisher row directly in the DB and returns it.
+func seedPublisher(t *testing.T, db *gorm.DB) *domain.Publisher {
+	t.Helper()
+	id, _ := uuid.NewV7()
+	name := "Publisher " + id.String()
+	p := &domain.Publisher{ID: id, Name: name}
+	require.NoError(t, db.Create(p).Error)
+	return p
+}
+
+// seedAuthor creates an Author row directly in the DB and returns it.
+func seedAuthor(t *testing.T, db *gorm.DB) *domain.Author {
+	t.Helper()
+	id, _ := uuid.NewV7()
+	name := "Author " + id.String()
+	a := &domain.Author{ID: id, Name: name}
+	require.NoError(t, db.Create(a).Error)
+	return a
+}
+
+// savedAll saves all given recipe IDs to the household using the provided user ID.
+func savedAll(t *testing.T, db *gorm.DB, uid uuid.UUID, hid uuid.UUID, ids ...uuid.UUID) {
+	t.Helper()
+	for _, id := range ids {
+		require.NoError(t, db.Create(&domain.RecipeSaved{
+			RecipeID:    id,
+			UserID:      uid,
+			HouseholdID: hid,
+		}).Error)
+	}
+}
+
+func TestRecipeRepository_Search_CookTimeMax_FiltersOutSlowerRecipes(t *testing.T) {
+	db := openTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+
+	fast := types.Duration(time.Duration(600) * time.Second)  // 10 min in nanoseconds
+	slow := types.Duration(time.Duration(3600) * time.Second) // 60 min in nanoseconds
+
+	r1 := &domain.Recipe{HouseholdID: &hid, CookTime: &fast}
+	r2 := &domain.Recipe{HouseholdID: &hid, CookTime: &slow}
+	r3 := &domain.Recipe{HouseholdID: &hid} // nil cook_time
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	seedRecipe(t, db, r3)
+	savedAll(t, db, u.ID, hid, r1.ID, r2.ID, r3.ID)
+
+	cookTimeMax := types.Duration(30 * time.Minute)
+	repo := repositories.NewRecipeRepository(db)
+	opts := domain.RecipeSearchOptions{
+		SearchOptions: types.SearchOptions{
+			Sort:        "id",
+			Pagination:  types.Pagination{Limit: 10},
+			CookTimeMax: &cookTimeMax,
+		},
+	}
+	recipes, total, err := repo.Search(u.ID, hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total, "only recipes with cook_time <= 1800s must be returned; nil and slow recipes excluded")
+	assert.Equal(t, r1.ID, recipes[0].ID)
+}
+
+func TestRecipeRepository_Search_PublisherID_FiltersByPublisher(t *testing.T) {
+	db := openTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+
+	pub1 := seedPublisher(t, db)
+	pub2 := seedPublisher(t, db)
+
+	r1 := &domain.Recipe{HouseholdID: &hid, PublisherID: &pub1.ID}
+	r2 := &domain.Recipe{HouseholdID: &hid, PublisherID: &pub2.ID}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	savedAll(t, db, u.ID, hid, r1.ID, r2.ID)
+
+	repo := repositories.NewRecipeRepository(db)
+	opts := domain.RecipeSearchOptions{
+		SearchOptions: types.SearchOptions{
+			Sort:       "id",
+			Pagination: types.Pagination{Limit: 10},
+			Publishers: []uuid.UUID{pub1.ID},
+		},
+	}
+	recipes, total, err := repo.Search(u.ID, hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total, "only recipes from the specified publisher must appear")
+	assert.Equal(t, r1.ID, recipes[0].ID)
+}
+
+func TestRecipeRepository_Search_AuthorID_FiltersRecipes(t *testing.T) {
+	db := openTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+
+	a1 := seedAuthor(t, db)
+	a2 := seedAuthor(t, db)
+
+	r1 := &domain.Recipe{HouseholdID: &hid, AuthorID: &a1.ID}
+	r2 := &domain.Recipe{HouseholdID: &hid, AuthorID: &a2.ID}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	savedAll(t, db, u.ID, hid, r1.ID, r2.ID)
+
+	repo := repositories.NewRecipeRepository(db)
+	opts := domain.RecipeSearchOptions{
+		SearchOptions: types.SearchOptions{
+			Sort:       "id",
+			Pagination: types.Pagination{Limit: 10},
+			Authors:    []uuid.UUID{a1.ID},
+		},
+	}
+	recipes, total, err := repo.Search(u.ID, hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total, "only recipes by the specified author must appear")
+	assert.Equal(t, r1.ID, recipes[0].ID)
+}
+
+func TestRecipeRepository_Search_Equipment_FiltersRecipesByEquipment(t *testing.T) {
+	db := openTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+
+	therm := seedEquipment(t, db, "Thermomix")
+	wok := seedEquipment(t, db, "Wok")
+
+	r1 := &domain.Recipe{HouseholdID: &hid}
+	r2 := &domain.Recipe{HouseholdID: &hid}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	savedAll(t, db, u.ID, hid, r1.ID, r2.ID)
+
+	require.NoError(t, db.Exec("INSERT INTO recipe_equipment (recipe_id, equipment_id) VALUES (?, ?)", r1.ID, therm.ID).Error)
+	require.NoError(t, db.Exec("INSERT INTO recipe_equipment (recipe_id, equipment_id) VALUES (?, ?)", r2.ID, wok.ID).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	opts := domain.RecipeSearchOptions{
+		SearchOptions: types.SearchOptions{
+			Sort:       "id",
+			Pagination: types.Pagination{Limit: 10},
+			Equipment:  []uuid.UUID{therm.ID},
+		},
+	}
+	recipes, total, err := repo.Search(u.ID, hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total, "only recipes linked to the specified equipment must appear")
+	assert.Equal(t, r1.ID, recipes[0].ID)
 }
