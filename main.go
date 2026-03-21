@@ -68,6 +68,9 @@ func main() {
 		if err := database.Migrate(db); err != nil {
 			log.Fatalw("database migration error", "error", err)
 		}
+		if err := database.SeedUnits(db); err != nil {
+			log.Fatalw("unit seed error", "error", err)
+		}
 	}
 
 	app := fiber.New(configs.FiberConfig())

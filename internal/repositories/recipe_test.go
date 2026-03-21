@@ -491,13 +491,12 @@ func TestRecipeRepository_Search_CookTimeMax_FiltersOutSlowerRecipes(t *testing.
 	seedRecipe(t, db, r3)
 	savedAll(t, db, u.ID, hid, r1.ID, r2.ID, r3.ID)
 
-	cookTimeMax := types.Duration(30 * time.Minute)
 	repo := repositories.NewRecipeRepository(db)
 	opts := domain.RecipeSearchOptions{
 		SearchOptions: types.SearchOptions{
 			Sort:        "id",
 			Pagination:  types.Pagination{Limit: 10},
-			CookTimeMax: &cookTimeMax,
+			CookTimeMax: new(types.Duration(30 * time.Minute)),
 		},
 	}
 	recipes, total, err := repo.Search(u.ID, hid, opts)

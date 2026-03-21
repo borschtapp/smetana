@@ -276,8 +276,6 @@ func TestRecipeHandler_CreateRecipe_Returns201WithRecipe(t *testing.T) {
 	hid := uuid.New()
 	uid := uuid.New()
 	newID := uuid.New()
-	name := "Varenyky"
-
 	svc := &stubRecipeService{
 		createFn: func(r *domain.Recipe, u, h uuid.UUID) error {
 			assert.Equal(t, uid, u)
@@ -288,7 +286,7 @@ func TestRecipeHandler_CreateRecipe_Returns201WithRecipe(t *testing.T) {
 	}
 	app := buildApp(t, svc)
 
-	body, _ := json.Marshal(domain.Recipe{Name: &name})
+	body, _ := json.Marshal(domain.Recipe{Name: new("Varenyky")})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", makeToken(t, uid, hid))

@@ -17,6 +17,14 @@ func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 	return &unitRepository{db: db}
 }
 
+func (r *unitRepository) ByID(id uuid.UUID) (*domain.Unit, error) {
+	var unit domain.Unit
+	if err := r.db.First(&unit, id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return &unit, nil
+}
+
 func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 	if unit.Slug == "" {
 		unit.Slug = utils.CreateTag(unit.Name)
@@ -42,8 +50,33 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 	return nil
 }
 
+func (r *unitRepository) Search(query string, imperial *bool, offset, limit int) ([]domain.Unit, int64, error) {
+	db := r.db.Model(&domain.Unit{})
+	if query != "" {
+		db = db.Where("name LIKE ? OR slug LIKE ?", "%"+query+"%", "%"+query+"%")
+	}
+	if imperial != nil {
+		db = db.Where("imperial = ?", *imperial)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var units []domain.Unit
+	err := db.Offset(offset).Limit(limit).Find(&units).Error
+	return units, total, err
+}
+
 func (r *unitRepository) Update(unit *domain.Unit) error {
 	return r.db.Model(unit).Select("name").Updates(unit).Error
+}
+
+func (r *unitRepository) ByBase(baseUnitID uuid.UUID, imperial bool) ([]domain.Unit, error) {
+	var units []domain.Unit
+	err := r.db.Where("(id = ? OR base_unit_id = ?) AND imperial = ?", baseUnitID, baseUnitID, imperial).Find(&units).Error
+	return units, err
 }
 
 func (r *unitRepository) AddTaxonomy(unitID uuid.UUID, taxonomy *domain.Taxonomy) error {

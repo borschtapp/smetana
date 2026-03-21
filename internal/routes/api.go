@@ -161,6 +161,9 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	taxonomyHandler := api.NewTaxonomyHandler(taxonomyService)
 	router.Get("/taxonomies", taxonomyHandler.GetTaxonomies, middlewares.Protected())
 
+	unitHandler := api.NewUnitHandler(unitService)
+	router.Get("/units", unitHandler.Search, middlewares.Protected())
+
 	equipmentHandler := api.NewEquipmentHandler(equipmentService)
 	router.Get("/equipment", equipmentHandler.Search, middlewares.Protected())
 

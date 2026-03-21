@@ -28,3 +28,4 @@ var ErrUnauthorized = &Error{Status: fiber.StatusUnauthorized, Message: "Invalid
 var ErrForbidden = &Error{Status: fiber.StatusForbidden, Message: "Access denied"}
 var ErrNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
 var ErrAlreadyExists = &Error{Status: fiber.StatusConflict, Message: "The entity already exists"}
+var ErrUnitConversion = &Error{Status: fiber.StatusUnprocessableEntity, Message: "Unit conversion failed"}
