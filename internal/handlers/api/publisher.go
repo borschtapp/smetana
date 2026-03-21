@@ -36,6 +36,9 @@ func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	if err := opts.Validate("feeds", "images", "recipes:5", "recipes.images", "total_recipes"); err != nil {
+		return err
+	}
 
 	publishers, total, err := h.publisherService.Search(opts)
 	if err != nil {

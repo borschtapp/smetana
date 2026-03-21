@@ -151,6 +151,9 @@ func (s *authService) ForgotPassword(email string) error {
 
 	user, err := s.userRepo.ByEmail(email)
 	if err != nil {
+		if errors.Is(err, sentinels.ErrNotFound) {
+			return nil
+		}
 		return err
 	}
 

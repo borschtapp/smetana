@@ -42,6 +42,9 @@ func (h *RecipeHandler) Search(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	if err := opts.Validate("publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"); err != nil {
+		return err
+	}
 
 	recipes, total, err := h.recipeService.Search(tokenData.ID, tokenData.HouseholdID, opts)
 	if err != nil {

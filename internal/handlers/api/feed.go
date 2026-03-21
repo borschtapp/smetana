@@ -107,6 +107,9 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	if err := opts.Validate("publisher", "recipes:5", "recipes.images", "total_recipes"); err != nil {
+		return err
+	}
 
 	feeds, total, err := h.feedService.Search(claims.HouseholdID, opts)
 	if err != nil {
@@ -145,6 +148,9 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 
 	opts, err := types.GetSearchOptions(c)
 	if err != nil {
+		return err
+	}
+	if err := opts.Validate("publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"); err != nil {
 		return err
 	}
 
