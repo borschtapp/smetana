@@ -9,12 +9,12 @@ import (
 )
 
 type ImportHandler struct {
-	recipeService domain.RecipeService
+	importService domain.ImportService
 }
 
-func NewImportHandler(recipeService domain.RecipeService) *ImportHandler {
+func NewImportHandler(importService domain.ImportService) *ImportHandler {
 	return &ImportHandler{
-		recipeService: recipeService,
+		importService: importService,
 	}
 }
 
@@ -46,7 +46,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ImportFromURL(c.Context(), request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
+	recipe, err := h.importService.ImportFromURL(c.Context(), request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

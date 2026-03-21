@@ -18,16 +18,16 @@ type feedService struct {
 	repo             domain.FeedRepository
 	publisherService domain.PublisherService
 	recipeRepo       domain.RecipeRepository
-	recipeService    domain.RecipeService
+	importService    domain.ImportService
 	scraperService   domain.ScraperService
 }
 
-func NewFeedService(repo domain.FeedRepository, publisherService domain.PublisherService, recipeRepo domain.RecipeRepository, recipeService domain.RecipeService, scraperService domain.ScraperService) domain.FeedService {
+func NewFeedService(repo domain.FeedRepository, publisherService domain.PublisherService, recipeRepo domain.RecipeRepository, importService domain.ImportService, scraperService domain.ScraperService) domain.FeedService {
 	return &feedService{
 		repo:             repo,
 		publisherService: publisherService,
 		recipeRepo:       recipeRepo,
-		recipeService:    recipeService,
+		importService:    importService,
 		scraperService:   scraperService,
 	}
 }
@@ -190,7 +190,7 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 		}
 
 		recipe.FeedID = &feed.ID
-		if _, err := s.recipeService.ImportRecipe(ctx, recipe); err != nil {
+		if _, err := s.importService.ImportRecipe(ctx, recipe); err != nil {
 			log.Warnw("failed to import recipe", "url", url, "error", err)
 		} else {
 			imported++

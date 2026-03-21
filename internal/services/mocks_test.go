@@ -239,14 +239,17 @@ type stubFeedRepo struct {
 func (s *stubFeedRepo) ListActive() ([]domain.Feed, error) { return s.listActiveFn() }
 func (s *stubFeedRepo) Update(f *domain.Feed) error        { return s.updateFn(f) }
 
-type stubRecipeService struct {
-	domain.RecipeService
+type stubImportService struct {
+	domain.ImportService
 
 	importRecipeFn func(context.Context, *domain.Recipe) (*domain.Recipe, error)
 }
 
-func (s *stubRecipeService) ImportRecipe(ctx context.Context, r *domain.Recipe) (*domain.Recipe, error) {
-	return s.importRecipeFn(ctx, r)
+func (s *stubImportService) ImportRecipe(ctx context.Context, r *domain.Recipe) (*domain.Recipe, error) {
+	if s.importRecipeFn != nil {
+		return s.importRecipeFn(ctx, r)
+	}
+	return r, nil
 }
 
 func ptr[T any](v T) *T { return &v }
