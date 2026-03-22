@@ -10,11 +10,12 @@ import (
 )
 
 type Household struct {
-	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
-	OwnerID uuid.UUID `gorm:"type:char(36)" json:"owner_id"`
-	Name    string    `json:"name"`
-	Updated time.Time `gorm:"autoUpdateTime" json:"-"`
-	Created time.Time `gorm:"autoCreateTime" json:"-"`
+	ID       uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
+	OwnerID  uuid.UUID `gorm:"type:char(36)" json:"owner_id"`
+	Name     string    `json:"name"`
+	Currency string    `gorm:"not null;default:'EUR'" json:"currency"`
+	Updated  time.Time `gorm:"autoUpdateTime" json:"-"`
+	Created  time.Time `gorm:"autoCreateTime" json:"-"`
 
 	Members       []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
 	Feeds         []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
@@ -50,7 +51,7 @@ type HouseholdRepository interface {
 
 type HouseholdService interface {
 	ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, opts types.PreloadOptions) (*Household, error)
-	Update(id uuid.UUID, requesterID uuid.UUID, name string) (*Household, error)
+	Update(id uuid.UUID, requesterID uuid.UUID, name string, currency *string) (*Household, error)
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
 	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) (*User, error)

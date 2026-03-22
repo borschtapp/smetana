@@ -1411,7 +1411,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.UpdateHouseholdForm"
+                            "$ref": "#/definitions/api.updateHouseholdForm"
                         }
                     }
                 ],
@@ -2967,6 +2967,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/recipes/{id}/price": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recipes"
+                ],
+                "summary": "Estimate the cost of a recipe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RecipePriceEstimate"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/shoppinglists": {
             "get": {
                 "security": [
@@ -3288,6 +3339,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/units": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Search for units by name or slug, optionally filtered by measurement system.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "Search units.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query (matches name or slug)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by system: true=imperial, false=metric",
+                        "name": "imperial",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to skip (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_Unit"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/uploads": {
             "post": {
                 "security": [
@@ -3493,6 +3604,118 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
+                    }
+                }
+            }
+        },
+        "/food/{id}/price": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get paginated price history for food within the household.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Get price history for a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_FoodPrice"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record a new price observation for food within the household. Price is expressed as: Price \u003cCurrency\u003e per Amount \u003cUnit\u003e. Example: 4.99 EUR per 1 kg of chicken breast.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Record a new price observation for a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Price observation",
+                        "name": "price",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.recordPriceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.FoodPrice"
+                        }
+                    }
+                }
+            }
+        },
+        "/food/{id}/price/{priceId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Delete a food price observation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "FoodPrice UUID",
+                        "name": "priceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -3734,18 +3957,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.UpdateHouseholdForm": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "minLength": 2
-                }
-            }
-        },
         "api.UpdateMealPlanForm": {
             "type": "object",
             "properties": {
@@ -3815,6 +4026,40 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "newpassword123"
+                }
+            }
+        },
+        "api.recordPriceRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "price",
+                "unit_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.updateHouseholdForm": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 2
                 }
             }
         },
@@ -3966,6 +4211,38 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.FoodPrice": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "food": {
+                    "$ref": "#/definitions/domain.Food"
+                },
+                "food_id": {
+                    "type": "string"
+                },
+                "household_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "unit": {
+                    "$ref": "#/definitions/domain.Unit"
+                },
+                "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Household": {
             "type": "object",
             "properties": {
@@ -3974,6 +4251,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.Collection"
                     }
+                },
+                "currency": {
+                    "type": "string"
                 },
                 "feeds": {
                     "type": "array",
@@ -4434,6 +4714,25 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.RecipePriceEstimate": {
+            "type": "object",
+            "properties": {
+                "missing_prices": {
+                    "description": "food IDs with no recorded price",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "per_serving": {
+                    "description": "nil if recipe has no yield",
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
+        },
         "domain.ShoppingItem": {
             "type": "object",
             "properties": {
@@ -4518,8 +4817,21 @@ const docTemplate = `{
         "domain.Unit": {
             "type": "object",
             "properties": {
+                "base_factor": {
+                    "description": "BaseFactor is the multiplier to convert amounts to the base unit.",
+                    "type": "number"
+                },
+                "base_unit": {
+                    "$ref": "#/definitions/domain.Unit"
+                },
+                "base_unit_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "imperial": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -4691,6 +5003,20 @@ const docTemplate = `{
                 }
             }
         },
+        "types.ListResponse-domain_FoodPrice": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.FoodPrice"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
         "types.ListResponse-domain_MealPlan": {
             "type": "object",
             "properties": {
@@ -4768,6 +5094,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.Taxonomy"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
+        "types.ListResponse-domain_Unit": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Unit"
                     }
                 },
                 "meta": {

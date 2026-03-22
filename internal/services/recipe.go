@@ -13,13 +13,17 @@ type recipeService struct {
 	repo         domain.RecipeRepository
 	userRepo     domain.UserRepository
 	imageService domain.ImageService
+	foodService  domain.FoodService
+	unitService  domain.UnitService
 }
 
-func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService) domain.RecipeService {
+func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserRepository, imageService domain.ImageService, foodService domain.FoodService, unitService domain.UnitService) domain.RecipeService {
 	return &recipeService{
 		repo:         repo,
 		userRepo:     userRepo,
 		imageService: imageService,
+		foodService:  foodService,
+		unitService:  unitService,
 	}
 }
 
@@ -247,4 +251,54 @@ func (s *recipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 		return err
 	}
 	return s.repo.DeleteInstruction(id, recipeID)
+}
+
+func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*domain.RecipePriceEstimate, error) {
+	recipe, err := s.ByIDPreload(recipeID, uuid.Nil, householdID, types.Preload("ingredients"))
+	if err != nil {
+		return nil, err
+	}
+
+	foodIDs := make([]uuid.UUID, 0, len(recipe.Ingredients))
+	for _, ing := range recipe.Ingredients {
+		if ing.FoodID != nil {
+			foodIDs = append(foodIDs, *ing.FoodID)
+		}
+	}
+
+	latestPrices, err := s.foodService.LatestPrices(householdID, foodIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	estimate := &domain.RecipePriceEstimate{
+		MissingPrices: make([]uuid.UUID, 0, len(recipe.Ingredients)),
+	}
+
+	for _, ing := range recipe.Ingredients {
+		if ing.FoodID == nil || ing.Amount == nil || ing.UnitID == nil {
+			continue // unquantified ingredient; skip
+		}
+
+		foodPrice, ok := latestPrices[*ing.FoodID]
+		if !ok {
+			estimate.MissingPrices = append(estimate.MissingPrices, *ing.FoodID)
+			continue
+		}
+
+		convertedAmount, convErr := s.unitService.Convert(*ing.Amount, *ing.UnitID, foodPrice.UnitID)
+		if convErr != nil {
+			// Incompatible units (e.g. price in kg, ingredient in ml): treat as unpriced.
+			estimate.MissingPrices = append(estimate.MissingPrices, *ing.FoodID)
+			continue
+		}
+
+		estimate.Total += (convertedAmount / foodPrice.Amount) * foodPrice.Price
+	}
+
+	if recipe.Yield != nil && *recipe.Yield > 0 && estimate.Total > 0 {
+		estimate.PerServing = new(estimate.Total / float64(*recipe.Yield))
+	}
+
+	return estimate, nil
 }

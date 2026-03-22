@@ -40,7 +40,7 @@ func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, op
 	return household, nil
 }
 
-func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, name string) (*domain.Household, error) {
+func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, name string, currency *string) (*domain.Household, error) {
 	household, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -51,6 +51,9 @@ func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, name stri
 	}
 
 	household.Name = name
+	if currency != nil {
+		household.Currency = *currency
+	}
 	if err := s.repo.Update(household); err != nil {
 		return nil, err
 	}
@@ -202,8 +205,8 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 		}
 	}
 
-	// Move the removed user to a new solo household.
-	newHousehold := &domain.Household{Name: target.Name + "'s Household", OwnerID: target.ID}
+	// Move the removed user to a new solo household, inheriting the currency.
+	newHousehold := &domain.Household{Name: target.Name + "'s Household", OwnerID: target.ID, Currency: household.Currency}
 	if err := s.repo.Create(newHousehold); err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -41,10 +42,20 @@ type FoodRepository interface {
 	FindOrCreate(food *Food) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
+
+	CreatePrice(price *FoodPrice) error
+	ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]FoodPrice, int64, error)
+	LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*FoodPrice, error)
+	DeletePrice(householdID, id uuid.UUID) error
 }
 
 type FoodService interface {
 	FindOrCreate(ctx context.Context, food *Food) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
+
+	RecordPrice(householdID uuid.UUID, price *FoodPrice) error
+	ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]FoodPrice, int64, error)
+	LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*FoodPrice, error)
+	DeletePrice(householdID, id uuid.UUID) error
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 )
@@ -38,4 +39,21 @@ func (s *foodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) e
 
 func (s *foodService) Update(food *domain.Food) error {
 	return s.repo.Update(food)
+}
+
+func (s *foodService) RecordPrice(householdID uuid.UUID, price *domain.FoodPrice) error {
+	price.HouseholdID = householdID
+	return s.repo.CreatePrice(price)
+}
+
+func (s *foodService) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error) {
+	return s.repo.LatestPrices(householdID, foodIDs)
+}
+
+func (s *foodService) ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]domain.FoodPrice, int64, error) {
+	return s.repo.ListPrices(householdID, foodID, opts)
+}
+
+func (s *foodService) DeletePrice(householdID, id uuid.UUID) error {
+	return s.repo.DeletePrice(householdID, id)
 }

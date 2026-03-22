@@ -13,9 +13,11 @@ import (
 )
 
 type recipeServiceDeps struct {
-	repo       *stubRecipeRepo
-	userRepo   *stubUserRepo
-	imgService *stubImageService
+	repo        *stubRecipeRepo
+	userRepo    *stubUserRepo
+	imgService  *stubImageService
+	foodService domain.FoodService
+	unitService domain.UnitService
 }
 
 // newTestRecipeService builds a recipeService wired up with the provided stubs.
@@ -23,7 +25,13 @@ func newTestRecipeService(deps recipeServiceDeps) domain.RecipeService {
 	if deps.imgService == nil {
 		deps.imgService = &stubImageService{}
 	}
-	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService)
+	if deps.foodService == nil {
+		deps.foodService = &stubFoodService{}
+	}
+	if deps.unitService == nil {
+		deps.unitService = &stubUnitService{}
+	}
+	return services.NewRecipeService(deps.repo, deps.userRepo, deps.imgService, deps.foodService, deps.unitService)
 }
 
 func TestRecipeService_ByID_GlobalRecipe_AnyHouseholdCanRead(t *testing.T) {

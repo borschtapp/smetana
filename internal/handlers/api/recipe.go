@@ -534,3 +534,32 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// GetRecipePrice godoc
+// @Summary Estimate the cost of a recipe
+// @Tags recipes
+// @Produce json
+// @Param id path string true "Recipe UUID"
+// @Success 200 {object} domain.RecipePriceEstimate
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/recipes/{id}/price [get]
+func (h *RecipeHandler) GetRecipePrice(c fiber.Ctx) error {
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	estimate, err := h.recipeService.EstimatePrice(id, tokenData.HouseholdID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(estimate)
+}

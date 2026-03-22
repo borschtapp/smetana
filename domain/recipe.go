@@ -113,6 +113,13 @@ type RecipeRepository interface {
 	ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error
 }
 
+// RecipePriceEstimate is a computed (never stored) cost breakdown for a recipe.
+type RecipePriceEstimate struct {
+	Total         float64     `json:"total"`
+	PerServing    *float64    `json:"per_serving,omitempty"`    // nil if recipe has no yield
+	MissingPrices []uuid.UUID `json:"missing_prices,omitempty"` // food IDs with no recorded price
+}
+
 type RecipeService interface {
 	ByID(id uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*Recipe, error)
@@ -137,4 +144,6 @@ type RecipeService interface {
 	CreateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
 	UpdateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
+
+	EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*RecipePriceEstimate, error)
 }

@@ -53,8 +53,9 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 	return c.JSON(household)
 }
 
-type UpdateHouseholdForm struct {
-	Name string `validate:"required,min=2" json:"name"`
+type updateHouseholdForm struct {
+	Name     string  `validate:"required,min=2" json:"name"`
+	Currency *string `validate:"omitempty,len=3" json:"currency"`
 }
 
 // UpdateHousehold godoc
@@ -64,7 +65,7 @@ type UpdateHouseholdForm struct {
 // @Accept json
 // @Produce json
 // @Param id path string true "Household ID"
-// @Param household body UpdateHouseholdForm true "Household data"
+// @Param household body updateHouseholdForm true "Household data"
 // @Success 200 {object} domain.Household
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
@@ -77,7 +78,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	var form UpdateHouseholdForm
+	var form updateHouseholdForm
 	if err := bindBody(c, &form); err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.Update(id, tokenData.ID, form.Name)
+	household, err := h.householdService.Update(id, tokenData.ID, form.Name, form.Currency)
 	if err != nil {
 		return err
 	}

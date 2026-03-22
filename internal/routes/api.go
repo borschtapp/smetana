@@ -53,7 +53,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	unitService := services.NewUnitService(unitRepo)
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	authorService := services.NewAuthorService(authorRepo, imageService)
-	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService)
+	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, foodService, unitService)
 	importService := services.NewImportService(recipeService, imageService, publisherService, authorService, foodService, unitService, taxonomyService, equipmentService, scraperService)
 	feedService := services.NewFeedService(feedRepo, publisherService, recipeService, importService, scraperService)
 	userService := services.NewUserService(userRepo)
@@ -131,6 +131,12 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	shoppingListGroup.Patch("/:id/items/:itemId", shoppingListHandler.UpdateShoppingItem)
 	shoppingListGroup.Delete("/:id/items/:itemId", shoppingListHandler.DeleteShoppingItem)
 
+	foodHandler := api.NewFoodHandler(foodService)
+	foodGroup := router.Group("/food", middlewares.Protected())
+	foodGroup.Get("/:id/price", foodHandler.GetPrice)
+	foodGroup.Post("/:id/price", foodHandler.RecordPrice)
+	foodGroup.Delete("/:id/price/:priceId", foodHandler.DeletePrice)
+
 	importHandler := api.NewImportHandler(importService)
 	recipeHandler := api.NewRecipeHandler(recipeService)
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
@@ -142,6 +148,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup.Delete("/:id", recipeHandler.DeleteRecipe)
 	recipesGroup.Post("/:id/favorite", recipeHandler.SaveRecipe)
 	recipesGroup.Delete("/:id/favorite", recipeHandler.UnsaveRecipe)
+	recipesGroup.Get("/:id/price", recipeHandler.GetRecipePrice)
 
 	recipesGroup.Post("/:id/ingredients", recipeHandler.CreateIngredient)
 	recipesGroup.Patch("/:id/ingredients/:ingredientId", recipeHandler.UpdateIngredient)
