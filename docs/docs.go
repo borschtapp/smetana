@@ -42,6 +42,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/_version": {
+            "get": {
+                "description": "get the current app version and latest available version from GitHub.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "root"
+                ],
+                "summary": "Show the app version.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.versionResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/forgot-password": {
             "post": {
                 "description": "Sends a password reset link to the given email address. Always returns 202 to prevent user enumeration.",
@@ -4945,6 +4968,14 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "handlers.versionResponse": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "string"
                 }
             }
         },

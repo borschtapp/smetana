@@ -106,6 +106,7 @@ func main() {
 	}
 
 	app.Get("/_health", handlers.HealthCheck)
+	app.Get("/_version", handlers.NewVersionHandler(version))
 	app.Get("/*", swaggo.New())
 
 	if err := app.Listen(fmt.Sprintf("%s:%d", serverHost, serverPort), fiber.ListenConfig{
