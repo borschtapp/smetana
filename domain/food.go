@@ -17,6 +17,7 @@ type Food struct {
 	Description   *string       `json:"description,omitempty"`
 	ImagePath     *storage.Path `json:"image_url,omitempty"`
 	DefaultUnitID *uuid.UUID    `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
+	Pantry        bool          `json:"pantry"` // Whether this food is always available (e.g. salt, oil) and should be excluded from shopping lists
 	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created       time.Time     `gorm:"autoCreateTime" json:"-"`
 
