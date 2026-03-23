@@ -382,7 +382,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated extras to include: recipes:5, recipes.images and total_recipes",
+                        "description": "Comma-separated extras to include: last3_recipes and total_recipes",
                         "name": "preload",
                         "in": "query"
                     },
@@ -915,7 +915,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated extras to include: publisher, recipes:5, recipes.images and total_recipes",
+                        "description": "Comma-separated extras to include: publisher, last3_recipes and total_recipes",
                         "name": "preload",
                         "in": "query"
                     },
@@ -1940,7 +1940,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Comma-separated extras to include: feeds, recipes:5, recipes.images and total_recipes",
+                        "description": "Comma-separated extras to include: feeds, images, last3_recipes and total_recipes",
                         "name": "preload",
                         "in": "query"
                     },
@@ -4199,6 +4199,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "pantry": {
+                    "description": "Whether this food is always available (e.g. salt, oil) and should be excluded from shopping lists",
+                    "type": "boolean"
                 },
                 "slug": {
                     "type": "string"

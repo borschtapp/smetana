@@ -47,14 +47,10 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 			q = q.Preload("Images")
 		}
 
-		if slices.Contains(opts.Preload, "recipes:5") {
+		if slices.Contains(opts.Preload, "last3_recipes") {
 			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
-				return db.Order("created DESC").Limit(5)
+				return db.Order("created DESC").Limit(3)
 			})
-		}
-
-		if slices.Contains(opts.Preload, "recipes.images") {
-			q = q.Preload("Recipes.Images")
 		}
 
 		if slices.Contains(opts.Preload, "total_recipes") {

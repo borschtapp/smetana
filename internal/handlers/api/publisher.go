@@ -22,7 +22,7 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Accept */*
 // @Produce json
 // @Param q query string false "Text search"
-// @Param preload query string false "Comma-separated extras to include: feeds, recipes:5, recipes.images and total_recipes"
+// @Param preload query string false "Comma-separated extras to include: feeds, images, last3_recipes and total_recipes"
 // @Param sort query string false "Sort by field: id, name, created (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param offset query int false "Number of records to skip (default: 0)"
@@ -36,7 +36,7 @@ func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := opts.Validate("feeds", "images", "recipes:5", "recipes.images", "total_recipes"); err != nil {
+	if err := opts.Validate("feeds", "images", "last3_recipes", "total_recipes"); err != nil {
 		return err
 	}
 
