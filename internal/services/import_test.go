@@ -15,7 +15,7 @@ import (
 )
 
 type importServiceDeps struct {
-	repo             *stubRecipeRepo
+	recipeService    *stubRecipeService
 	imgService       *stubImageService
 	pubService       *stubPublisherService
 	authorService    *stubAuthorService
@@ -27,6 +27,9 @@ type importServiceDeps struct {
 }
 
 func newTestImportService(deps importServiceDeps) domain.ImportService {
+	if deps.recipeService == nil {
+		deps.recipeService = &stubRecipeService{}
+	}
 	if deps.imgService == nil {
 		deps.imgService = &stubImageService{}
 	}
@@ -51,7 +54,7 @@ func newTestImportService(deps importServiceDeps) domain.ImportService {
 	if deps.scraper == nil {
 		deps.scraper = &stubScraperService{}
 	}
-	return services.NewImportService(deps.repo, deps.imgService, deps.pubService, deps.authorService, deps.foodService, deps.unitService, deps.taxRepo, deps.equipmentService, deps.scraper)
+	return services.NewImportService(deps.recipeService, deps.imgService, deps.pubService, deps.authorService, deps.foodService, deps.unitService, deps.taxRepo, deps.equipmentService, deps.scraper)
 }
 
 func TestImportService_ImportRecipe_ResolvesFood(t *testing.T) {
@@ -71,11 +74,8 @@ func TestImportService_ImportRecipe_ResolvesFood(t *testing.T) {
 			return nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, foodService: foodService})
+	svc := newTestImportService(importServiceDeps{foodService: foodService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -99,11 +99,8 @@ func TestImportService_ImportRecipe_ResolvesUnit(t *testing.T) {
 			return nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, unitService: unitService})
+	svc := newTestImportService(importServiceDeps{unitService: unitService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -122,11 +119,8 @@ func TestImportService_ImportRecipe_FoodError_NilsFood(t *testing.T) {
 	foodService := &stubFoodService{
 		findOrCreateFn: func(_ context.Context, _ *domain.Food) error { return errors.New("db error") },
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, foodService: foodService})
+	svc := newTestImportService(importServiceDeps{foodService: foodService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "Food resolution failure must not abort the import")
@@ -150,11 +144,8 @@ func TestImportService_ImportRecipe_ResolvesEquipment(t *testing.T) {
 			return nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, equipmentService: equipService})
+	svc := newTestImportService(importServiceDeps{equipmentService: equipService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -174,11 +165,8 @@ func TestImportService_ImportRecipe_EquipmentError_DropsItem(t *testing.T) {
 			return errors.New("db error")
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, equipmentService: equipService})
+	svc := newTestImportService(importServiceDeps{equipmentService: equipService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "equipment resolution failure must not abort import")
@@ -201,11 +189,8 @@ func TestImportService_ImportRecipe_ResolvesTaxonomy(t *testing.T) {
 			return nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, taxRepo: taxRepo})
+	svc := newTestImportService(importServiceDeps{taxRepo: taxRepo})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -221,11 +206,8 @@ func TestImportService_ImportRecipe_TaxonomyError_DropsItem(t *testing.T) {
 	taxRepo := &stubTaxonomyRepo{
 		findOrCreateFn: func(_ *domain.Taxonomy) error { return errors.New("db error") },
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, taxRepo: taxRepo})
+	svc := newTestImportService(importServiceDeps{taxRepo: taxRepo})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "taxonomy error must not abort import")
@@ -246,11 +228,8 @@ func TestImportService_ImportRecipe_ResolvesPublisher(t *testing.T) {
 			return nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, pubService: pubService})
+	svc := newTestImportService(importServiceDeps{pubService: pubService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err)
@@ -269,11 +248,8 @@ func TestImportService_ImportRecipe_UnitError_NilsUnit(t *testing.T) {
 	unitService := &stubUnitService{
 		findOrCreateFn: func(_ *domain.Unit) error { return errors.New("db error") },
 	}
-	repo := &stubRecipeRepo{
-		importFn: func(_ *domain.Recipe) error { return nil },
-	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, unitService: unitService})
+	svc := newTestImportService(importServiceDeps{unitService: unitService})
 	result, err := svc.ImportRecipe(context.Background(), recipe)
 
 	require.NoError(t, err, "unit resolution failure must not abort import")
@@ -284,19 +260,21 @@ func TestImportService_ImportRecipe_UnitError_NilsUnit(t *testing.T) {
 func TestImportService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 	// When a recipe with the URL already exists, the service must save it for
 	// the user and return it — no scraping should occur.
-	existingID := uuid.New()
+	rid := uuid.New()
 	uid := uuid.New()
 	hid := uuid.New()
 	testURL := "https://example.com/recipe/borsch"
 
-	existing := &domain.Recipe{ID: existingID, SourceUrl: &testURL}
+	existing := &domain.Recipe{ID: rid, SourceUrl: &testURL}
 
 	userSaveCalled := false
-	repo := &stubRecipeRepo{
-		byUrlFn: func(_ string) (*domain.Recipe, error) { return existing, nil },
-		userSaveFn: func(rid, _, _ uuid.UUID) error {
+	recipeSvc := &stubRecipeService{
+		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) { return existing, nil },
+		userSaveFn: func(receivedRid, receivedUid, receivedHid uuid.UUID) error {
 			userSaveCalled = true
-			assert.Equal(t, existingID, rid)
+			assert.Equal(t, rid, receivedRid)
+			assert.Equal(t, uid, receivedUid)
+			assert.Equal(t, hid, receivedHid)
 			return nil
 		},
 	}
@@ -307,11 +285,11 @@ func TestImportService_ImportFromURL_ExistingRecipe_SavesForUser(t *testing.T) {
 		},
 	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, scraper: scraper})
+	svc := newTestImportService(importServiceDeps{recipeService: recipeSvc, scraper: scraper})
 	got, err := svc.ImportFromURL(context.Background(), testURL, false, uid, hid)
 
 	require.NoError(t, err)
-	assert.Equal(t, existingID, got.ID)
+	assert.Equal(t, rid, got.ID)
 	assert.True(t, userSaveCalled, "existing recipe must be saved for the user")
 }
 
@@ -327,8 +305,8 @@ func TestImportService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 			return &domain.Recipe{Name: &scrapedName, SourceUrl: &testURL}, nil
 		},
 	}
-	repo := &stubRecipeRepo{
-		byUrlFn: func(_ string) (*domain.Recipe, error) { return nil, sentinels.ErrNotFound },
+	recipeSvc := &stubRecipeService{
+		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) { return nil, sentinels.ErrNotFound },
 		importFn: func(r *domain.Recipe) error {
 			r.ID = importedID
 			return nil
@@ -336,7 +314,7 @@ func TestImportService_ImportFromURL_NewRecipe_ScrapesAndImports(t *testing.T) {
 		userSaveFn: func(_, _, _ uuid.UUID) error { return nil },
 	}
 
-	svc := newTestImportService(importServiceDeps{repo: repo, scraper: scraper})
+	svc := newTestImportService(importServiceDeps{recipeService: recipeSvc, scraper: scraper})
 	got, err := svc.ImportFromURL(context.Background(), testURL, false, uid, hid)
 
 	require.NoError(t, err)

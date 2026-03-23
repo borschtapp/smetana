@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -9,6 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type recipeRepository struct {
@@ -19,14 +19,82 @@ func NewRecipeRepository(db *gorm.DB) domain.RecipeRepository {
 	return &recipeRepository{db: db}
 }
 
+// applyPreloads requires userID and householdID for "collections" and "saved" preloads.
+func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID uuid.UUID) *gorm.DB {
+	if len(preload.Preload) == 0 {
+		return q
+	}
+
+	if preload.HasAny("ingredients", "all") {
+		q = q.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
+			return db.Joins("Food").Joins("Unit")
+		})
+	}
+
+	if preload.HasAny("collections", "all") && householdID != uuid.Nil {
+		q = q.Preload("Collections", "household_id = ?", householdID)
+	}
+
+	if preload.HasAny("saved", "all") && userID != uuid.Nil {
+		q = q.Select(`recipes.*, EXISTS(
+				SELECT 1 FROM recipes_saved
+				WHERE recipes_saved.recipe_id = recipes.id
+				AND recipes_saved.user_id = ?
+			) AS is_saved`, userID)
+	}
+
+	if preload.Has("all") {
+		q = q.Preload(clause.Associations)
+		return q
+	}
+
+	if preload.Has("publisher") {
+		q = q.Preload("Publisher")
+	}
+
+	if preload.Has("author") {
+		q = q.Preload("Author")
+	}
+
+	if preload.Has("feed") {
+		q = q.Preload("Feed")
+	}
+
+	if preload.Has("images") {
+		q = q.Preload("Images")
+	}
+
+	if preload.Has("equipment") {
+		q = q.Preload("Equipment")
+	}
+
+	if preload.Has("instructions") {
+		q = q.Preload("Instructions")
+	}
+
+	if preload.Has("nutrition") {
+		q = q.Preload("Nutrition")
+	}
+
+	if preload.Has("taxonomies") {
+		q = q.Preload("Taxonomies")
+	}
+
+	return q
+}
+
 func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 	var recipe domain.Recipe
-	if err := r.db.
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		First(&recipe, id).Error; err != nil {
+	if err := r.db.First(&recipe, id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return &recipe, nil
+}
+
+func (r *recipeRepository) ByIDPreload(id uuid.UUID, userID, householdID uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
+	var recipe domain.Recipe
+	q := applyPreloads(r.db, preload, userID, householdID)
+	if err := q.First(&recipe, id).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	return &recipe, nil
@@ -34,12 +102,7 @@ func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 
 func (r *recipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 	var recipe domain.Recipe
-	if err := r.db.Where(&domain.Recipe{SourceUrl: &url}).
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
-		First(&recipe).Error; err != nil {
+	if err := r.db.Where(&domain.Recipe{SourceUrl: &url}).First(&recipe).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	return &recipe, nil
@@ -107,57 +170,7 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 	q = q.Distinct().Select("recipes.*")
 
 	// preload relations
-	if len(opts.Preload) != 0 {
-		if slices.Contains(opts.Preload, "publisher") {
-			q = q.Preload("Publisher")
-		}
-
-		if slices.Contains(opts.Preload, "author") {
-			q = q.Preload("Author")
-		}
-
-		if slices.Contains(opts.Preload, "feed") {
-			q = q.Preload("Feed")
-		}
-
-		if slices.Contains(opts.Preload, "images") {
-			q = q.Preload("Images")
-		}
-
-		if slices.Contains(opts.Preload, "ingredients") {
-			q = q.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-				return db.Joins("Food").Joins("Unit")
-			})
-		}
-
-		if slices.Contains(opts.Preload, "equipment") {
-			q = q.Preload("Equipment")
-		}
-
-		if slices.Contains(opts.Preload, "instructions") {
-			q = q.Preload("Instructions")
-		}
-
-		if slices.Contains(opts.Preload, "nutrition") {
-			q = q.Preload("Nutrition")
-		}
-
-		if slices.Contains(opts.Preload, "taxonomies") {
-			q = q.Preload("Taxonomies")
-		}
-
-		if slices.Contains(opts.Preload, "collections") {
-			q = q.Preload("Collections", "household_id = ?", householdID)
-		}
-
-		if slices.Contains(opts.Preload, "saved") {
-			q = q.Select(`recipes.*, EXISTS(
-					SELECT 1 FROM recipes_saved
-					WHERE recipes_saved.recipe_id = recipes.id
-					AND recipes_saved.user_id = ?
-				) AS is_saved`, userID)
-		}
-	}
+	q = applyPreloads(q, opts.PreloadOptions, userID, householdID)
 
 	// pagination
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
@@ -234,16 +247,12 @@ func (r *recipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, househ
 	}).Error
 }
 
-func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]domain.Recipe, error) {
+func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
 	if len(parentIDs) == 0 {
 		return nil, nil
 	}
 	var recipes []domain.Recipe
-	err := r.db.
-		Preload(clause.Associations).
-		Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		}).
+	err := applyPreloads(r.db, preload, uuid.Nil, householdID).
 		Where("parent_id IN ? AND household_id = ?", parentIDs, householdID).
 		Find(&recipes).Error
 	if err != nil {

@@ -86,8 +86,9 @@ type RecipeSearchOptions struct {
 
 type RecipeRepository interface {
 	ByID(id uuid.UUID) (*Recipe, error)
+	ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*Recipe, error)
 	ByUrl(url string) (*Recipe, error)
-	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID) ([]Recipe, error)
+	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]Recipe, error)
 	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe) error
 	Import(recipe *Recipe) error
@@ -114,8 +115,12 @@ type RecipeRepository interface {
 
 type RecipeService interface {
 	ByID(id uuid.UUID, householdID uuid.UUID) (*Recipe, error)
-	Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
+	ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*Recipe, error)
+	ByUrl(url string, householdID uuid.UUID) (*Recipe, error)
+	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]Recipe, error)
+	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
+	Import(recipe *Recipe) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 

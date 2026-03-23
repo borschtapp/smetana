@@ -16,7 +16,7 @@ import (
 )
 
 type importService struct {
-	repo             domain.RecipeRepository
+	recipeService    domain.RecipeService
 	imageService     domain.ImageService
 	publisherService domain.PublisherService
 	authorService    domain.AuthorService
@@ -28,9 +28,9 @@ type importService struct {
 	fetchConcurrency int
 }
 
-func NewImportService(repo domain.RecipeRepository, imageService domain.ImageService, publisherService domain.PublisherService, authorService domain.AuthorService, foodService domain.FoodService, unitService domain.UnitService, taxonomyService domain.TaxonomyService, equipmentService domain.EquipmentService, scraperService domain.ScraperService) domain.ImportService {
+func NewImportService(recipeService domain.RecipeService, imageService domain.ImageService, publisherService domain.PublisherService, authorService domain.AuthorService, foodService domain.FoodService, unitService domain.UnitService, taxonomyService domain.TaxonomyService, equipmentService domain.EquipmentService, scraperService domain.ScraperService) domain.ImportService {
 	return &importService{
-		repo:             repo,
+		recipeService:    recipeService,
 		imageService:     imageService,
 		publisherService: publisherService,
 		authorService:    authorService,
@@ -45,12 +45,12 @@ func NewImportService(repo domain.RecipeRepository, imageService domain.ImageSer
 
 // ImportFromURL imports a recipe from URL and saves it for the given user.
 func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
-	existing, err := s.repo.ByUrl(url)
+	existing, err := s.recipeService.ByUrl(url, householdID)
 	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
 	}
 	if existing != nil {
-		if err := s.repo.UserSave(existing.ID, userID, householdID); err != nil {
+		if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
 			return nil, err
 		}
 		return existing, nil
@@ -64,7 +64,7 @@ func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpda
 	if err != nil {
 		return nil, err
 	}
-	if err := s.repo.UserSave(recipe.ID, userID, householdID); err != nil {
+	if err := s.recipeService.UserSave(recipe.ID, userID, householdID); err != nil {
 		return nil, err
 	}
 	return recipe, nil
@@ -133,7 +133,7 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 		}
 	}
 
-	if err := s.repo.Import(recipe); err != nil {
+	if err := s.recipeService.Import(recipe); err != nil {
 		return nil, err
 	}
 

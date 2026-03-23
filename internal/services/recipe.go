@@ -28,20 +28,43 @@ func (s *recipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recip
 	if err != nil {
 		return nil, err
 	}
-	// Anonymous are publicly readable
-	if recipe.HouseholdID == nil {
-		return recipe, nil
+	// Only anonymous and household-owned recipes are readable
+	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
+		return recipe, sentinels.ErrForbidden
 	}
-	// Household-owned: same household has full access
-	if *recipe.HouseholdID == householdID {
-		return recipe, nil
-	}
-
-	return nil, sentinels.ErrForbidden
+	return recipe, nil
 }
 
-func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
-	return s.repo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts})
+func (s *recipeService) ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
+	recipe, err := s.repo.ByIDPreload(id, userID, householdID, preload)
+	if err != nil {
+		return nil, err
+	}
+	// Only anonymous and household-owned recipes are readable
+	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
+		return recipe, sentinels.ErrForbidden
+	}
+	return recipe, nil
+}
+
+func (s *recipeService) ByUrl(url string, householdID uuid.UUID) (*domain.Recipe, error) {
+	recipe, err := s.repo.ByUrl(url)
+	if err != nil {
+		return nil, err
+	}
+	// Only anonymous and household-owned recipes are readable
+	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
+		return nil, sentinels.ErrForbidden
+	}
+	return recipe, nil
+}
+
+func (s *recipeService) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
+	return s.repo.ByParentIDsAndHousehold(parentIDs, householdID, preload)
+}
+
+func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
+	return s.repo.Search(userID, householdID, opts)
 }
 
 func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
@@ -51,6 +74,10 @@ func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, househol
 		return err
 	}
 	return s.UserSave(recipe.ID, userID, householdID)
+}
+
+func (s *recipeService) Import(recipe *domain.Recipe) error {
+	return s.repo.Import(recipe)
 }
 
 func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {

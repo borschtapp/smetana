@@ -17,16 +17,16 @@ import (
 type feedService struct {
 	repo             domain.FeedRepository
 	publisherService domain.PublisherService
-	recipeRepo       domain.RecipeRepository
+	recipeService    domain.RecipeService
 	importService    domain.ImportService
 	scraperService   domain.ScraperService
 }
 
-func NewFeedService(repo domain.FeedRepository, publisherService domain.PublisherService, recipeRepo domain.RecipeRepository, importService domain.ImportService, scraperService domain.ScraperService) domain.FeedService {
+func NewFeedService(repo domain.FeedRepository, publisherService domain.PublisherService, recipeService domain.RecipeService, importService domain.ImportService, scraperService domain.ScraperService) domain.FeedService {
 	return &feedService{
 		repo:             repo,
 		publisherService: publisherService,
-		recipeRepo:       recipeRepo,
+		recipeService:    recipeService,
 		importService:    importService,
 		scraperService:   scraperService,
 	}
@@ -37,7 +37,7 @@ func (s *feedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([
 }
 
 func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
-	recipes, total, err := s.recipeRepo.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
+	recipes, total, err := s.recipeService.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
 	if err != nil || len(recipes) == 0 {
 		return recipes, total, err
 	}
@@ -48,7 +48,7 @@ func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 		parentIDs[i] = r.ID
 	}
 
-	overrides, err := s.recipeRepo.ByParentIDsAndHousehold(parentIDs, householdID)
+	overrides, err := s.recipeService.ByParentIDsAndHousehold(parentIDs, householdID, opts.PreloadOptions)
 	if err != nil {
 		log.Warnw("stream override lookup failed", "household_id", householdID, "error", err)
 		return recipes, total, nil
@@ -185,7 +185,7 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 		if url == "" {
 			continue
 		}
-		if _, err := s.recipeRepo.ByUrl(url); err == nil {
+		if _, err := s.recipeService.ByUrl(url, uuid.Nil); err == nil {
 			continue
 		}
 

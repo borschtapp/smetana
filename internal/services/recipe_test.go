@@ -369,14 +369,9 @@ func TestRecipeService_Create_SetsHouseholdAndUserAndSaves(t *testing.T) {
 
 func TestRecipeService_AddEquipment_WrongHousehold_Forbidden(t *testing.T) {
 	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
-	addCalled := false
-
 	repo := &stubRecipeRepo{
 		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
 	}
-	// We intentionally don't set addEquipmentFn — if it's reached, the test panics.
-	_ = addCalled
-
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
 	err := svc.AddEquipment(recipe.ID, uuid.New(), uuid.New() /* different household */)
 

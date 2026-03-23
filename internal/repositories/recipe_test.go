@@ -127,7 +127,7 @@ func TestRecipeRepository_ByParentIDsAndHousehold_EmptyIDs_ReturnsNil(t *testing
 	db := openTestDB(t)
 	repo := repositories.NewRecipeRepository(db)
 
-	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{}, uuid.New())
+	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{}, uuid.New(), types.PreloadOptions{})
 
 	require.NoError(t, err)
 	assert.Nil(t, got)
@@ -148,7 +148,7 @@ func TestRecipeRepository_ByParentIDsAndHousehold_ReturnsMatchingOverrides(t *te
 	seedRecipe(t, db, clone)
 
 	repo := repositories.NewRecipeRepository(db)
-	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{globalID}, hid)
+	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{globalID}, hid, types.PreloadOptions{})
 
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -167,7 +167,7 @@ func TestRecipeRepository_ByParentIDsAndHousehold_OtherHousehold_ReturnsEmpty(t 
 
 	repo := repositories.NewRecipeRepository(db)
 	// Search from a different household — must not see the clone
-	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{globalID}, uuid.New())
+	got, err := repo.ByParentIDsAndHousehold([]uuid.UUID{globalID}, uuid.New(), types.PreloadOptions{})
 
 	require.NoError(t, err)
 	assert.Empty(t, got)

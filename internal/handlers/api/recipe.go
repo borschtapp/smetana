@@ -51,7 +51,7 @@ func (h *RecipeHandler) Search(c fiber.Ctx) error {
 		return err
 	}
 
-	recipes, total, err := h.recipeService.Search(tokenData.ID, tokenData.HouseholdID, opts)
+	recipes, total, err := h.recipeService.Search(tokenData.ID, tokenData.HouseholdID, domain.RecipeSearchOptions{SearchOptions: opts})
 	if err != nil {
 		return err
 	}
@@ -88,11 +88,10 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	recipe, err := h.recipeService.ByID(id, tokenData.HouseholdID)
+	recipe, err := h.recipeService.ByIDPreload(id, tokenData.ID, tokenData.HouseholdID, types.Preload("all"))
 	if err != nil {
 		return err
 	}
-
 	return c.JSON(recipe)
 }
 
@@ -163,7 +162,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 	}
 
 	// Update may have cloned the recipe (copy-on-write), so recipe.ID may now point to the cloned record
-	updated, err := h.recipeService.ByID(recipe.ID, tokenData.HouseholdID)
+	updated, err := h.recipeService.ByIDPreload(recipe.ID, tokenData.ID, tokenData.HouseholdID, types.Preload("all"))
 	if err != nil {
 		return err
 	}

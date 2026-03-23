@@ -3,17 +3,71 @@ package services_test
 import (
 	"context"
 
+	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 )
+
+type stubRecipeService struct {
+	domain.RecipeService
+
+	byIDFn                    func(uuid.UUID, uuid.UUID) (*domain.Recipe, error)
+	byUrlFn                   func(string, uuid.UUID) (*domain.Recipe, error)
+	byParentIDsAndHouseholdFn func([]uuid.UUID, uuid.UUID, types.PreloadOptions) ([]domain.Recipe, error)
+	searchFn                  func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
+	userSaveFn                func(uuid.UUID, uuid.UUID, uuid.UUID) error
+	importFn                  func(*domain.Recipe) error
+}
+
+func (s *stubRecipeService) ByID(id, householdID uuid.UUID) (*domain.Recipe, error) {
+	if s.byIDFn != nil {
+		return s.byIDFn(id, householdID)
+	}
+	return nil, nil
+}
+
+func (s *stubRecipeService) ByUrl(url string, householdID uuid.UUID) (*domain.Recipe, error) {
+	if s.byUrlFn != nil {
+		return s.byUrlFn(url, householdID)
+	}
+	return nil, nil
+}
+
+func (s *stubRecipeService) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
+	if s.byParentIDsAndHouseholdFn != nil {
+		return s.byParentIDsAndHouseholdFn(parentIDs, householdID, preload)
+	}
+	return nil, nil
+}
+
+func (s *stubRecipeService) Search(userID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
+	if s.searchFn != nil {
+		return s.searchFn(userID, householdID, opts)
+	}
+	return nil, 0, nil
+}
+
+func (s *stubRecipeService) UserSave(recipeID, userID, householdID uuid.UUID) error {
+	if s.userSaveFn != nil {
+		return s.userSaveFn(recipeID, userID, householdID)
+	}
+	return nil
+}
+
+func (s *stubRecipeService) Import(recipe *domain.Recipe) error {
+	if s.importFn != nil {
+		return s.importFn(recipe)
+	}
+	return nil
+}
 
 type stubRecipeRepo struct {
 	domain.RecipeRepository
 
 	byIDFn                    func(uuid.UUID) (*domain.Recipe, error)
 	byUrlFn                   func(string) (*domain.Recipe, error)
-	byParentIDsAndHouseholdFn func([]uuid.UUID, uuid.UUID) ([]domain.Recipe, error)
+	byParentIDsAndHouseholdFn func([]uuid.UUID, uuid.UUID, types.PreloadOptions) ([]domain.Recipe, error)
 	searchFn                  func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
 	createFn                  func(*domain.Recipe) error
 	importFn                  func(*domain.Recipe) error
@@ -33,8 +87,8 @@ type stubRecipeRepo struct {
 
 func (s *stubRecipeRepo) ByID(id uuid.UUID) (*domain.Recipe, error) { return s.byIDFn(id) }
 func (s *stubRecipeRepo) ByUrl(url string) (*domain.Recipe, error)  { return s.byUrlFn(url) }
-func (s *stubRecipeRepo) ByParentIDsAndHousehold(ids []uuid.UUID, hid uuid.UUID) ([]domain.Recipe, error) {
-	return s.byParentIDsAndHouseholdFn(ids, hid)
+func (s *stubRecipeRepo) ByParentIDsAndHousehold(ids []uuid.UUID, hid uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
+	return s.byParentIDsAndHouseholdFn(ids, hid, preload)
 }
 func (s *stubRecipeRepo) Search(uid, hid uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 	return s.searchFn(uid, hid, opts)

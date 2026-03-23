@@ -27,7 +27,8 @@ type stubRecipeService struct {
 	domain.RecipeService
 
 	byIDFn             func(uuid.UUID, uuid.UUID) (*domain.Recipe, error)
-	searchFn           func(uuid.UUID, uuid.UUID, types.SearchOptions) ([]domain.Recipe, int64, error)
+	byIDPreloadFn      func(uuid.UUID, uuid.UUID, uuid.UUID, types.PreloadOptions) (*domain.Recipe, error)
+	searchFn           func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
 	createFn           func(*domain.Recipe, uuid.UUID, uuid.UUID) error
 	updateFn           func(*domain.Recipe, uuid.UUID, uuid.UUID) error
 	deleteFn           func(uuid.UUID, uuid.UUID) error
@@ -42,7 +43,13 @@ type stubRecipeService struct {
 func (s *stubRecipeService) ByID(id, hid uuid.UUID) (*domain.Recipe, error) {
 	return s.byIDFn(id, hid)
 }
-func (s *stubRecipeService) Search(uid, hid uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
+func (s *stubRecipeService) ByIDPreload(id, uid, hid uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
+	if s.byIDPreloadFn != nil {
+		return s.byIDPreloadFn(id, uid, hid, preload)
+	}
+	return nil, nil
+}
+func (s *stubRecipeService) Search(uid, hid uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 	return s.searchFn(uid, hid, opts)
 }
 func (s *stubRecipeService) ImportRecipe(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
@@ -143,9 +150,10 @@ func TestRecipeHandler_GetRecipe_ValidJWT_ReturnsRecipe(t *testing.T) {
 	name := "Borsch"
 
 	svc := &stubRecipeService{
-		byIDFn: func(id, h uuid.UUID) (*domain.Recipe, error) {
+		byIDPreloadFn: func(id, receivedUid, receivedHid uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
 			assert.Equal(t, recipeID, id)
-			assert.Equal(t, hid, h)
+			assert.Equal(t, uid, receivedUid)
+			assert.Equal(t, hid, receivedHid)
 			return &domain.Recipe{ID: recipeID, Name: &name}, nil
 		},
 	}
@@ -177,7 +185,7 @@ func TestRecipeHandler_GetRecipe_NoJWT_Returns401(t *testing.T) {
 func TestRecipeHandler_GetRecipe_RecipeNotFound_Returns404(t *testing.T) {
 	hid := uuid.New()
 	svc := &stubRecipeService{
-		byIDFn: func(_, _ uuid.UUID) (*domain.Recipe, error) {
+		byIDPreloadFn: func(_, _, _ uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
 			return nil, sentinels.ErrNotFound
 		},
 	}
@@ -198,7 +206,7 @@ func TestRecipeHandler_GetRecipe_RecipeNotFound_Returns404(t *testing.T) {
 func TestRecipeHandler_GetRecipe_ForbiddenHousehold_Returns403(t *testing.T) {
 	hid := uuid.New()
 	svc := &stubRecipeService{
-		byIDFn: func(_, _ uuid.UUID) (*domain.Recipe, error) {
+		byIDPreloadFn: func(_, _, _ uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
 			return nil, sentinels.ErrForbidden
 		},
 	}
@@ -231,7 +239,7 @@ func TestRecipeHandler_Search_ReturnsListResponse(t *testing.T) {
 	r2 := domain.Recipe{ID: uuid.New()}
 
 	svc := &stubRecipeService{
-		searchFn: func(u, h uuid.UUID, _ types.SearchOptions) ([]domain.Recipe, int64, error) {
+		searchFn: func(u, h uuid.UUID, _ domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 			assert.Equal(t, uid, u)
 			assert.Equal(t, hid, h)
 			return []domain.Recipe{r1, r2}, 2, nil
@@ -254,7 +262,7 @@ func TestRecipeHandler_Search_ReturnsListResponse(t *testing.T) {
 
 func TestRecipeHandler_Search_EmptyResult_ReturnsZeroTotal(t *testing.T) {
 	svc := &stubRecipeService{
-		searchFn: func(_, _ uuid.UUID, _ types.SearchOptions) ([]domain.Recipe, int64, error) {
+		searchFn: func(_, _ uuid.UUID, _ domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 			return nil, 0, nil
 		},
 	}
@@ -313,7 +321,7 @@ func TestRecipeHandler_UpdateRecipe_Returns200WithUpdatedRecipe(t *testing.T) {
 			assert.Equal(t, hid, h)
 			return nil
 		},
-		byIDFn: func(id, h uuid.UUID) (*domain.Recipe, error) {
+		byIDPreloadFn: func(id, _, _ uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
 			return &domain.Recipe{ID: id, Name: &updatedName}, nil
 		},
 	}

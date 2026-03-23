@@ -21,6 +21,16 @@ func (p PreloadOptions) Has(relation string) bool {
 	return slices.Contains(p.Preload, relation)
 }
 
+// HasAny checks if any of the specified `relation` values are requested.
+func (p PreloadOptions) HasAny(relation ...string) bool {
+	for _, rel := range relation {
+		if p.Has(rel) {
+			return true
+		}
+	}
+	return false
+}
+
 // Validate returns a 400 error if any requested preload value is not in the allowed list.
 func (p PreloadOptions) Validate(allowed ...string) error {
 	for _, rel := range p.Preload {
@@ -34,4 +44,8 @@ func (p PreloadOptions) Validate(allowed ...string) error {
 // GetPreloadOptions parses the "preload" query parameter from the request.
 func GetPreloadOptions(c fiber.Ctx) PreloadOptions {
 	return PreloadOptions{Preload: utils.CsvSplit(c.Query("preload"))} // returns lowercased strings in a slice
+}
+
+func Preload(preload ...string) PreloadOptions {
+	return PreloadOptions{Preload: preload}
 }
