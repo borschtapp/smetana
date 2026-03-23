@@ -136,7 +136,7 @@ func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
 
 type ShoppingItemForm struct {
 	Text   string     `validate:"required_without=FoodID" json:"text" example:"2 cups of milk"`
-	Amount *float64   `validate:"omitempty,gt=0" json:"amount" example:"2"`
+	Amount *float64   `validate:"omitempty" json:"amount" example:"2"`
 	FoodID *uuid.UUID `json:"food_id"`
 	UnitID *uuid.UUID `json:"unit_id"`
 }
@@ -167,8 +167,8 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 
 	var forms []ShoppingItemForm
 	if isArray {
-		if err := bindBody(c, &forms); err != nil {
-			return err
+		if err := c.Bind().Body(&forms); err != nil {
+			return sentinels.BadRequest(err.Error())
 		}
 	} else {
 		var form ShoppingItemForm
