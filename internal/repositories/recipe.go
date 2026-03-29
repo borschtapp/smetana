@@ -69,7 +69,9 @@ func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID
 	}
 
 	if preload.Has("instructions") {
-		q = q.Preload("Instructions")
+		q = q.Preload("Instructions", func(db *gorm.DB) *gorm.DB {
+			return db.Order("recipe_instructions.order ASC")
+		})
 	}
 
 	if preload.Has("nutrition") {
@@ -219,8 +221,9 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 		}
 
 		if len(recipe.Instructions) > 0 {
-			for _, inst := range recipe.Instructions {
+			for i, inst := range recipe.Instructions {
 				inst.RecipeID = recipe.ID
+				inst.Order = uint8(i)
 			}
 			if err := tx.Omit(clause.Associations).Create(&recipe.Instructions).Error; err != nil {
 				return mapErr(err)
