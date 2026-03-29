@@ -17,7 +17,7 @@ func NewImageRepository(db *gorm.DB) domain.ImageRepository {
 }
 
 func (r *imageRepository) Create(image *domain.Image) error {
-	return r.db.Create(image).Error
+	return mapErr(r.db.Create(image).Error)
 }
 
 func (r *imageRepository) FindByID(id uuid.UUID) (*domain.Image, error) {
@@ -34,7 +34,7 @@ func (r *imageRepository) FindByEntity(entityType string, entityID uuid.UUID) ([
 		Where("entity_type = ? AND entity_id = ?", entityType, entityID).
 		Order("`order` ASC, created ASC").
 		Find(&images).Error
-	return images, err
+	return images, mapErr(err)
 }
 
 func (r *imageRepository) FindDefault(entityType string, entityID uuid.UUID) (*domain.Image, error) {
@@ -64,31 +64,31 @@ func (r *imageRepository) SetDefault(image *domain.Image) error {
 		if err := tx.Model(&domain.Image{}).
 			Where("entity_type = ? AND entity_id = ?", image.EntityType, image.EntityID).
 			Update("is_default", false).Error; err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		if err := tx.Model(&domain.Image{}).
 			Where("id = ?", image.ID).
 			Update("is_default", true).Error; err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		// Intentionally updates image_path on the owning entity table via the polymorphic EntityType string,
 		// the same string GORM uses for its polymorphic tag, so it always matches the correct table.
 		// Keeping this here ensures is_default and image_path stay in sync within a single transaction.
 		if image.Path != nil {
-			return tx.Table(image.EntityType).
+			return mapErr(tx.Table(image.EntityType).
 				Where("id = ?", image.EntityID).
-				Update("image_path", string(*image.Path)).Error
+				Update("image_path", string(*image.Path)).Error)
 		}
 		return nil
 	})
 }
 
 func (r *imageRepository) Update(image *domain.Image) error {
-	return r.db.Model(image).Select("path", "content_type", "width", "height", "size", "caption", "order", "updated").Updates(image).Error
+	return mapErr(r.db.Model(image).Select("path", "content_type", "width", "height", "size", "caption", "order", "updated").Updates(image).Error)
 }
 
 func (r *imageRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.Image{}, "id = ?", id).Error
+	return mapErr(r.db.Delete(&domain.Image{}, "id = ?", id).Error)
 }

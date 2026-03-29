@@ -40,11 +40,11 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(unit)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(unit, "slug = ?", unit.Slug).Error
+		return mapErr(r.db.First(unit, "slug = ?", unit.Slug).Error)
 	}
 
 	return nil
@@ -61,24 +61,24 @@ func (r *unitRepository) Search(query string, imperial *bool, offset, limit int)
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	var units []domain.Unit
 	err := db.Offset(offset).Limit(limit).Find(&units).Error
-	return units, total, err
+	return units, total, mapErr(err)
 }
 
 func (r *unitRepository) Update(unit *domain.Unit) error {
-	return r.db.Model(unit).Select("name").Updates(unit).Error
+	return mapErr(r.db.Model(unit).Select("name").Updates(unit).Error)
 }
 
 func (r *unitRepository) ByBase(baseUnitID uuid.UUID, imperial bool) ([]domain.Unit, error) {
 	var units []domain.Unit
 	err := r.db.Where("(id = ? OR base_unit_id = ?) AND imperial = ?", baseUnitID, baseUnitID, imperial).Find(&units).Error
-	return units, err
+	return units, mapErr(err)
 }
 
 func (r *unitRepository) AddTaxonomy(unitID uuid.UUID, taxonomy *domain.Taxonomy) error {
-	return r.db.Model(&domain.Unit{ID: unitID}).Association("Taxonomies").Append(taxonomy)
+	return mapErr(r.db.Model(&domain.Unit{ID: unitID}).Association("Taxonomies").Append(taxonomy))
 }

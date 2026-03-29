@@ -159,7 +159,7 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 
 	var total int64
 	if err := q.Distinct("recipes.id").Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	} else if total == 0 {
 		return recipes, 0, nil
 	}
@@ -182,14 +182,14 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 	})
 
 	if err := q.Find(&recipes).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	return recipes, total, nil
 }
 
 func (r *recipeRepository) Create(recipe *domain.Recipe) error {
-	return r.db.Create(recipe).Error
+	return mapErr(r.db.Create(recipe).Error)
 }
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
@@ -206,7 +206,7 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 			"Taxonomies.*",
 			"Collection.*",
 		).Create(recipe).Error; err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		if len(recipe.Ingredients) > 0 {
@@ -214,7 +214,7 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 				ing.RecipeID = recipe.ID
 			}
 			if err := tx.Omit(clause.Associations).Create(&recipe.Ingredients).Error; err != nil {
-				return err
+				return mapErr(err)
 			}
 		}
 
@@ -223,7 +223,7 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 				inst.RecipeID = recipe.ID
 			}
 			if err := tx.Omit(clause.Associations).Create(&recipe.Instructions).Error; err != nil {
-				return err
+				return mapErr(err)
 			}
 		}
 
@@ -232,19 +232,19 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 }
 
 func (r *recipeRepository) Update(recipe *domain.Recipe) error {
-	return r.db.Model(recipe).Updates(recipe).Error
+	return mapErr(r.db.Model(recipe).Updates(recipe).Error)
 }
 
 func (r *recipeRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.Recipe{}, id).Error
+	return mapErr(r.db.Delete(&domain.Recipe{}, id).Error)
 }
 
 func (r *recipeRepository) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&domain.RecipeSaved{
+	return mapErr(r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&domain.RecipeSaved{
 		UserID:      userID,
 		RecipeID:    recipeID,
 		HouseholdID: householdID,
-	}).Error
+	}).Error)
 }
 
 func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
@@ -256,45 +256,45 @@ func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, househ
 		Where("parent_id IN ? AND household_id = ?", parentIDs, householdID).
 		Find(&recipes).Error
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 	return recipes, nil
 }
 
 func (r *recipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
-	return r.db.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error
+	return mapErr(r.db.Delete(&domain.RecipeSaved{}, "user_id = ? AND recipe_id = ?", userID, recipeID).Error)
 }
 
 func (r *recipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient) error {
-	return r.db.Create(ingredient).Error
+	return mapErr(r.db.Create(ingredient).Error)
 }
 
 func (r *recipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
-	return r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Updates(ingredient).Error
+	return mapErr(r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Updates(ingredient).Error)
 }
 
 func (r *recipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
-	return r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error
+	return mapErr(r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error)
 }
 
 func (r *recipeRepository) AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {
-	return r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Append(&domain.Equipment{ID: equipmentID})
+	return mapErr(r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Append(&domain.Equipment{ID: equipmentID}))
 }
 
 func (r *recipeRepository) RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {
-	return r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Delete(&domain.Equipment{ID: equipmentID})
+	return mapErr(r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Delete(&domain.Equipment{ID: equipmentID}))
 }
 
 func (r *recipeRepository) CreateInstruction(instruction *domain.RecipeInstruction) error {
-	return r.db.Create(instruction).Error
+	return mapErr(r.db.Create(instruction).Error)
 }
 
 func (r *recipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
-	return r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Updates(instruction).Error
+	return mapErr(r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Updates(instruction).Error)
 }
 
 func (r *recipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error {
-	return r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID).Error
+	return mapErr(r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID).Error)
 }
 
 func (r *recipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) error) error {
@@ -307,17 +307,17 @@ func (r *recipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) e
 func (r *recipeRepository) ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error {
 	// 1. RecipeSaved
 	if err := r.db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
-		return err
+		return mapErr(err)
 	}
 	// 2. MealPlan
 	if err := r.db.Table("meal_plans").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
-		return err
+		return mapErr(err)
 	}
 	// 3. CollectionRecipes
 	if err := r.db.Table("collection_recipes").
 		Where("recipe_id = ? AND collection_id IN (SELECT id FROM collections WHERE household_id = ?)", oldRecipeID, householdID).
 		Update("recipe_id", newRecipeID).Error; err != nil {
-		return err
+		return mapErr(err)
 	}
 	return nil
 }

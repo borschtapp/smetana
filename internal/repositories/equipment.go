@@ -24,12 +24,12 @@ func (r *equipmentRepository) Search(query string, offset, limit int) ([]domain.
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	var equipment []domain.Equipment
 	if err := q.Offset(offset).Limit(limit).Find(&equipment).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return equipment, total, nil
 }
@@ -49,11 +49,11 @@ func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(equipment)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(equipment, "slug = ?", equipment.Slug).Error
+		return mapErr(r.db.First(equipment, "slug = ?", equipment.Slug).Error)
 	}
 
 	return nil

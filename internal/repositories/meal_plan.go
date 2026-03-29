@@ -37,24 +37,24 @@ func (r *mealPlanRepository) List(householdID uuid.UUID, from, to *time.Time, of
 
 	var total int64
 	if err := query.Model(&domain.MealPlan{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	var mealPlans []domain.MealPlan
 	if err := query.Offset(offset).Limit(limit).Find(&mealPlans).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return mealPlans, total, nil
 }
 
 func (r *mealPlanRepository) Create(mealPlan *domain.MealPlan) error {
-	return r.db.Create(mealPlan).Error
+	return mapErr(r.db.Create(mealPlan).Error)
 }
 
 func (r *mealPlanRepository) Update(mealPlan *domain.MealPlan) error {
-	return r.db.Model(mealPlan).Updates(mealPlan).Error
+	return mapErr(r.db.Model(mealPlan).Updates(mealPlan).Error)
 }
 
 func (r *mealPlanRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.MealPlan{}, id).Error
+	return mapErr(r.db.Delete(&domain.MealPlan{}, id).Error)
 }

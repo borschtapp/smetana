@@ -44,11 +44,11 @@ func (r *householdRepository) ByIDWithPreload(id uuid.UUID, opts types.PreloadOp
 }
 
 func (r *householdRepository) Create(household *domain.Household) error {
-	return r.db.Model(household).Omit(clause.Associations).Create(household).Error
+	return mapErr(r.db.Model(household).Omit(clause.Associations).Create(household).Error)
 }
 
 func (r *householdRepository) Update(household *domain.Household) error {
-	return r.db.Model(household).Updates(household).Error
+	return mapErr(r.db.Model(household).Updates(household).Error)
 }
 
 func (r *householdRepository) Delete(id uuid.UUID) error {
@@ -74,12 +74,12 @@ func (r *householdRepository) Members(householdID uuid.UUID, offset, limit int) 
 
 	var total int64
 	if err := query.Model(&domain.User{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	var members []domain.User
 	if err := query.Offset(offset).Limit(limit).Find(&members).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return members, total, nil
 }

@@ -1,8 +1,7 @@
 package repositories
 
 import (
-	"errors"
-
+	"borscht.app/smetana/internal/sentinels"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -24,7 +23,7 @@ func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(author)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
@@ -49,5 +48,5 @@ func (r *authorRepository) find(author *domain.Author) error {
 			return nil
 		}
 	}
-	return errors.New("author not found")
+	return sentinels.ErrNotFound
 }

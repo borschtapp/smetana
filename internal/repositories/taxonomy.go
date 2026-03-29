@@ -24,12 +24,12 @@ func (r *taxonomyRepository) List(taxonomyType string, offset, limit int) ([]dom
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	var taxonomies []domain.Taxonomy
 	if err := query.Offset(offset).Limit(limit).Find(&taxonomies).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return taxonomies, total, nil
 }
@@ -41,11 +41,11 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(taxonomy)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error
+		return mapErr(r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error)
 	}
 
 	return nil

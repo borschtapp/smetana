@@ -48,7 +48,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	} else if total == 0 {
 		return collections, 0, nil
 	}
@@ -77,27 +77,27 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 	})
 
 	if err := q.Find(&collections).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return collections, total, nil
 }
 
 func (r *collectionRepository) Create(collection *domain.Collection) error {
-	return r.db.Create(collection).Error
+	return mapErr(r.db.Create(collection).Error)
 }
 
 func (r *collectionRepository) Update(collection *domain.Collection) error {
-	return r.db.Model(collection).Select("name", "description").Updates(collection).Error
+	return mapErr(r.db.Model(collection).Select("name", "description").Updates(collection).Error)
 }
 
 func (r *collectionRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.Collection{}, id).Error
+	return mapErr(r.db.Delete(&domain.Collection{}, id).Error)
 }
 
 func (r *collectionRepository) AddRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
-	return r.db.Model(collection).Association("Recipes").Append(&domain.Recipe{ID: recipeID})
+	return mapErr(r.db.Model(collection).Association("Recipes").Append(&domain.Recipe{ID: recipeID}))
 }
 
 func (r *collectionRepository) RemoveRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
-	return r.db.Model(collection).Association("Recipes").Delete(&domain.Recipe{ID: recipeID})
+	return mapErr(r.db.Model(collection).Association("Recipes").Delete(&domain.Recipe{ID: recipeID}))
 }

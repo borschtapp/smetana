@@ -33,26 +33,26 @@ func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(food)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return r.db.First(food, "slug = ?", food.Slug).Error
+		return mapErr(r.db.First(food, "slug = ?", food.Slug).Error)
 	}
 
 	return nil
 }
 
 func (r *foodRepository) Update(food *domain.Food) error {
-	return r.db.Model(food).Select("name", "image_path", "default_unit_id").Updates(food).Error
+	return mapErr(r.db.Model(food).Select("name", "image_path", "default_unit_id").Updates(food).Error)
 }
 
 func (r *foodRepository) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
-	return r.db.Model(&domain.Food{ID: foodID}).Association("Taxonomies").Append(taxonomy)
+	return mapErr(r.db.Model(&domain.Food{ID: foodID}).Association("Taxonomies").Append(taxonomy))
 }
 
 func (r *foodRepository) CreatePrice(price *domain.FoodPrice) error {
-	return r.db.Create(price).Error
+	return mapErr(r.db.Create(price).Error)
 }
 
 func (r *foodRepository) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error) {
@@ -73,7 +73,7 @@ func (r *foodRepository) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID
 		Preload("Unit").
 		Find(&prices).Error
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	result := make(map[uuid.UUID]*domain.FoodPrice, len(prices))
@@ -91,7 +91,7 @@ func (r *foodRepository) ListPrices(householdID, foodID uuid.UUID, opts types.Pa
 		Where("household_id = ? AND food_id = ?", householdID, foodID)
 
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 
 	err := q.Order("created DESC").
@@ -100,9 +100,9 @@ func (r *foodRepository) ListPrices(householdID, foodID uuid.UUID, opts types.Pa
 		Preload("Unit").
 		Find(&prices).Error
 
-	return prices, total, err
+	return prices, total, mapErr(err)
 }
 
 func (r *foodRepository) DeletePrice(householdID, id uuid.UUID) error {
-	return r.db.Delete(&domain.FoodPrice{}, "id = ? AND household_id = ?", id, householdID).Error
+	return mapErr(r.db.Delete(&domain.FoodPrice{}, "id = ? AND household_id = ?", id, householdID).Error)
 }

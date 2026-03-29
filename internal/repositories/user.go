@@ -45,21 +45,21 @@ func (r *userRepository) Create(user *domain.User) error {
 			_ = user.BeforeCreate(tx) // to ensure user's ID is not empty
 			user.Household = &domain.Household{OwnerID: user.ID, Name: user.Name + "'s Household"}
 			if err := tx.Create(user.Household).Error; err != nil {
-				return err
+				return mapErr(err)
 			}
 			user.HouseholdID = user.Household.ID
 		}
 
-		return tx.Create(user).Error
+		return mapErr(tx.Create(user).Error)
 	}))
 }
 
 func (r *userRepository) Update(user *domain.User) error {
-	return r.db.Model(user).Updates(user).Error
+	return mapErr(r.db.Model(user).Updates(user).Error)
 }
 
 func (r *userRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&domain.User{}, id).Error
+	return mapErr(r.db.Delete(&domain.User{}, id).Error)
 }
 
 func (r *userRepository) FindTokensByUser(userID uuid.UUID, tokenType string) ([]domain.UserToken, error) {
@@ -90,10 +90,10 @@ func (r *userRepository) FindToken(tokenStr string, tokenType string) (*domain.U
 }
 
 func (r *userRepository) CreateToken(token *domain.UserToken) error {
-	return r.db.Create(token).Error
+	return mapErr(r.db.Create(token).Error)
 }
 
 func (r *userRepository) DeleteToken(tokenStr string) (bool, error) {
 	result := r.db.Unscoped().Where(&domain.UserToken{Token: tokenStr}).Delete(&domain.UserToken{})
-	return result.RowsAffected == 1, result.Error
+	return result.RowsAffected == 1, mapErr(result.Error)
 }

@@ -15,9 +15,9 @@ func NewSchedulerRepository(db *gorm.DB) domain.SchedulerRepository {
 }
 
 func (r *schedulerRepository) CreateLog(log *domain.SchedulerLog) error {
-	return r.db.Create(log).Error
+	return mapErr(r.db.Create(log).Error)
 }
 
 func (r *schedulerRepository) UpdateLog(log *domain.SchedulerLog) error {
-	return r.db.Model(log).Updates(log).Error
+	return mapErr(r.db.Model(log).Updates(log).Error)
 }

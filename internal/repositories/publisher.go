@@ -1,10 +1,10 @@
 package repositories
 
 import (
-	"errors"
 	"slices"
 	"strings"
 
+	"borscht.app/smetana/internal/sentinels"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -31,7 +31,7 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -68,7 +68,7 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 	})
 
 	if err := q.Find(&publishers).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, mapErr(err)
 	}
 	return publishers, total, nil
 }
@@ -80,7 +80,7 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(pub)
 	if result.Error != nil {
-		return result.Error
+		return mapErr(result.Error)
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
@@ -105,5 +105,5 @@ func (r *publisherRepository) find(pub *domain.Publisher) error {
 			return nil
 		}
 	}
-	return errors.New("publisher not found")
+	return sentinels.ErrNotFound
 }
