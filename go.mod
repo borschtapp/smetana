@@ -3,7 +3,7 @@ module borscht.app/smetana
 go 1.26.0
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.41.4
+	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.2
 	github.com/borschtapp/kapusta v0.2.1
 	github.com/borschtapp/krip v0.16.2

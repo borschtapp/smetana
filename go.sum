@@ -20,8 +20,8 @@ github.com/astappiev/fixjson v1.0.1 h1:wVbPp8OFOWcTf+Hh53Yj1LJ3yOaUJUqk+s0ZDszhe
 github.com/astappiev/fixjson v1.0.1/go.mod h1:i11weCUtOvIzJd3jbgalbxL98LJ44IyYCmov7SyIubI=
 github.com/astappiev/microdata v1.0.2 h1:Y4uwzTBp4dKeuazpfNDE+sKp9X/T30/LTp3dQ/lCK2g=
 github.com/astappiev/microdata v1.0.2/go.mod h1:RYRq30ZQIC8WNq818MOKefM95upihLh2oxN/WarIjAU=
-github.com/aws/aws-sdk-go-v2 v1.41.4 h1:10f50G7WyU02T56ox1wWXq+zTX9I1zxG46HYuG1hH/k=
-github.com/aws/aws-sdk-go-v2 v1.41.4/go.mod h1:mwsPRE8ceUUpiTgF7QmQIJ7lgsKUPQOUl3o72QBrE1o=
+github.com/aws/aws-sdk-go-v2 v1.41.5 h1:dj5kopbwUsVUVFgO4Fi5BIT3t4WyqIDjGKCangnV/yY=
+github.com/aws/aws-sdk-go-v2 v1.41.5/go.mod h1:mwsPRE8ceUUpiTgF7QmQIJ7lgsKUPQOUl3o72QBrE1o=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 h1:eBMB84YGghSocM7PsjmmPffTa+1FBUeNvGvFou6V/4o=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8/go.mod h1:lyw7GFp3qENLh7kwzf7iMzAxDn+NzjXEAGjKS2UOKqI=
 github.com/aws/aws-sdk-go-v2/config v1.32.12 h1:O3csC7HUGn2895eNrLytOJQdoL2xyJy0iYXhoZ1OmP0=
