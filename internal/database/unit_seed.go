@@ -12,7 +12,17 @@ func SeedUnits(db *gorm.DB) error {
 	bases := []domain.Unit{
 		{Slug: "g", Name: "gram", Imperial: false, BaseFactor: 1},
 		{Slug: "ml", Name: "milliliter", Imperial: false, BaseFactor: 1},
-		{Slug: "pc", Name: "piece", Imperial: false, BaseFactor: 1},
+		{Slug: "cm", Name: "centimeter", Imperial: false, BaseFactor: 1},
+
+		{Slug: "can", Name: "can", Imperial: false},
+		{Slug: "pc", Name: "piece", Imperial: false},
+		{Slug: "pkg", Name: "package", Imperial: false},
+		{Slug: "bunch", Name: "bunch", Imperial: false},
+		{Slug: "pinch", Name: "pinch", Imperial: false},
+		{Slug: "slice", Name: "slice", Imperial: false},
+		{Slug: "sprig", Name: "sprig", Imperial: false},
+		{Slug: "stick", Name: "stick", Imperial: false},
+		{Slug: "clove", Name: "clove", Imperial: false},
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "slug"}},
@@ -35,6 +45,12 @@ func SeedUnits(db *gorm.DB) error {
 	mlID := new(idx["ml"])
 
 	units := []domain.Unit{
+		{Slug: "mm", Name: "millimeter", BaseUnitID: gramID, BaseFactor: 0.1},
+		{Slug: "dm", Name: "decimeter", BaseUnitID: gramID, BaseFactor: 10},
+		{Slug: "m", Name: "meter", BaseUnitID: gramID, BaseFactor: 100},
+		{Slug: "in", Name: "inch", BaseUnitID: gramID, BaseFactor: 25, Imperial: true},
+		{Slug: "ft", Name: "foot", BaseUnitID: gramID, BaseFactor: 300, Imperial: true},
+
 		{Slug: "mg", Name: "milligram", BaseUnitID: gramID, BaseFactor: 0.001},
 		{Slug: "kg", Name: "kilogram", BaseUnitID: gramID, BaseFactor: 1000},
 		{Slug: "t", Name: "metric ton", BaseUnitID: gramID, BaseFactor: 1_000_000},

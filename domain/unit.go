@@ -40,14 +40,19 @@ func (u *Unit) BaseID() uuid.UUID {
 	return u.ID
 }
 
+// Convertible reports whether this unit can be converted to other units.
+func (u *Unit) Convertible() bool {
+	return u.BaseFactor != 0
+}
+
 // ToBaseFactor returns the multiplier relative to the base unit.
 // Base units return 1.0; derived units return BaseFactor or error if BaseFactor is unset.
 func (u *Unit) ToBaseFactor() (float64, error) {
+	if !u.Convertible() {
+		return 0, errors.New("unit is not convertible")
+	}
 	if u.BaseUnitID == nil {
 		return 1.0, nil
-	}
-	if u.BaseFactor == 0 {
-		return 0, errors.New("derived unit has no conversion factor to base unit")
 	}
 	return u.BaseFactor, nil
 }
