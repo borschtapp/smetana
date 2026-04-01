@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"slices"
 	"strings"
 
 	"borscht.app/smetana/internal/sentinels"
@@ -39,21 +38,15 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 	q = q.Select("publishers.*")
 
 	if len(opts.Preload) != 0 {
-		if slices.Contains(opts.Preload, "feeds") {
+		if opts.PreloadOptions.Has("feeds") {
 			q = q.Preload("Feeds")
 		}
 
-		if slices.Contains(opts.Preload, "images") {
+		if opts.PreloadOptions.Has("images") {
 			q = q.Preload("Images")
 		}
 
-		if slices.Contains(opts.Preload, "last3_recipes") {
-			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
-				return db.Order("created DESC").Limit(3)
-			})
-		}
-
-		if slices.Contains(opts.Preload, "total_recipes") {
+		if opts.PreloadOptions.Has("total_recipes") {
 			q = q.Select(`publishers.*, (
 					SELECT COUNT(*) FROM recipes
 					WHERE recipes.publisher_id = publishers.id
@@ -70,6 +63,19 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 	if err := q.Find(&publishers).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}
+
+	if opts.PreloadOptions.Has("last3_recipes") {
+		for i := range publishers {
+			if err := r.db.Select("recipes.*").
+				Where("publisher_id = ?", publishers[i].ID).
+				Order("created DESC").
+				Limit(3).
+				Find(&publishers[i].Recipes).Error; err != nil {
+				return nil, 0, mapErr(err)
+			}
+		}
+	}
+
 	return publishers, total, nil
 }
 

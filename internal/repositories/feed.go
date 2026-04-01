@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -57,17 +56,11 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	q = q.Select("feeds.*")
 
 	if len(opts.Preload) != 0 {
-		if slices.Contains(opts.Preload, "publisher") {
+		if opts.PreloadOptions.Has("publisher") {
 			q = q.Preload("Publisher")
 		}
 
-		if slices.Contains(opts.Preload, "last3_recipes") {
-			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
-				return db.Order("created DESC").Limit(3)
-			})
-		}
-
-		if slices.Contains(opts.Preload, "total_recipes") {
+		if opts.PreloadOptions.Has("total_recipes") {
 			q = q.Select(`feeds.*, (
 					SELECT COUNT(*) FROM recipes
 					WHERE recipes.feed_id = feeds.id
@@ -84,6 +77,19 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	if err := q.Find(&feeds).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}
+
+	if opts.PreloadOptions.Has("last3_recipes") {
+		for i := range feeds {
+			if err := r.db.Select("recipes.*").
+				Where("feed_id = ?", feeds[i].ID).
+				Order("created DESC").
+				Limit(3).
+				Find(&feeds[i].Recipes).Error; err != nil {
+				return nil, 0, mapErr(err)
+			}
+		}
+	}
+
 	return feeds, total, nil
 }
 

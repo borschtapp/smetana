@@ -1,7 +1,6 @@
 package repositories
 
 import (
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -55,19 +54,11 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 
 	q = q.Select("collections.*")
 
-	if len(opts.Preload) != 0 {
-		if slices.Contains(opts.Preload, "last3_recipes") {
-			q = q.Preload("Recipes", func(db *gorm.DB) *gorm.DB {
-				return db.Order("created DESC").Limit(3)
-			})
-		}
-
-		if slices.Contains(opts.Preload, "total_recipes") {
-			q = q.Select(`collections.*, (
-					SELECT COUNT(*) FROM collection_recipes
-					WHERE collection_recipes.collection_id = collections.id
-				) AS total_recipes`)
-		}
+	if opts.PreloadOptions.Has("total_recipes") {
+		q = q.Select(`collections.*, (
+				SELECT COUNT(*) FROM collection_recipes
+				WHERE collection_recipes.collection_id = collections.id
+			) AS total_recipes`)
 	}
 
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
@@ -79,6 +70,20 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 	if err := q.Find(&collections).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}
+
+	if opts.PreloadOptions.Has("last3_recipes") {
+		for i := range collections {
+			if err := r.db.Select("recipes.*").
+				Joins("JOIN collection_recipes ON collection_recipes.recipe_id = recipes.id").
+				Where("collection_recipes.collection_id = ?", collections[i].ID).
+				Order("recipes.created DESC").
+				Limit(3).
+				Find(&collections[i].Recipes).Error; err != nil {
+				return nil, 0, mapErr(err)
+			}
+		}
+	}
+
 	return collections, total, nil
 }
 
