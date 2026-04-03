@@ -1,16 +1,13 @@
 package domain
 
-import "context"
+import (
+	"context"
 
-type FeedScrapeOptions struct {
-	Quick               bool
-	MinIngredients      int
-	RequireImage        bool
-	RequireInstructions bool
-}
+	"github.com/borschtapp/krip"
+)
 
 // ScraperService fetches and converts external recipe data into domain objects.
 type ScraperService interface {
 	ScrapeRecipe(ctx context.Context, url string) (*Recipe, error)
-	ScrapeFeed(ctx context.Context, url string, opts FeedScrapeOptions) ([]*Recipe, error)
+	ScrapeFeed(ctx context.Context, feed *Feed, opts krip.FeedOptions) ([]*Recipe, error)
 }

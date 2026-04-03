@@ -4170,6 +4170,9 @@ const docTemplate = `{
                 "active": {
                     "type": "boolean"
                 },
+                "description": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },

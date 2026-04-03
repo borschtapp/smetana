@@ -39,20 +39,12 @@ func (s *scraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.
 	return recipe, nil
 }
 
-func (s *scraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	scrapedFeed, err := krip.ScrapeFeedUrl(url, krip.FeedOptions{
-		ScrapeOptions: krip.ScrapeOptions{RequestOptions: krip.RequestOptions{
-			Context:    scrapeCtx,
-			HttpClient: safeurl.Client(safeurl.GetConfigBuilder().Build()),
-		}},
-		Quick:               opts.Quick,
-		MinIngredients:      opts.MinIngredients,
-		RequireImage:        opts.RequireImage,
-		RequireInstructions: opts.RequireInstructions,
-	})
+	opts.Context = scrapeCtx
+	scrapedFeed, err := krip.ScrapeFeedUrl(feed.Url, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +55,21 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, url string, opts domain
 		s.enrichIngredients(recipe.Ingredients, entry.Language)
 		recipes = append(recipes, recipe)
 	}
+
+	// Back-populate the feed with scraped metadata.
+	if scrapedFeed.Name != "" && feed.Name != scrapedFeed.Name {
+		feed.Name = scrapedFeed.Name
+	}
+	if scrapedFeed.Url != "" && feed.Url != scrapedFeed.Url {
+		feed.Url = scrapedFeed.Url
+	}
+	if scrapedFeed.Description != "" && (feed.Description == nil || *feed.Description != scrapedFeed.Description) {
+		feed.Description = new(scrapedFeed.Description)
+	}
+	if scrapedFeed.Discovered != nil {
+		feed.Discovered = scrapedFeed.Discovered
+	}
+
 	return recipes, nil
 }
 

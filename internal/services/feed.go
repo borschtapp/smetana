@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/borschtapp/krip"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
@@ -120,23 +121,18 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	scrapeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, url, domain.FeedScrapeOptions{Quick: true})
+	feed := &domain.Feed{Url: url}
+	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, feed, krip.FeedOptions{SkipEntriesScrape: true})
 	if err != nil {
 		return nil, fmt.Errorf("invalid feed url: %w", err)
 	}
 
-	feed := &domain.Feed{Url: url}
-	var pub *domain.Publisher
-	if len(recipes) > 0 && recipes[0].Publisher != nil {
-		pub = recipes[0].Publisher
-	} else {
-		pub = &domain.Publisher{Url: &url, Name: url}
-	}
-
-	if err := s.publisherService.FindOrCreate(ctx, pub); err != nil {
-		log.Warnw("error creating publisher", "publisher", pub, "error", err)
-	} else {
-		feed.PublisherID = pub.ID
+	if feed.Publisher != nil {
+		if err := s.publisherService.FindOrCreate(ctx, feed.Publisher); err != nil {
+			log.Warnw("error creating publisher", "publisher", feed.Publisher, "error", err)
+		} else {
+			feed.PublisherID = feed.Publisher.ID
+		}
 	}
 
 	if err := s.repo.Create(feed); err != nil {
@@ -154,11 +150,10 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, feed.Url, domain.FeedScrapeOptions{
-		MinIngredients:      3,
-		RequireImage:        true,
-		RequireInstructions: true,
-	})
+	opts := krip.FeedOptions{}
+	opts.MinIngredients = 3
+	opts.Discovered = feed.Discovered
+	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, feed, opts)
 
 	if err != nil {
 		log.Warnw("failed to scrape feed", "url", feed.Url, "error", err)

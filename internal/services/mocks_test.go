@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"borscht.app/smetana/internal/types"
+	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
@@ -273,14 +274,17 @@ type stubScraperService struct {
 	domain.ScraperService
 
 	scrapeRecipeFn func(context.Context, string) (*domain.Recipe, error)
-	scrapeFeedFn   func(context.Context, string, domain.FeedScrapeOptions) ([]*domain.Recipe, error)
+	scrapeFeedFn   func(context.Context, *domain.Feed, krip.FeedOptions) ([]*domain.Recipe, error)
 }
 
 func (s *stubScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
 	return s.scrapeRecipeFn(ctx, url)
 }
-func (s *stubScraperService) ScrapeFeed(ctx context.Context, url string, opts domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
-	return s.scrapeFeedFn(ctx, url, opts)
+func (m *stubScraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
+	if m.scrapeFeedFn != nil {
+		return m.scrapeFeedFn(ctx, feed, opts)
+	}
+	return nil, nil
 }
 
 type stubFeedRepo struct {

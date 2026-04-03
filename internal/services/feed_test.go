@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/borschtapp/krip"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,7 +103,7 @@ func TestFeedService_FetchFeed_ScrapeError_IncrementsErrorCount(t *testing.T) {
 		},
 	}
 	scraper := &stubScraperService{
-		scrapeFeedFn: func(_ context.Context, _ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
 			return nil, errors.New("feed unreachable")
 		},
 	}
@@ -125,7 +126,7 @@ func TestFeedService_FetchFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing.T
 		updateFn: func(f *domain.Feed) error { updatedFeed = f; return nil },
 	}
 	scraper := &stubScraperService{
-		scrapeFeedFn: func(_ context.Context, _ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
 			return nil, errors.New("still broken")
 		},
 	}
@@ -148,7 +149,7 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
-		scrapeFeedFn: func(_ context.Context, _ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
 			return []*domain.Recipe{scraped}, nil
 		},
 	}
@@ -182,7 +183,7 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
-		scrapeFeedFn: func(_ context.Context, _ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
 			return []*domain.Recipe{scraped}, nil
 		},
 	}
@@ -219,7 +220,7 @@ func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
 	scraper := &stubScraperService{
-		scrapeFeedFn: func(_ context.Context, _ string, _ domain.FeedScrapeOptions) ([]*domain.Recipe, error) {
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
 			return []*domain.Recipe{noURLRecipe}, nil
 		},
 	}
