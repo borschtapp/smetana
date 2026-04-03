@@ -54,7 +54,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 
 	q = q.Select("collections.*")
 
-	if opts.PreloadOptions.Has("total_recipes") {
+	if opts.Has("total_recipes") {
 		q = q.Select(`collections.*, (
 				SELECT COUNT(*) FROM collection_recipes
 				WHERE collection_recipes.collection_id = collections.id
@@ -71,7 +71,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 		return nil, 0, mapErr(err)
 	}
 
-	if opts.PreloadOptions.Has("last3_recipes") {
+	if opts.Has("last3_recipes") {
 		for i := range collections {
 			if err := r.db.Select("recipes.*").
 				Joins("JOIN collection_recipes ON collection_recipes.recipe_id = recipes.id").

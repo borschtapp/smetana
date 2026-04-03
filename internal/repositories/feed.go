@@ -56,11 +56,11 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	q = q.Select("feeds.*")
 
 	if len(opts.Preload) != 0 {
-		if opts.PreloadOptions.Has("publisher") {
+		if opts.Has("publisher") {
 			q = q.Preload("Publisher")
 		}
 
-		if opts.PreloadOptions.Has("total_recipes") {
+		if opts.Has("total_recipes") {
 			q = q.Select(`feeds.*, (
 					SELECT COUNT(*) FROM recipes
 					WHERE recipes.feed_id = feeds.id
@@ -78,7 +78,7 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 		return nil, 0, mapErr(err)
 	}
 
-	if opts.PreloadOptions.Has("last3_recipes") {
+	if opts.Has("last3_recipes") {
 		for i := range feeds {
 			if err := r.db.Select("recipes.*").
 				Where("feed_id = ?", feeds[i].ID).
