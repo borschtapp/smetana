@@ -63,6 +63,9 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts
 	if scrapedFeed.Url != "" && feed.Url != scrapedFeed.Url {
 		feed.Url = scrapedFeed.Url
 	}
+	if scrapedFeed.Publisher != nil && feed.Publisher == nil {
+		feed.Publisher = s.kripToPublisher(scrapedFeed.Publisher)
+	}
 	if scrapedFeed.Description != "" && (feed.Description == nil || *feed.Description != scrapedFeed.Description) {
 		feed.Description = new(scrapedFeed.Description)
 	}

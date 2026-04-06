@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/borschtapp/krip"
+	"github.com/borschtapp/krip/utils"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
@@ -127,12 +128,14 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 		return nil, fmt.Errorf("invalid feed url: %w", err)
 	}
 
-	if feed.Publisher != nil {
-		if err := s.publisherService.FindOrCreate(ctx, feed.Publisher); err != nil {
-			log.Warnw("error creating publisher", "publisher", feed.Publisher, "error", err)
-		} else {
-			feed.PublisherID = feed.Publisher.ID
-		}
+	if feed.Publisher == nil {
+		feed.Publisher = &domain.Publisher{Name: feed.Name, Url: new(utils.BaseUrl(feed.Url))}
+	}
+
+	if err := s.publisherService.FindOrCreate(ctx, feed.Publisher); err != nil {
+		log.Warnw("error creating publisher", "publisher", feed.Publisher, "error", err)
+	} else {
+		feed.PublisherID = feed.Publisher.ID
 	}
 
 	if err := s.repo.Create(feed); err != nil {
