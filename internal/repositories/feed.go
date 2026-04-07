@@ -22,6 +22,7 @@ func NewFeedRepository(db *gorm.DB) domain.FeedRepository {
 func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (*domain.Feed, error) {
 	var feed domain.Feed
 	if err := r.db.
+		Select("feeds.*").
 		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id AND feed_subscriptions.household_id = ?", householdID).
 		First(&feed, id).Error; err != nil {
 		return nil, mapErr(err)
@@ -31,7 +32,7 @@ func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (
 
 func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 	var feed domain.Feed
-	if err := r.db.Where("url = ?", url).First(&feed).Error; err != nil {
+	if err := r.db.Select("feeds.*").Where("url = ?", url).First(&feed).Error; err != nil {
 		return nil, mapErr(err)
 	}
 	return &feed, nil
