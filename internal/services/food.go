@@ -26,7 +26,7 @@ func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error
 	if food != nil && food.ImagePath == nil && len(food.Images) > 0 {
 		path, err := s.imageService.PersistRemoteAsDefault(ctx, food.Images[0], "food", food.ID, "")
 		if err != nil {
-			log.Warnw("unable to process food image, skipping", "food_id", food.ID, "image", food.Images[0], "error", err)
+			log.Warnw("unable to process food image, skipping", "food_id", food.ID, "image", food.Images[0], "error", err.Error())
 		}
 		food.ImagePath = path
 	}

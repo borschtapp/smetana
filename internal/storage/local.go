@@ -20,7 +20,7 @@ func NewLocalStorage(root string, baseUrl string) *LocalStorage {
 		root = "./uploads"
 	}
 	if err := os.MkdirAll(root, 0750); err != nil {
-		log.Fatalw("failed to create upload directory", "path", root, "error", err)
+		log.Fatalw("failed to create upload directory", "path", root, "error", err.Error())
 	}
 
 	return &LocalStorage{Root: root, BaseURL: baseUrl}
@@ -50,7 +50,7 @@ func (s *LocalStorage) Save(path string, content io.Reader, size int64, contentT
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Warnw("failed to close file", "path", fullPath, "error", err)
+			log.Warnw("failed to close file", "path", fullPath, "error", err.Error())
 		}
 	}(file)
 

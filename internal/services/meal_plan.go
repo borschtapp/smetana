@@ -41,7 +41,7 @@ func (s *mealPlanService) Create(mealPlan *domain.MealPlan, householdID uuid.UUI
 
 	if mealPlan.RecipeID != nil {
 		if fetched, err := s.repo.ByIdWithRecipes(mealPlan.ID); err != nil {
-			log.Warnw("failed to reload meal plan", "meal_plan", mealPlan, "error", err)
+			log.Warnw("failed to reload meal plan", "meal_plan", mealPlan.ID, "error", err.Error())
 		} else {
 			mealPlan.Recipe = fetched.Recipe
 		}
@@ -66,7 +66,7 @@ func (s *mealPlanService) Update(mealPlan *domain.MealPlan, householdID uuid.UUI
 
 	if mealPlan.RecipeID != nil {
 		if fetched, err := s.repo.ByIdWithRecipes(mealPlan.ID); err != nil {
-			log.Warnw("failed to reload meal plan after update", "meal_plan", mealPlan, "error", err)
+			log.Warnw("failed to reload meal plan after update", "meal_plan", mealPlan.ID, "error", err.Error())
 		} else {
 			mealPlan.Recipe = fetched.Recipe
 		}

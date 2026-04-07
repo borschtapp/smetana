@@ -25,7 +25,7 @@ func (s *authorService) FindOrCreate(ctx context.Context, author *domain.Author)
 	if author != nil && author.ImagePath == nil && len(author.Images) > 0 {
 		path, err := s.imageService.PersistRemoteAsDefault(ctx, author.Images[0], "recipe_authors", author.ID, "")
 		if err != nil {
-			log.Warnw("unable to process recipe author image, skipping", "author_id", author.ID, "image", author.Images[0], "error", err)
+			log.Warnw("unable to process recipe author image, skipping", "author_id", author.ID, "image", author.Images[0], "error", err.Error())
 		}
 		author.ImagePath = path
 	}

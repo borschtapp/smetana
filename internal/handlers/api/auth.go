@@ -162,7 +162,7 @@ func (h *AuthHandler) ForgotPassword(c fiber.Ctx) error {
 
 	if err := h.authService.ForgotPassword(body.Email); err != nil {
 		// Always return 202 — do not reveal whether the email exists or the service is unavailable.
-		log.Warnw("ForgotPassword failed", "email", body.Email, "error", err)
+		log.Warnw("ForgotPassword failed", "email", body.Email, "error", err.Error())
 	}
 
 	return c.SendStatus(fiber.StatusAccepted)
@@ -247,7 +247,7 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 
 	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
 	if err != nil {
-		log.Warnw("OIDC token exchange failed", "error", err)
+		log.Warnw("OIDC token exchange failed", "error", err.Error())
 		return sentinels.BadRequest("Failed to exchange token")
 	}
 

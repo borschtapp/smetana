@@ -37,7 +37,7 @@ func LoggerConfig() fiber.Handler {
 	if logTarget == "file" || logTarget == "both" {
 		file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666) // #nosec G304,G302
 		if err != nil {
-			log.Fatal("Failed to open log file:", err)
+			log.Fatalw("failed to open log file", "path", logFilePath, "error", err.Error())
 		}
 
 		if logTarget == "both" {

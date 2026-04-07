@@ -42,7 +42,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	// Services with business logic (need repos injected)
 	emailService, err := services.NewEmailService()
 	if err != nil {
-		log.Warnw("Email service not initialized", "error", err)
+		log.Warnw("Email service not initialized", "error", err.Error())
 	}
 
 	scraperService := services.NewScraperService()
@@ -64,7 +64,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
-		log.Warnw("OIDC service not initialized", "error", err)
+		log.Warnw("OIDC service not initialized", "error", err.Error())
 	}
 
 	authService := services.NewAuthService(userRepo, emailService)
@@ -197,7 +197,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	go func() {
 		<-appCtx.Done()
 		if err := sched.Shutdown(); err != nil {
-			log.Errorw("scheduler shutdown error", "error", err)
+			log.Errorw("scheduler shutdown error", "error", err.Error())
 		}
 	}()
 

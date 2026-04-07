@@ -33,7 +33,7 @@ func NewOIDCService(userRepo domain.UserRepository) (domain.OIDCService, error) 
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, providerURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query provider: %v", err)
+		return nil, fmt.Errorf("failed to query provider: %w", err)
 	}
 
 	conf := &oauth2.Config{
@@ -61,7 +61,7 @@ func (s *oidcService) LoginURL(state string) string {
 func (s *oidcService) Exchange(ctx context.Context, code string) (*oauth2.Token, *oidc.IDToken, error) {
 	oauth2Token, err := s.oauth2Config.Exchange(ctx, code)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to exchange token: %v", err)
+		return nil, nil, fmt.Errorf("failed to exchange token: %w", err)
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
@@ -71,7 +71,7 @@ func (s *oidcService) Exchange(ctx context.Context, code string) (*oauth2.Token,
 
 	idToken, err := s.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to verify ID Token: %v", err)
+		return nil, nil, fmt.Errorf("failed to verify ID Token: %w", err)
 	}
 
 	return oauth2Token, idToken, nil

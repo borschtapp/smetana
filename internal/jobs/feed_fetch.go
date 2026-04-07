@@ -48,7 +48,7 @@ func (j *FeedFetchJob) Run(ctx context.Context) (any, error) {
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warnw("feed fetch completed with errors", "error", err)
+		log.Warnw("feed fetch completed with errors", "error", err.Error())
 		return nil, err
 	}
 	return nil, nil
@@ -62,7 +62,7 @@ func (j *FeedFetchJob) fetchOne(ctx context.Context, feed *domain.Feed) error {
 		Status:    domain.JobStatusRunning,
 	}
 	if err := j.schedulerRepo.CreateLog(logRecord); err != nil {
-		log.Warnw("failed to create scheduler log", "feed", feed.Url, "error", err)
+		log.Warnw("failed to create scheduler log", "feed", feed.ID, "error", err.Error())
 	}
 
 	found, imported, fetchErr := j.service.FetchFeed(ctx, feed)
@@ -71,14 +71,14 @@ func (j *FeedFetchJob) fetchOne(ctx context.Context, feed *domain.Feed) error {
 	if fetchErr != nil {
 		logRecord.Status = domain.JobStatusError
 		logRecord.ErrorMessage = fetchErr.Error()
-		log.Warnw("feed fetch failed", "feed", feed, "error", fetchErr)
+		log.Warnw("feed fetch failed", "feed", feed.ID, "url", feed.Url, "error", fetchErr.Error())
 	} else {
 		logRecord.Status = domain.JobStatusSuccess
-		log.Infow("feed fetched", "url", feed.Url, "found", found, "imported", imported)
+		log.Infow("feed fetched", "feed", feed.ID, "url", feed.Url, "found", found, "imported", imported)
 	}
 
 	if err := j.schedulerRepo.UpdateLog(logRecord); err != nil {
-		log.Warnw("failed to update scheduler log", "feed", feed.Url, "error", err)
+		log.Warnw("failed to update scheduler log", "feed", feed.ID, "error", err.Error())
 	}
 	return fetchErr
 }

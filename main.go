@@ -61,15 +61,15 @@ func main() {
 
 	db, err := database.Connect()
 	if err != nil {
-		log.Fatalw("database connection error", "error", err)
+		log.Fatalw("database connection error", "error", err.Error())
 	}
 
 	if !*skipMigrations {
 		if err := database.Migrate(db); err != nil {
-			log.Fatalw("database migration error", "error", err)
+			log.Fatalw("database migration error", "error", err.Error())
 		}
 		if err := database.SeedUnits(db); err != nil {
-			log.Fatalw("unit seed error", "error", err)
+			log.Fatalw("unit seed error", "error", err.Error())
 		}
 	}
 
@@ -102,7 +102,7 @@ func main() {
 	defer stop()
 
 	if err := routes.RegisterApiRoutes(ctx, apiGroup, storageCfg.Storage, db); err != nil {
-		log.Fatalw("failed to register api routes", "error", err)
+		log.Fatalw("failed to register api routes", "error", err.Error())
 	}
 
 	app.Get("/_health", handlers.HealthCheck)
@@ -112,6 +112,6 @@ func main() {
 	if err := app.Listen(fmt.Sprintf("%s:%d", serverHost, serverPort), fiber.ListenConfig{
 		GracefulContext: ctx,
 	}); err != nil {
-		log.Fatalw("server stopped with error", "error", err)
+		log.Fatalw("server stopped with error", "error", err.Error())
 	}
 }

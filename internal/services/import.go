@@ -75,15 +75,15 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 		if ing.Food != nil {
 			if err := s.foodService.FindOrCreate(ctx, ing.Food); err == nil {
 				ing.FoodID = &ing.Food.ID
-				for _, tax := range ing.Food.Taxonomies {
-					if err := s.taxonomyService.FindOrCreate(tax); err == nil {
-						_ = s.foodService.AddTaxonomy(ing.Food.ID, tax)
+				for _, taxonomy := range ing.Food.Taxonomies {
+					if err := s.taxonomyService.FindOrCreate(taxonomy); err == nil {
+						_ = s.foodService.AddTaxonomy(ing.Food.ID, taxonomy)
 					} else {
-						log.Warnw("error creating food taxonomy", "taxonomy", tax, "error", err)
+						log.Warnw("error creating food taxonomy", "taxonomy", taxonomy, "error", err.Error())
 					}
 				}
 			} else {
-				log.Warnw("error creating food", "food", ing.Food, "error", err)
+				log.Warnw("error creating food", "food", ing.Food, "error", err.Error())
 				ing.Food = nil
 			}
 		}
@@ -91,7 +91,7 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 			if err := s.unitService.FindOrCreate(ing.Unit); err == nil {
 				ing.UnitID = &ing.Unit.ID
 			} else {
-				log.Warnw("error creating unit", "unit", ing.Unit, "error", err)
+				log.Warnw("error creating unit", "unit", ing.Unit, "error", err.Error())
 				ing.Unit = nil
 			}
 		}
@@ -102,7 +102,7 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 		if err := s.taxonomyService.FindOrCreate(taxonomy); err == nil {
 			resolved = append(resolved, taxonomy)
 		} else {
-			log.Warnw("error creating taxonomy", "taxonomy", taxonomy, "error", err)
+			log.Warnw("error creating taxonomy", "taxonomy", taxonomy, "error", err.Error())
 		}
 	}
 	recipe.Taxonomies = resolved
@@ -112,14 +112,14 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 		if err := s.equipmentService.FindOrCreate(ctx, equipment); err == nil {
 			resolvedEquipment = append(resolvedEquipment, equipment)
 		} else {
-			log.Warnw("error creating equipment", "equipment", equipment, "error", err)
+			log.Warnw("error creating equipment", "equipment", equipment, "error", err.Error())
 		}
 	}
 	recipe.Equipment = resolvedEquipment
 
 	if recipe.Publisher != nil {
 		if err := s.publisherService.FindOrCreate(ctx, recipe.Publisher); err != nil {
-			log.Warnw("error creating publisher", "publisher", recipe.Publisher, "error", err)
+			log.Warnw("error creating publisher", "publisher", recipe.Publisher, "error", err.Error())
 		} else {
 			recipe.PublisherID = &recipe.Publisher.ID
 		}
@@ -127,7 +127,7 @@ func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe)
 
 	if recipe.Author != nil {
 		if err := s.authorService.FindOrCreate(ctx, recipe.Author); err != nil {
-			log.Warnw("error creating recipe author", "author", recipe.Author, "error", err)
+			log.Warnw("error creating recipe author", "author", recipe.Author, "error", err.Error())
 		} else {
 			recipe.AuthorID = &recipe.Author.ID
 		}
@@ -208,7 +208,7 @@ func (s *importService) processRecipeImages(ctx context.Context, recipe *domain.
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warnw("recipe image processing completed with errors", "error", err)
+		log.Warnw("recipe image processing completed with errors", "error", err.Error())
 	}
 
 	best := selectBestImage(results)
@@ -217,7 +217,7 @@ func (s *importService) processRecipeImages(ctx context.Context, recipe *domain.
 	}
 
 	if err := s.imageService.SetDefault(best); err != nil {
-		log.Warnw("failed to set default recipe image", "error", err)
+		log.Warnw("failed to set default recipe image", "error", err.Error())
 		return
 	}
 
@@ -245,6 +245,6 @@ func (s *importService) processInstructionImages(ctx context.Context, recipe *do
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warnw("instruction image processing completed with errors", "error", err)
+		log.Warnw("instruction image processing completed with errors", "error", err.Error())
 	}
 }

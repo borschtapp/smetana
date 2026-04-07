@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDuration_MarshalJSON(t *testing.T) {
@@ -42,12 +44,8 @@ func TestDuration_MarshalJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := json.Marshal(tt.duration)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if string(result) != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, string(result))
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(result))
 		})
 	}
 }
@@ -79,12 +77,8 @@ func TestDuration_UnmarshalJSON_Integer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result Duration
 			err := json.Unmarshal([]byte(tt.input), &result)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if result != tt.expected {
-				t.Errorf("expected %v, got %v", tt.expected, result)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -126,14 +120,8 @@ func TestDuration_UnmarshalJSON_ISO8601(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result Duration
 			err := json.Unmarshal([]byte(tt.input), &result)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if result != tt.expected {
-				t.Errorf("expected %v (%d seconds), got %v (%d seconds)",
-					tt.expected, int64(tt.expected.Seconds()),
-					result, int64(result.Seconds()))
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -161,9 +149,7 @@ func TestDuration_UnmarshalJSON_Invalid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var result Duration
 			err := json.Unmarshal([]byte(tt.input), &result)
-			if err == nil {
-				t.Errorf("expected error for input %s, got nil", tt.input)
-			}
+			assert.Error(t, err)
 		})
 	}
 }
@@ -197,13 +183,12 @@ func TestFromISO8601(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := DurationFromISO8601(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FromISO8601() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			if !tt.wantErr && result != tt.expected {
-				t.Errorf("expected %v, got %v", tt.expected, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -233,22 +218,13 @@ func TestDuration_RoundTrip(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Unmarshal
 			var ds Duration
 			err := json.Unmarshal([]byte(tt.input), &ds)
-			if err != nil {
-				t.Fatalf("unmarshal error: %v", err)
-			}
+			assert.NoError(t, err)
 
-			// Marshal
 			result, err := json.Marshal(ds)
-			if err != nil {
-				t.Fatalf("marshal error: %v", err)
-			}
-
-			if string(result) != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, string(result))
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(result))
 		})
 	}
 }

@@ -184,7 +184,7 @@ func (s *recipeService) deleteImages(images []*domain.Image) {
 			continue
 		}
 		if err := s.imageService.Delete(image.ID); err != nil {
-			log.Warnw("failed to delete image", "image_id", image.ID, "error", err)
+			log.Warnw("failed to delete image", "image_id", image.ID, "error", err.Error())
 		}
 	}
 }

@@ -32,7 +32,7 @@ func (s *Scheduler) Register(job Job, interval time.Duration) error {
 		gocron.DurationJob(interval),
 		gocron.NewTask(func() {
 			if _, err := job.Run(context.Background()); err != nil {
-				log.Errorw("job execution failed", "job_type", job.JobType(), "error", err)
+				log.Errorw("job execution failed", "job_type", job.JobType(), "error", err.Error())
 			}
 		}),
 		gocron.WithSingletonMode(gocron.LimitModeReschedule),

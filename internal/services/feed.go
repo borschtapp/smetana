@@ -52,7 +52,7 @@ func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 
 	overrides, err := s.recipeService.ByParentIDsAndHousehold(parentIDs, householdID, opts.PreloadOptions)
 	if err != nil {
-		log.Warnw("stream override lookup failed", "household_id", householdID, "error", err)
+		log.Warnw("stream override lookup failed", "household_id", householdID, "error", err.Error())
 		return recipes, total, nil
 	}
 
@@ -83,20 +83,20 @@ func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	if errors.Is(err, sentinels.ErrNotFound) {
 		feed, err = s.createFeed(ctx, url)
 		if err != nil {
-			log.Warnw("subscribe scrape feed failed", "url", url, "error", err)
+			log.Warnw("subscribe scrape feed failed", "url", url, "error", err.Error())
 			return nil, sentinels.Unprocessable("can't scrape feed url")
 		}
 
 		// Submit background task to fetch recipes
 		go func(f *domain.Feed) {
 			if found, imported, err := s.FetchFeed(context.WithoutCancel(ctx), f); err != nil {
-				log.Errorw("background feed fetch failed", "url", url, "error", err)
+				log.Errorw("background feed fetch failed", "url", url, "error", err.Error())
 			} else if found == 0 {
 				log.Warnw("background feed fetch found no recipes", "url", url)
 
 				f.Active = false
 				if updateErr := s.repo.Update(f); updateErr != nil {
-					log.Warnw("failed to deactivate feed with no recipes", "url", url, "error", updateErr)
+					log.Warnw("failed to deactivate feed with no recipes", "url", url, "error", updateErr.Error())
 				}
 			} else {
 				log.Infow("background feed fetched successfully", "url", url, "found", found, "imported", imported)
@@ -133,7 +133,7 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	}
 
 	if err := s.publisherService.FindOrCreate(ctx, feed.Publisher); err != nil {
-		log.Warnw("error creating publisher", "publisher", feed.Publisher, "error", err)
+		log.Warnw("error creating publisher", "publisher", feed.Publisher, "error", err.Error())
 	} else {
 		feed.PublisherID = feed.Publisher.ID
 	}
@@ -169,15 +169,15 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 	recipes, err := s.scraperService.ScrapeFeed(scrapeCtx, feed, opts)
 
 	if err != nil {
-		log.Warnw("failed to scrape feed", "url", feed.Url, "error", err)
+		log.Warnw("failed to scrape feed", "feed", feed.ID, "error", err.Error())
 		feed.ErrorCount++
 		feed.LastSyncSuccess = false
 		if feed.ErrorCount > 3 {
 			feed.Active = false
-			log.Errorw("deactivating feed due to repeated errors", "url", feed.Url)
+			log.Errorw("deactivating feed due to repeated errors", "feed", feed.ID)
 		}
 		if updateErr := s.repo.Update(feed); updateErr != nil {
-			log.Warnw("failed to persist error state for feed", "url", feed.Url, "error", updateErr)
+			log.Warnw("failed to persist error state for feed", "feed", feed.ID, "error", updateErr.Error())
 		}
 		return 0, 0, err
 	}
@@ -199,7 +199,7 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 
 		recipe.FeedID = &feed.ID
 		if _, err := s.importService.ImportRecipe(ctx, recipe); err != nil {
-			log.Warnw("failed to import recipe", "url", url, "error", err)
+			log.Warnw("failed to import recipe", "url", url, "error", err.Error())
 		} else {
 			imported++
 			name := ""
@@ -211,7 +211,7 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 	}
 
 	if err := s.repo.Update(feed); err != nil {
-		log.Warnw("failed to persist feed metadata", "url", feed.Url, "error", err)
+		log.Warnw("failed to persist feed metadata", "feed", feed.ID, "error", err.Error())
 	}
 
 	return len(recipes), imported, nil

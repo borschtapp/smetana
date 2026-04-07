@@ -30,7 +30,7 @@ func (s *publisherService) FindOrCreate(ctx context.Context, pub *domain.Publish
 	if pub != nil && pub.ImagePath == nil && len(pub.Images) > 0 {
 		path, err := s.imageService.PersistRemoteAsDefault(ctx, pub.Images[0], "publishers", pub.ID, "")
 		if err != nil {
-			log.Warnw("unable to process publisher image, skipping", "publisher_id", pub.ID, "image", pub.Images[0], "error", err)
+			log.Warnw("unable to process publisher image, skipping", "publisher_id", pub.ID, "image", pub.Images[0], "error", err.Error())
 		}
 		pub.ImagePath = path
 	}

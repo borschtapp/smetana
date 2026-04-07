@@ -49,7 +49,7 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	}
 	defer func(src multipart.File) {
 		if err := src.Close(); err != nil {
-			log.Warnw("failed to close uploaded file", "error", err)
+			log.Warnw("failed to close uploaded file", "error", err.Error())
 		}
 	}(src)
 
@@ -69,7 +69,7 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 
 	uploaded, err := h.imageService.PersistUploaded(c.Context(), data, contentType)
 	if err != nil {
-		log.Errorw("failed to save uploaded image", "error", err)
+		log.Errorw("failed to save uploaded image", "error", err.Error())
 		return sentinels.InternalServerError("Failed to save image")
 	}
 

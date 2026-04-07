@@ -29,7 +29,7 @@ func (s *equipmentService) FindOrCreate(ctx context.Context, equipment *domain.E
 	if equipment != nil && equipment.ImagePath == nil && len(equipment.Images) > 0 {
 		path, err := s.imageService.PersistRemoteAsDefault(ctx, equipment.Images[0], "equipments", equipment.ID, "")
 		if err != nil {
-			log.Warnw("unable to process equipment image, skipping", "equipment_id", equipment.ID, "image", equipment.Images[0], "error", err)
+			log.Warnw("unable to process equipment image, skipping", "equipment_id", equipment.ID, "image", equipment.Images[0], "error", err.Error())
 		}
 		equipment.ImagePath = path
 	}
