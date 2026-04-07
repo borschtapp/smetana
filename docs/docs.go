@@ -1191,6 +1191,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/feeds/{id}/sync": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Trigger an immediate synchronization of the feed, importing any new recipes. This call is synchronous and blocks until the sync completes. If the connection drops, the sync continues server-side.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feeds"
+                ],
+                "summary": "Sync a feed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Feed ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/households/invites/{code}": {
             "delete": {
                 "tags": [

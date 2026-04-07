@@ -44,6 +44,7 @@ func (f *Feed) BeforeCreate(_ *gorm.DB) error {
 }
 
 type FeedRepository interface {
+	ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (*Feed, error)
 	ByUrl(url string) (*Feed, error)
 	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Feed, int64, error)
 	ListActive() ([]Feed, error)
@@ -62,4 +63,5 @@ type FeedService interface {
 
 	Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]Recipe, int64, error)
 	FetchFeed(ctx context.Context, feed *Feed) (int, int, error)
+	Sync(ctx context.Context, householdID uuid.UUID, feedID uuid.UUID) error
 }

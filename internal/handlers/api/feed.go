@@ -125,6 +125,37 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 	})
 }
 
+// Sync godoc
+// @Summary Sync a feed
+// @Description Trigger an immediate synchronization of the feed, importing any new recipes. This call is synchronous and blocks until the sync completes. If the connection drops, the sync continues server-side.
+// @Tags feeds
+// @Accept json
+// @Produce json
+// @Param id path string true "Feed ID"
+// @Success 204
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/feeds/{id}/sync [post]
+func (h *FeedHandler) Sync(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	claims, err := tokens.ParseJwtClaims(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.feedService.Sync(c.Context(), claims.HouseholdID, id); err != nil {
+		return err
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // ListStream godoc
 // @Summary List a timeline of recipes from subscribed feeds.
 // @Tags feeds

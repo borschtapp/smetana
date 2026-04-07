@@ -146,6 +146,16 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	return feed, nil
 }
 
+func (s *feedService) Sync(ctx context.Context, householdID uuid.UUID, feedID uuid.UUID) error {
+	feed, err := s.repo.ByIDForHousehold(feedID, householdID)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = s.FetchFeed(context.WithoutCancel(ctx), feed)
+	return err
+}
+
 func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, int, error) {
 	imported := 0
 	feed.LastSyncAt = time.Now()

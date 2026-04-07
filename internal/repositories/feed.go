@@ -19,6 +19,16 @@ func NewFeedRepository(db *gorm.DB) domain.FeedRepository {
 	return &feedRepository{db: db}
 }
 
+func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (*domain.Feed, error) {
+	var feed domain.Feed
+	if err := r.db.
+		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id AND feed_subscriptions.household_id = ?", householdID).
+		First(&feed, id).Error; err != nil {
+		return nil, mapErr(err)
+	}
+	return &feed, nil
+}
+
 func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 	var feed domain.Feed
 	if err := r.db.Where("url = ?", url).First(&feed).Error; err != nil {
@@ -94,11 +104,28 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 }
 
 func (r *feedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
-	return mapErr(r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed))
+	if err := mapErr(r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed)); err != nil {
+		return err
+	}
+	if !feed.Active {
+		return mapErr(r.db.Model(feed).Update("active", true).Error)
+	}
+	return nil
 }
 
 func (r *feedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error {
-	return mapErr(r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Delete(&domain.Feed{ID: feedID}))
+	if err := r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Delete(&domain.Feed{ID: feedID}); err != nil {
+		return mapErr(err)
+	}
+
+	var count int64
+	if err := r.db.Table("feed_subscriptions").Where("feed_id = ?", feedID).Count(&count).Error; err != nil {
+		return mapErr(err)
+	}
+	if count == 0 {
+		return mapErr(r.db.Model(&domain.Feed{}).Where("id = ?", feedID).Update("active", false).Error)
+	}
+	return nil
 }
 
 func (r *feedRepository) Create(feed *domain.Feed) error {

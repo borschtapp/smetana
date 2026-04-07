@@ -178,6 +178,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	feedsGroup := router.Group("/feeds", middlewares.Protected())
 	feedsGroup.Post("/", feedHandler.Subscribe)
 	feedsGroup.Delete("/:id", feedHandler.Unsubscribe)
+	feedsGroup.Post("/:id/sync", feedHandler.Sync)
 	feedsGroup.Get("/", feedHandler.ListSubscriptions)
 	feedsGroup.Get("/stream", feedHandler.ListStream)
 
