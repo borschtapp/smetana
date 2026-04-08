@@ -132,7 +132,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Feed ID"
-// @Success 204
+// @Success 200 {object} map[string]interface{}
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
 // @Failure 404 {object} sentinels.Error
@@ -149,11 +149,15 @@ func (h *FeedHandler) Sync(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.feedService.Sync(c.Context(), claims.HouseholdID, id); err != nil {
+	found, imported, err := h.feedService.Sync(c.Context(), claims.HouseholdID, id)
+	if err != nil {
 		return err
 	}
 
-	return c.SendStatus(fiber.StatusNoContent)
+	return c.JSON(fiber.Map{
+		"found":    found,
+		"imported": imported,
+	})
 }
 
 // ListStream godoc

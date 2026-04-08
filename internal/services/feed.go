@@ -146,14 +146,13 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	return feed, nil
 }
 
-func (s *feedService) Sync(ctx context.Context, householdID uuid.UUID, feedID uuid.UUID) error {
+func (s *feedService) Sync(ctx context.Context, householdID uuid.UUID, feedID uuid.UUID) (int, int, error) {
 	feed, err := s.repo.ByIDForHousehold(feedID, householdID)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	_, _, err = s.FetchFeed(context.WithoutCancel(ctx), feed)
-	return err
+	return s.FetchFeed(context.WithoutCancel(ctx), feed)
 }
 
 func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, int, error) {
