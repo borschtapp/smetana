@@ -66,7 +66,7 @@ func (r *shoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, e
 func (r *shoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
 	query := r.db.Preload("Unit").Preload("Food").
 		Where("shopping_list_id = ?", listID).
-		Order("is_bought ASC, created_at DESC")
+		Order("is_bought ASC, created DESC")
 
 	var total int64
 	if err := query.Model(&domain.ShoppingItem{}).Count(&total).Error; err != nil {
