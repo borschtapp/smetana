@@ -70,7 +70,7 @@ Copy `.env.example` to `.env` and adjust as needed. All variables are optional; 
 | `BASE_URL`       | `https://{SERVER_HOST}` | Public base URL — used in image URLs and password reset emails |
 | `LOG_LEVEL`      | `info`                  | Log level (`debug`, `info`, `warn`, `error`, `trace`)          |
 | `LOG_TARGET`     | `console`               | Log output target (`console`, `file`, `both`)                  |
-| `LOG_FILE_PATH`  | `./smetana.log`         | Log file path                                                  |
+| `LOG_FILE_PATH`  | `./data/smetana.log`    | Log file path                                                  |
 | `LOG_REQUESTS`   | `false`                 | Enable HTTP request logging                                    |
 | `LOG_DB_QUERIES` | `false`                 | Enable GORM SQL query logging                                  |
 
@@ -143,7 +143,6 @@ OIDC support is disabled if any of the required variables are missing.
 |-------------------|---------|----------------------------------------------------------------------|
 | `ENABLE_LIMITER`  | `false` | Enable rate limiting on all routes (auth routes always rate-limited) |
 | `ENABLE_COMPRESS` | `false` | Enable gzip/brotli response compression                              |
-| `ENABLE_LOGGER`   | `true`  | Enable request logging                                               |
 
 ---
 

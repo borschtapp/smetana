@@ -29,7 +29,7 @@ func parseLogLevel(level string) log.Level {
 func LoggerConfig() fiber.Handler {
 	logLevel := parseLogLevel(utils.Getenv("LOG_LEVEL", "info"))
 	logTarget := strings.ToLower(utils.Getenv("LOG_TARGET", "console"))
-	logFilePath := utils.Getenv("LOG_FILE_PATH", "./smetana.log")
+	logFilePath := utils.Getenv("LOG_FILE_PATH", "./data/smetana.log")
 	enableRequestsLog := utils.GetenvBool("LOG_REQUESTS", false)
 
 	log.SetLevel(logLevel)
