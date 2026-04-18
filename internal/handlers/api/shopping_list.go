@@ -25,6 +25,7 @@ func NewShoppingListHandler(service domain.ShoppingListService) *ShoppingListHan
 // @Param offset query int false "Number of records to skip (default: 0)"
 // @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.ShoppingList]
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists [get]
 func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
@@ -58,6 +59,8 @@ type ShoppingListForm struct {
 // @Produce json
 // @Param list body ShoppingListForm true "List data"
 // @Success 201 {object} domain.ShoppingList
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists [post]
 func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
@@ -82,8 +85,10 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 // @Tags shopping-lists
 // @Produce json
 // @Param id path string true "List ID"
+// @Param offset query int false "Number of records to skip (default: 0)"
 // @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.ShoppingItem]
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items [get]
 func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
@@ -116,6 +121,8 @@ func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
 // @Tags shopping-lists
 // @Param id path string true "List ID"
 // @Success 204
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id} [delete]
 func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
@@ -149,6 +156,8 @@ type ShoppingItemForm struct {
 // @Param id path string true "List ID"
 // @Param item body ShoppingItemForm true "Item data (object or array)"
 // @Success 201 {object} domain.ShoppingItem
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items [post]
 func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
@@ -196,7 +205,7 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 }
 
 type UpdateShoppingItemForm struct {
-	Name     *string  `json:"name" example:"Organic Milk"`
+	Text     *string  `json:"text" example:"Organic Milk"`
 	Amount   *float64 `validate:"omitempty,gt=0" json:"amount" example:"1"`
 	IsBought *bool    `json:"is_bought" example:"true"`
 }
@@ -210,6 +219,9 @@ type UpdateShoppingItemForm struct {
 // @Param itemId path string true "Item ID"
 // @Param item body UpdateShoppingItemForm true "Item data"
 // @Success 200 {object} domain.ShoppingItem
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items/{itemId} [patch]
 func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
@@ -227,8 +239,8 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 		return err
 	}
 	patch := &domain.ShoppingItem{ID: itemID}
-	if form.Name != nil {
-		patch.Text = *form.Name
+	if form.Text != nil {
+		patch.Text = *form.Text
 	}
 	if form.Amount != nil {
 		patch.Amount = form.Amount
@@ -237,10 +249,11 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 		patch.IsBought = *form.IsBought
 	}
 
-	if err := h.service.UpdateItem(patch, id, tokenData.HouseholdID); err != nil {
+	item, err := h.service.UpdateItem(patch, id, tokenData.HouseholdID)
+	if err != nil {
 		return err
 	}
-	return c.JSON(patch)
+	return c.JSON(item)
 }
 
 // DeleteShoppingItem godoc
@@ -249,6 +262,8 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 // @Param id path string true "List ID"
 // @Param itemId path string true "Item ID"
 // @Success 204
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items/{itemId} [delete]
 func (h *ShoppingListHandler) DeleteShoppingItem(c fiber.Ctx) error {

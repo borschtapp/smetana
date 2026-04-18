@@ -83,7 +83,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 
 // ListSubscriptions godoc
 // @Summary List subscriptions
-// @Description ByIDWithRecipes all feeds the user is subscribed to.
+// @Description Returns all feeds the user is subscribed to.
 // @Tags feeds
 // @Accept json
 // @Produce json

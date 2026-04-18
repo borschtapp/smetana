@@ -80,6 +80,18 @@ func (r *shoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) 
 	return items, total, nil
 }
 
+func (r *shoppingListRepository) FindItemsByFoodIDs(listID uuid.UUID, foodIDs []uuid.UUID) ([]domain.ShoppingItem, error) {
+	if len(foodIDs) == 0 {
+		return nil, nil
+	}
+
+	var items []domain.ShoppingItem
+	err := r.db.Preload("Unit").Preload("Food").
+		Where("shopping_list_id = ? AND food_id IN ?", listID, foodIDs).
+		Find(&items).Error
+	return items, mapErr(err)
+}
+
 func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error {
 	if err := r.db.Create(&items).Error; err != nil {
 		return mapErr(err)

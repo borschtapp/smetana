@@ -4077,7 +4077,7 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": true
                 },
-                "name": {
+                "text": {
                     "type": "string",
                     "example": "Organic Milk"
                 }

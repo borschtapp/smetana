@@ -69,6 +69,23 @@ func (r *householdRepository) FirstOtherMember(householdID uuid.UUID, excludeUse
 	return &user, nil
 }
 
+func (r *householdRepository) MoveUserToNewHousehold(user *domain.User, currency string) (*domain.Household, error) {
+	var newHousehold *domain.Household
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		newHousehold = &domain.Household{Name: user.Name + "'s Household", OwnerID: user.ID, Currency: currency}
+		if err := tx.Omit(clause.Associations).Create(newHousehold).Error; err != nil {
+			return err
+		}
+		return tx.Model(user).Update("household_id", newHousehold.ID).Error
+	})
+	if err != nil {
+		return nil, mapErr(err)
+	}
+
+	user.HouseholdID = newHousehold.ID
+	return newHousehold, nil
+}
+
 func (r *householdRepository) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
 	query := r.db.Where("household_id = ?", householdID)
 

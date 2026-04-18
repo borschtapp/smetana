@@ -62,7 +62,8 @@ func (j *FeedFetchJob) fetchOne(ctx context.Context, feed *domain.Feed) error {
 		Status:    domain.JobStatusRunning,
 	}
 	if err := j.schedulerRepo.CreateLog(logRecord); err != nil {
-		log.Warnw("failed to create scheduler log", "feed", feed.ID, "error", err.Error())
+		log.Errorw("failed to create scheduler log, skipping fetch", "feed", feed.ID, "error", err.Error())
+		return err
 	}
 
 	found, imported, fetchErr := j.service.FetchFeed(ctx, feed)

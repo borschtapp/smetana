@@ -47,11 +47,12 @@ type HouseholdRepository interface {
 
 	Members(householdID uuid.UUID, offset, limit int) ([]User, int64, error)
 	FirstOtherMember(householdID, excludeUserID uuid.UUID) (*User, error)
+	MoveUserToNewHousehold(user *User, currency string) (*Household, error)
 }
 
 type HouseholdService interface {
 	ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, opts types.PreloadOptions) (*Household, error)
-	Update(id uuid.UUID, requesterID uuid.UUID, name string, currency *string) (*Household, error)
+	Update(id uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, name string, currency *string) (*Household, error)
 
 	Members(householdID uuid.UUID, requesterHouseholdID uuid.UUID, offset, limit int) ([]User, int64, error)
 	RemoveMember(householdID uuid.UUID, requesterID, requesterHouseholdID, targetUserID uuid.UUID) (*User, error)

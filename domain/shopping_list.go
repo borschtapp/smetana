@@ -62,6 +62,7 @@ type ShoppingListRepository interface {
 	DeleteList(id uuid.UUID) error
 
 	ListItems(listID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
+	FindItemsByFoodIDs(listID uuid.UUID, foodIDs []uuid.UUID) ([]ShoppingItem, error)
 	ItemByID(id uuid.UUID) (*ShoppingItem, error)
 	CreateItems(items []*ShoppingItem) error
 	UpdateItem(item *ShoppingItem) error
@@ -76,6 +77,7 @@ type ShoppingListService interface {
 
 	Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
 	AddItems(ctx context.Context, items []*ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
-	UpdateItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error
+	GetItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) (*ShoppingItem, error)
+	UpdateItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) (*ShoppingItem, error)
 	DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error
 }

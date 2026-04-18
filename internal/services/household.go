@@ -40,7 +40,11 @@ func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, op
 	return household, nil
 }
 
-func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, name string, currency *string) (*domain.Household, error) {
+func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, name string, currency *string) (*domain.Household, error) {
+	if id != requesterHouseholdID {
+		return nil, sentinels.ErrForbidden
+	}
+
 	household, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -99,7 +103,7 @@ func (s *householdService) ListInvites(householdID uuid.UUID, requesterID uuid.U
 	if householdID != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
-	return s.userRepo.FindTokensByUser(requesterID, domain.TokenTypeHouseholdInvite)
+	return s.userRepo.FindTokensByHousehold(householdID, domain.TokenTypeHouseholdInvite)
 }
 
 func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*domain.User, error) {
@@ -111,7 +115,7 @@ func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*
 		return nil, err
 	}
 	if time.Now().After(token.Expires) {
-		return nil, sentinels.ErrNotFound
+		return nil, sentinels.Unauthorized("invite code has expired")
 	}
 
 	joiningUser, err := s.userRepo.ByID(joiningUserID)
@@ -139,7 +143,7 @@ func (s *householdService) InviteInfo(code string) (*domain.InviteInfo, error) {
 		return nil, err
 	}
 	if time.Now().After(token.Expires) {
-		return nil, sentinels.ErrNotFound
+		return nil, sentinels.Unauthorized("invite code has expired")
 	}
 
 	household, err := s.repo.ByID(token.User.HouseholdID)
@@ -205,13 +209,7 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 		}
 	}
 
-	// Move the removed user to a new solo household, inheriting the currency.
-	newHousehold := &domain.Household{Name: target.Name + "'s Household", OwnerID: target.ID, Currency: household.Currency}
-	if err := s.repo.Create(newHousehold); err != nil {
-		return nil, err
-	}
-	target.HouseholdID = newHousehold.ID
-	if err := s.userRepo.Update(target); err != nil {
+	if _, err := s.repo.MoveUserToNewHousehold(target, household.Currency); err != nil {
 		return nil, err
 	}
 

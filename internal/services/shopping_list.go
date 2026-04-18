@@ -76,24 +76,33 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 		return err
 	}
 
-	existingItems, _, err := s.repo.ListItems(listID, 0, -1)
+	// Pre-resolve text items so we know all food IDs before querying the DB.
+	for _, item := range items {
+		if item.FoodID == nil && item.Text != "" {
+			s.parseItemText(ctx, item)
+		}
+	}
+
+	var foodIDs []uuid.UUID
+	for _, item := range items {
+		if item.FoodID != nil {
+			foodIDs = append(foodIDs, *item.FoodID)
+		}
+	}
+
+	existingItems, err := s.repo.FindItemsByFoodIDs(listID, foodIDs)
 	if err != nil {
 		return err
 	}
 
 	byFood := make(map[uuid.UUID]*domain.ShoppingItem, len(existingItems))
 	for i := range existingItems {
-		if existingItems[i].FoodID != nil {
-			byFood[*existingItems[i].FoodID] = &existingItems[i]
-		}
+		byFood[*existingItems[i].FoodID] = &existingItems[i]
 	}
 
 	var toCreate []*domain.ShoppingItem
 	for _, item := range items {
 		item.ShoppingListID = listID
-		if item.FoodID == nil && item.Text != "" {
-			s.parseItemText(ctx, item)
-		}
 
 		if item.FoodID != nil {
 			if match, ok := byFood[*item.FoodID]; ok {
@@ -150,31 +159,33 @@ func (s *shoppingListService) parseItemText(ctx context.Context, item *domain.Sh
 	}
 }
 
-func (s *shoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
+func (s *shoppingListService) GetItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingItem, error) {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
-		return err
+		return nil, err
 	}
-	// Confirm the item actually belongs to the given list (prevents cross-list item hijacking).
-	existing, err := s.repo.ItemByID(item.ID)
+	item, err := s.repo.ItemByID(itemID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if existing.ShoppingListID != listID {
-		return sentinels.ErrForbidden
+	if item.ShoppingListID != listID {
+		return nil, sentinels.ErrForbidden
 	}
-	return s.repo.UpdateItem(item)
+	return item, nil
+}
+
+func (s *shoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingItem, error) {
+	if _, err := s.GetItem(item.ID, listID, householdID); err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateItem(item); err != nil {
+		return nil, err
+	}
+	return s.repo.ItemByID(item.ID)
 }
 
 func (s *shoppingListService) DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error {
-	if _, err := s.ensureOwned(listID, householdID); err != nil {
+	if _, err := s.GetItem(itemID, listID, householdID); err != nil {
 		return err
-	}
-	existing, err := s.repo.ItemByID(itemID)
-	if err != nil {
-		return err
-	}
-	if existing.ShoppingListID != listID {
-		return sentinels.ErrForbidden
 	}
 	return s.repo.DeleteItem(itemID)
 }

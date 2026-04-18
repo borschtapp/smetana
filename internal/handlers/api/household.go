@@ -88,7 +88,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	household, err := h.householdService.Update(id, tokenData.ID, form.Name, form.Currency)
+	household, err := h.householdService.Update(id, tokenData.ID, tokenData.HouseholdID, form.Name, form.Currency)
 	if err != nil {
 		return err
 	}
@@ -326,7 +326,6 @@ func (h *HouseholdHandler) GetInviteInfo(c fiber.Ctx) error {
 // RevokeHouseholdInvite godoc
 // @Summary Revoke an invite code.
 // @Tags households
-// @Param id path string true "Household ID"
 // @Param code path string true "Invite code"
 // @Success 204
 // @Failure 404 {object} sentinels.Error

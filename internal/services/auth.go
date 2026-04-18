@@ -177,7 +177,7 @@ func (s *authService) ResetPassword(rawToken, newPassword string) error {
 		return err
 	}
 	if time.Now().After(userToken.Expires) {
-		return sentinels.ErrNotFound
+		return sentinels.ErrUnauthorized
 	}
 
 	hash, err := utils.HashPassword(newPassword)

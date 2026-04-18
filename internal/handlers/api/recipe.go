@@ -206,7 +206,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 // @Accept */*
 // @Produce json
 // @Param id path string true "Recipe ID"
-// @Success 201
+// @Success 204
 // @Failure 401 {object} sentinels.Error
 // @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
@@ -373,7 +373,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 // @Produce json
 // @Param id path string true "Recipe ID"
 // @Param equipmentId path string true "Equipment ID"
-// @Success 201
+// @Success 204
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
 // @Failure 404 {object} sentinels.Error

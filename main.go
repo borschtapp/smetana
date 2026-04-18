@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -56,6 +57,10 @@ func main() {
 	skipMigrations := flag.Bool("no-migrate", false, "Skip database migrations")
 	flag.Parse()
 	_ = godotenv.Load()
+
+	if os.Getenv("JWT_SECRET_KEY") == "" {
+		log.Fatal("JWT_SECRET_KEY environment variable is required")
+	}
 
 	log.Infow("starting smetana", "version", version)
 

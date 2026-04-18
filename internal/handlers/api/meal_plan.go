@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
@@ -47,14 +48,18 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 
 	var from, to *time.Time
 	if fromStr != "" {
-		if t, err := time.Parse(dateFmt, fromStr); err == nil {
-			from = &t
+		t, err := time.Parse(dateFmt, fromStr)
+		if err != nil {
+			return sentinels.BadRequest("invalid 'from' date, expected YYYY-MM-DD")
 		}
+		from = &t
 	}
 	if toStr != "" {
-		if t, err := time.Parse(dateFmt, toStr); err == nil {
-			to = &t
+		t, err := time.Parse(dateFmt, toStr)
+		if err != nil {
+			return sentinels.BadRequest("invalid 'to' date, expected YYYY-MM-DD")
 		}
+		to = &t
 	}
 
 	p := types.GetPagination(c)
@@ -103,7 +108,11 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	date, _ := time.Parse(dateFmt, form.Date)
+	date, err := time.Parse(dateFmt, form.Date)
+	if err != nil {
+		return sentinels.BadRequest("invalid 'date' field, expected YYYY-MM-DD")
+	}
+
 	mealPlan := &domain.MealPlan{
 		Date:        date,
 		MealType:    form.MealType,
@@ -164,9 +173,11 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 	}
 
 	if form.Date != nil {
-		if date, err := time.Parse(dateFmt, *form.Date); err == nil {
-			mealPlan.Date = date
+		date, err := time.Parse(dateFmt, *form.Date)
+		if err != nil {
+			return sentinels.BadRequest("invalid 'date' field, expected YYYY-MM-DD")
 		}
+		mealPlan.Date = date
 	}
 	if form.MealType != nil {
 		mealPlan.MealType = *form.MealType

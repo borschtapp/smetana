@@ -24,8 +24,11 @@ func NewFoodHandler(service domain.FoodService) *FoodHandler {
 // @Produce json
 // @Param id path string true "Food UUID"
 // @Success 200 {object} types.ListResponse[domain.FoodPrice]
-// @Router /food/{id}/price [get]
-// @Security BearerAuth
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/price [get]
+// @Security ApiKeyAuth
 func (h *FoodHandler) GetPrice(c fiber.Ctx) error {
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
@@ -68,8 +71,11 @@ type recordPriceRequest struct {
 // @Param id path string true "Food UUID"
 // @Param price body recordPriceRequest true "Price observation"
 // @Success 201 {object} domain.FoodPrice
-// @Router /food/{id}/price [post]
-// @Security BearerAuth
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/price [post]
+// @Security ApiKeyAuth
 func (h *FoodHandler) RecordPrice(c fiber.Ctx) error {
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
@@ -104,8 +110,11 @@ func (h *FoodHandler) RecordPrice(c fiber.Ctx) error {
 // @Param id path string true "Food UUID"
 // @Param priceId path string true "FoodPrice UUID"
 // @Success 204
-// @Router /food/{id}/price/{priceId} [delete]
-// @Security BearerAuth
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/price/{priceId} [delete]
+// @Security ApiKeyAuth
 func (h *FoodHandler) DeletePrice(c fiber.Ctx) error {
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
