@@ -1,277 +1,319 @@
-# Database ER Diagram
+classDiagram
+direction BT
+class authors {
+   text name
+   text description
+   text url
+   text image_path
+   datetime updated
+   datetime created
+   char(36) id
+}
+class collection_recipes {
+   char(36) collection_id
+   char(36) recipe_id
+}
+class collections {
+   char(36) household_id
+   char(36) user_id
+   text name
+   text description
+   datetime updated
+   datetime created
+   char(36) id
+}
+class equipment {
+   text slug
+   text name
+   text description
+   text image_path
+   datetime updated
+   datetime created
+   char(36) id
+}
+class feed_subscriptions {
+   char(36) household_id
+   char(36) feed_id
+}
+class feeds {
+   numeric active
+   char(36) publisher_id
+   text url
+   text name
+   integer error_count
+   datetime last_sync_at
+   numeric last_sync_success
+   datetime updated
+   datetime created
+   char(36) id
+}
+class food {
+   text slug
+   text name
+   text description
+   text image_path
+   char(36) default_unit_id
+   datetime updated
+   datetime created
+   char(36) id
+}
+class food_taxonomies {
+   char(36) taxonomy_id
+   char(36) food_id
+}
+class households {
+   char(36) owner_id
+   text name
+   datetime updated
+   datetime created
+   char(36) id
+}
+class images {
+   text entity_type
+   char(36) entity_id
+   text path
+   integer width
+   integer height
+   text content_type
+   integer size
+   text caption
+   text source_url
+   numeric is_default
+   integer order
+   datetime updated
+   datetime created
+   char(36) id
+}
+class meal_plans {
+   char(36) household_id
+   datetime date
+   text meal_type
+   char(36) recipe_id
+   integer servings
+   text description
+   datetime updated
+   datetime created
+   char(36) id
+}
+class publishers {
+   text name
+   text description
+   text url
+   text image_path
+   datetime updated
+   datetime created
+   char(36) id
+}
+class recipe_equipment {
+   char(36) recipe_id
+   char(36) equipment_id
+}
+class recipe_ingredients {
+   char(36) recipe_id
+   real amount
+   real max_amount
+   char(36) unit_id
+   char(36) food_id
+   text name
+   text description
+   text category
+   text raw_text
+   datetime updated
+   datetime created
+   char(36) id
+}
+class recipe_instructions {
+   char(36) recipe_id
+   char(36) parent_id
+   integer order
+   text title
+   text text
+   text url
+   text image_path
+   text video_url
+   datetime updated
+   datetime created
+   char(36) id
+}
+class recipe_nutritions {
+   text serving_size
+   real calories
+   real fats
+   real fat_sat
+   real fat_trans
+   real cholesterol
+   real sodium
+   real carbs
+   real carb_sugar
+   real carb_fiber
+   real protein
+   real salt
+   real iron
+   real potassium
+   real calcium
+   real phosphorus
+   real magnesium
+   real zinc
+   real copper
+   real selenium
+   real manganese
+   char(36) recipe_id
+}
+class recipe_taxonomies {
+   char(36) recipe_id
+   char(36) taxonomy_id
+}
+class recipes {
+   char(36) parent_id
+   char(36) household_id
+   char(36) user_id
+   text source_url
+   text name
+   text image_path
+   text description
+   text language
+   char(36) author_id
+   char(36) publisher_id
+   char(36) feed_id
+   text text
+   integer prep_time
+   integer cook_time
+   integer total_time
+   text difficulty
+   text method
+   integer yield
+   integer rating_reviews
+   integer rating_count
+   real rating_value
+   text video
+   datetime published
+   datetime updated
+   datetime created
+   char(36) id
+}
+class recipes_saved {
+   char(36) household_id
+   numeric is_favorite
+   datetime updated
+   datetime created
+   char(36) user_id
+   char(36) recipe_id
+}
+class scheduler_logs {
+   text job_type
+   char(36) entity_id
+   datetime started_at
+   datetime completed_at
+   text status
+   text error_message
+   text metadata
+   char(36) id
+}
+class shopping_items {
+   char(36) shopping_list_id
+   real amount
+   text text
+   char(36) unit_id
+   char(36) food_id
+   numeric is_bought
+   datetime updated
+   datetime created
+   char(36) id
+}
+class shopping_lists {
+   char(36) household_id
+   text name
+   numeric is_default
+   datetime updated
+   datetime created
+   char(36) id
+}
+class sqlite_master {
+   text type
+   text name
+   text tbl_name
+   int rootpage
+   text sql
+}
+class taxonomies {
+   text type
+   text slug
+   text label
+   char(36) parent_id
+   char(36) canonical_id
+   datetime updated
+   datetime created
+   char(36) id
+}
+class unit_taxonomies {
+   char(36) taxonomy_id
+   char(36) unit_id
+}
+class units {
+   text slug
+   text name
+   datetime updated
+   datetime created
+   char(36) id
+}
+class user_tokens {
+   char(36) user_id
+   text type
+   text token
+   datetime expires
+   datetime created
+   char(36) id
+}
+class users {
+   char(36) household_id
+   text name
+   text email
+   numeric email_verified
+   text password
+   text image_path
+   datetime updated
+   datetime created
+   char(36) id
+}
 
-```mermaid
-erDiagram
-    %% Core Entities
-    User {
-        uuid ID PK
-        uuid HouseholdID FK
-        string Name
-        string Email
-        string Password
-        string Image
-        bool EmailVerified
-        time Updated
-        time Created
-    }
-
-    Household {
-        uuid ID PK
-        string Name
-        time Updated
-        time Created
-    }
-
-    UserToken {
-        uuid UserID FK
-        string Type
-        string Token
-        time Expires
-        time Created
-    }
-
-    %% Recipe Domain
-    Recipe {
-        uuid ID PK
-        uuid ParentID FK
-        uuid HouseholdID FK
-        uuid UserID FK
-        string Name
-        string Description
-        string Language
-        string IsBasedOn
-        string Text
-        uuid PublisherID FK
-        uuid FeedID FK
-        int Yield
-        string Difficulty
-        string Method
-        duration PrepTime
-        duration CookTime
-        duration TotalTime
-        json Equipment
-        %% Embedded Author
-        string AuthorName
-        string AuthorDescription
-        string AuthorUrl
-        string AuthorImage
-        %% Embedded Nutrition
-        float Calories
-        string ServingSize
-        float Fats
-        float FatSat
-        float FatTrans
-        float Cholesterol
-        float Sodium
-        float Carbs
-        float CarbSugar
-        float CarbFiber
-        float Protein
-        %% Embedded Rating
-        int RatingReviews
-        int RatingCount
-        float RatingValue
-        %% Embedded Video
-        string VideoName
-        string VideoDescription
-        string VideoEmbedUrl
-        string VideoContentUrl
-        string VideoThumbnailUrl
-        %% Timestamps
-        time Published
-        time Updated
-        time Created
-    }
-
-    Collection {
-        uuid ID PK
-        uuid HouseholdID FK
-        uuid UserID FK
-        string Name
-        string Description
-        time Updated
-        time Created
-    }
-
-    %% Explicit Join Models
-    RecipeSaved {
-        uuid UserID PK, FK
-        uuid RecipeID PK, FK
-        uuid HouseholdID FK
-        bool IsFavorite
-        time Updated
-        time Created
-    }
-
-    %% Supporting Entities
-    RecipeImage {
-        uuid ID PK
-        uuid RecipeID FK
-        string Caption
-        int Width
-        int Height
-        string RemoteUrl
-        string DownloadUrl
-        time Updated
-        time Created
-    }
-
-    RecipeIngredient {
-        uuid ID PK
-        uuid RecipeID FK
-        uuid FoodID FK
-        uuid UnitID FK
-        float Amount
-        float MaxAmount
-        string Description
-        string Category
-        string RawText
-        time Updated
-        time Created
-    }
-
-    RecipeInstruction {
-        uuid ID PK
-        uuid RecipeID FK
-        uuid ParentID FK
-        int Order
-        string Title
-        string Text
-        string Url
-        string Image
-        string DownloadUrl
-        string Video
-        time Updated
-        time Created
-    }
-
-    Food {
-        uuid ID PK
-        string Name
-        uuid DefaultUnitID FK
-        string Icon
-        time Updated
-        time Created
-    }
-
-    Unit {
-        uuid ID PK
-        string Name
-        string Code
-        time Created
-    }
-
-    Taxonomy {
-        uuid ID PK
-        string Type
-        string Label
-        string Slug
-        uuid ParentID FK
-        uuid CanonicalID FK
-        time Updated
-        time Created
-    }
-
-    Publisher {
-        uuid ID PK
-        string Name
-        string Description
-        string Url
-        string Image
-        time Created
-    }
-
-    Feed {
-        uuid ID PK
-        bool Active
-        uuid PublisherID FK
-        string Url
-        string Name
-        int ErrorCount
-        time LastSyncAt
-        bool LastSyncSuccess
-        time Updated
-        time Created
-    }
-
-    SchedulerLog {
-        uuid ID PK
-        string JobType
-        uuid EntityID FK
-        time StartedAt
-        time CompletedAt
-        string Status
-        string ErrorMessage
-        string Metadata
-    }
-
-    MealPlan {
-        uuid ID PK
-        uuid HouseholdID FK
-        time Date
-        string MealType
-        uuid RecipeID FK
-        int Servings
-        string Description
-        time Updated
-        time Created
-    }
-
-    ShoppingList {
-        uuid ID PK
-        uuid HouseholdID FK
-        float Amount
-        string Text
-        uuid UnitID FK
-        uuid FoodID FK
-        bool IsBought
-        time Updated
-        time Created
-    }
-
-    %% Relationships
-
-    %% User & Household
-    Household ||--o{ User : "has members (1:N)"
-    User ||--o{ UserToken : "has"
-    User ||--o{ RecipeSaved : "saves"
-    Household ||--o{ RecipeSaved : "associated with"
-    Recipe ||--o{ RecipeSaved : "is saved (1:N)"
-
-    %% M:N Relationships
-    Household }|..|{ Feed : "subscribes (feed_subscriptions)"
-    Collection }|..|{ Recipe : "contains (collection_recipes)"
-
-    Recipe }|..|{ Taxonomy : "categorized by (recipe_taxonomies)"
-    Food }|..|{ Taxonomy : "categorized by"
-    Publisher }|..|{ Taxonomy : "categorized by"
-    Unit }|..|{ Taxonomy : "categorized by"
-
-    %% Direct Relationships
-    Household ||--o{ Collection : "owns"
-    Household ||--o{ MealPlan : "has"
-    Household ||--o{ ShoppingList : "has"
-
-    Publisher ||--o{ Recipe : "publishes (1:N)"
-    Publisher ||--o{ Feed : "has (1:N)"
-    Feed ||--o{ Recipe : "sources (1:N)"
-
-    Recipe |o..o| Recipe : "forked from (ParentID)"
-
-    Recipe ||--o{ RecipeImage : "contains"
-    Recipe ||--o{ RecipeIngredient : "contains"
-    Recipe ||--o{ RecipeInstruction : "contains"
-
-    RecipeIngredient }|..o| Unit : "measures in"
-    RecipeIngredient }|..o| Food : "is type of"
-
-    RecipeInstruction |o..o| RecipeInstruction : "sub-step of"
-
-    Food }|..o| Unit : "default unit"
-
-    Taxonomy |o..o| Taxonomy : "parent/canonical"
-
-    MealPlan }|..o| Recipe : "plans"
-    ShoppingList }|..o| Unit : "measures in"
-    ShoppingList }|..o| Food : "is type of"
-```
+collection_recipes  -->  collections : collection_id:id
+collection_recipes  -->  recipes : recipe_id:id
+collections  -->  households : household_id:id
+collections  -->  users : user_id:id
+feed_subscriptions  -->  feeds : feed_id:id
+feed_subscriptions  -->  households : household_id:id
+feeds  -->  publishers : publisher_id:id
+food  -->  units : default_unit_id:id
+food_taxonomies  -->  food : food_id:id
+food_taxonomies  -->  taxonomies : taxonomy_id:id
+meal_plans  -->  households : household_id:id
+meal_plans  -->  recipes : recipe_id:id
+recipe_equipment  -->  equipment : equipment_id:id
+recipe_equipment  -->  recipes : recipe_id:id
+recipe_ingredients  -->  food : food_id:id
+recipe_ingredients  -->  recipes : recipe_id:id
+recipe_ingredients  -->  units : unit_id:id
+recipe_instructions  -->  recipe_instructions : parent_id:id
+recipe_instructions  -->  recipes : recipe_id:id
+recipe_nutritions  -->  recipes : recipe_id:id
+recipe_taxonomies  -->  recipes : recipe_id:id
+recipe_taxonomies  -->  taxonomies : taxonomy_id:id
+recipes  -->  authors : author_id:id
+recipes  -->  feeds : feed_id:id
+recipes  -->  households : household_id:id
+recipes  -->  publishers : publisher_id:id
+recipes  -->  recipes : parent_id:id
+recipes  -->  users : user_id:id
+recipes_saved  -->  households : household_id:id
+recipes_saved  -->  recipes : recipe_id:id
+recipes_saved  -->  users : user_id:id
+shopping_items  -->  food : food_id:id
+shopping_items  -->  shopping_lists : shopping_list_id:id
+shopping_items  -->  units : unit_id:id
+shopping_lists  -->  households : household_id:id
+taxonomies  -->  taxonomies : canonical_id:id
+taxonomies  -->  taxonomies : parent_id:id
+unit_taxonomies  -->  taxonomies : taxonomy_id:id
+unit_taxonomies  -->  units : unit_id:id
+user_tokens  -->  users : user_id:id
+users  -->  households : household_id:id

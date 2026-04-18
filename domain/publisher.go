@@ -36,11 +36,11 @@ func (p *Publisher) BeforeCreate(_ *gorm.DB) error {
 }
 
 type PublisherRepository interface {
-	Search(opts types.SearchOptions) ([]Publisher, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Publisher, int64, error)
 	FindOrCreate(pub *Publisher) error
 }
 
 type PublisherService interface {
-	Search(opts types.SearchOptions) ([]Publisher, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Publisher, int64, error)
 	FindOrCreate(ctx context.Context, pub *Publisher) error
 }

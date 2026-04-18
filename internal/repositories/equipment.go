@@ -1,10 +1,14 @@
 package repositories
 
 import (
+	"strings"
+
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -16,19 +20,65 @@ func NewEquipmentRepository(db *gorm.DB) domain.EquipmentRepository {
 	return &equipmentRepository{db: db}
 }
 
-func (r *equipmentRepository) Search(query string, offset, limit int) ([]domain.Equipment, int64, error) {
+func (r *equipmentRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Equipment, int64, error) {
 	q := r.db.Model(&domain.Equipment{})
-	if query != "" {
-		q = q.Where("name LIKE ? OR slug LIKE ?", "%"+query+"%", "%"+query+"%")
+	if opts.SearchQuery != "" {
+		q = q.Where("name LIKE ? OR slug LIKE ?", "%"+opts.SearchQuery+"%", "%"+opts.SearchQuery+"%")
+	}
+
+	if householdID != uuid.Nil && opts.Scope != "" {
+		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+		q = q.Where(`EXISTS (
+			SELECT 1 FROM recipe_equipment
+			JOIN recipes ON recipes.id = recipe_equipment.recipe_id
+			WHERE recipe_equipment.equipment_id = equipment.id
+			AND `+scopeWhere+`
+		)`, scopeArgs...)
 	}
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, mapErr(err)
+	} else if total == 0 {
+		return nil, 0, nil
+	}
+
+	sortByRecipes := strings.EqualFold(opts.Sort, "total_recipes")
+
+	selectCols := []string{"equipment.*"}
+	var selectArgs []any
+
+	if opts.Has("total_recipes") || sortByRecipes {
+		if householdID == uuid.Nil {
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipe_equipment
+				WHERE recipe_equipment.equipment_id = equipment.id
+			) AS total_recipes`)
+		} else {
+			scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipe_equipment
+				JOIN recipes ON recipes.id = recipe_equipment.recipe_id
+				WHERE recipe_equipment.equipment_id = equipment.id
+				AND `+scopeWhere+`
+			) AS total_recipes`)
+			selectArgs = append(selectArgs, scopeArgs...)
+		}
+	}
+
+	q = q.Select(strings.Join(selectCols, ", "), selectArgs...)
+
+	if sortByRecipes {
+		q = q.Order("total_recipes " + opts.Order)
+	} else {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Table: "equipment", Name: opts.Sort},
+			Desc:   strings.EqualFold(opts.Order, "DESC"),
+		})
 	}
 
 	var equipment []domain.Equipment
-	if err := q.Offset(offset).Limit(limit).Find(&equipment).Error; err != nil {
+	if err := q.Offset(opts.Offset).Limit(opts.Limit).Find(&equipment).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}
 	return equipment, total, nil

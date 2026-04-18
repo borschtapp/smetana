@@ -39,11 +39,10 @@ func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
 		return err
 	}
 
-	opts, err := types.GetSearchOptions(c)
+	opts, err := types.GetSearchOptions(c, types.SearchConfig{
+		AllowedPreloads: []string{"last3_recipes", "total_recipes"},
+	})
 	if err != nil {
-		return err
-	}
-	if err := opts.Validate("last3_recipes", "total_recipes"); err != nil {
 		return err
 	}
 
@@ -213,11 +212,10 @@ func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
 		return err
 	}
 
-	opts, err := types.GetSearchOptions(c)
+	opts, err := types.GetSearchOptions(c, types.SearchConfig{
+		AllowedPreloads: []string{"publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"},
+	})
 	if err != nil {
-		return err
-	}
-	if err := opts.Validate("publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"); err != nil {
 		return err
 	}
 

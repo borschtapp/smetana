@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/types"
@@ -18,8 +19,8 @@ func NewPublisherService(repo domain.PublisherRepository, imageService domain.Im
 	return &publisherService{repo: repo, imageService: imageService}
 }
 
-func (s *publisherService) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
-	return s.repo.Search(opts)
+func (s *publisherService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Publisher, int64, error) {
+	return s.repo.Search(householdID, opts)
 }
 
 func (s *publisherService) FindOrCreate(ctx context.Context, pub *domain.Publisher) error {

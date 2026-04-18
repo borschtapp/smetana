@@ -378,6 +378,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/authors": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "List recipe authors stored in the database.",
+                "consumes": [
+                    "*/*"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "authors"
+                ],
+                "summary": "List all recipe authors.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Text search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, total_recipes (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to skip (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_Author"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/collections": {
             "get": {
                 "security": [
@@ -864,7 +942,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Search for equipment by name or slug.",
+                "description": "List all equipment stored in the database, with optional search and filtering.",
                 "consumes": [
                     "*/*"
                 ],
@@ -874,12 +952,36 @@ const docTemplate = `{
                 "tags": [
                     "equipment"
                 ],
-                "summary": "Search equipment.",
+                "summary": "List all equipment.",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Search query (matches name or slug)",
                         "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, total_recipes (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
                         "in": "query"
                     },
                     {
@@ -890,7 +992,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Maximum number of records to return (default: 10) (default: 20)",
+                        "description": "Maximum number of records to return (default: 20)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -2025,7 +2127,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort by field: id, name, created (default: id)",
+                        "description": "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, total_recipes (default: id)",
                         "name": "sort",
                         "in": "query"
                     },
@@ -2071,7 +2179,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Query user's recipes by text, tags. Supports full-text search on name/description.",
+                "description": "List recipes stored in the database, with optional search and filtering. Supports pagination and sorting.",
                 "consumes": [
                     "*/*"
                 ],
@@ -2081,7 +2189,7 @@ const docTemplate = `{
                 "tags": [
                     "recipes"
                 ],
-                "summary": "Search recipes.",
+                "summary": "List stored recipes.",
                 "parameters": [
                     {
                         "type": "string",
@@ -3390,6 +3498,30 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Comma-separated extras to include: total_recipes",
+                        "name": "preload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field: id, name, created, total_recipes (default: id)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order: asc or desc (default: desc)",
+                        "name": "order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Number of records to skip (default: 0)",
                         "name": "offset",
@@ -3425,7 +3557,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Search for units by name or slug, optionally filtered by measurement system.",
+                "description": "List all the units stored in the database, with optional search and filtering.",
                 "consumes": [
                     "*/*"
                 ],
@@ -3435,7 +3567,7 @@ const docTemplate = `{
                 "tags": [
                     "units"
                 ],
-                "summary": "Search units.",
+                "summary": "List all the units.",
                 "parameters": [
                     {
                         "type": "string",
@@ -4163,6 +4295,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/domain.Recipe"
                     }
                 },
+                "total_recipes": {
+                    "type": "integer"
+                },
                 "url": {
                     "type": "string"
                 }
@@ -4217,6 +4352,9 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
+                },
+                "total_recipes": {
+                    "type": "integer"
                 }
             }
         },
@@ -4894,6 +5032,9 @@ const docTemplate = `{
                 "slug": {
                     "type": "string"
                 },
+                "total_recipes": {
+                    "type": "integer"
+                },
                 "type": {
                     "description": "diet, category, cuisine, keyword",
                     "type": "string"
@@ -5052,6 +5193,20 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "integer"
+                }
+            }
+        },
+        "types.ListResponse-domain_Author": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Author"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
                 }
             }
         },

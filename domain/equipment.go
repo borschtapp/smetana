@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -18,7 +19,8 @@ type Equipment struct {
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	Images []*Image `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
+	TotalRecipes *int64   `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Images       []*Image `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 }
 
 func (e *Equipment) BeforeCreate(_ *gorm.DB) error {
@@ -32,10 +34,10 @@ func (e *Equipment) BeforeCreate(_ *gorm.DB) error {
 
 type EquipmentRepository interface {
 	FindOrCreate(equipment *Equipment) error
-	Search(query string, offset, limit int) ([]Equipment, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Equipment, int64, error)
 }
 
 type EquipmentService interface {
 	FindOrCreate(ctx context.Context, equipment *Equipment) error
-	Search(query string, offset, limit int) ([]Equipment, int64, error)
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Equipment, int64, error)
 }

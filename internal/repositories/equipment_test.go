@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
@@ -12,6 +13,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/repositories"
+	"borscht.app/smetana/internal/types"
 )
 
 func openPrivateTestDB(t *testing.T) *gorm.DB {
@@ -90,7 +92,7 @@ func TestEquipmentRepository_Search_ReturnsMatchingByName(t *testing.T) {
 	require.NoError(t, db.Create(&domain.Equipment{Name: "Rice Cooker", Slug: "rice cooker"}).Error)
 	require.NoError(t, db.Create(&domain.Equipment{Name: "Blender", Slug: "blender"}).Error)
 
-	results, total, err := repo.Search("cooker", 0, 10)
+	results, total, err := repo.Search(uuid.Nil, types.SearchOptions{SearchQuery: "cooker", Sort: "id", Pagination: types.Pagination{Limit: 10}})
 
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, total)
@@ -104,7 +106,7 @@ func TestEquipmentRepository_Search_EmptyQuery_ReturnsAll(t *testing.T) {
 	require.NoError(t, db.Create(&domain.Equipment{Name: "Pan", Slug: "pan"}).Error)
 	require.NoError(t, db.Create(&domain.Equipment{Name: "Pot", Slug: "pot"}).Error)
 
-	_, total, err := repo.Search("", 0, 10)
+	_, total, err := repo.Search(uuid.Nil, types.SearchOptions{Sort: "id", Pagination: types.Pagination{Limit: 10}})
 
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, total)

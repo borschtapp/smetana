@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"borscht.app/smetana/internal/sentinels"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -19,13 +20,20 @@ func NewPublisherRepository(db *gorm.DB) domain.PublisherRepository {
 	return &publisherRepository{db: db}
 }
 
-func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publisher, int64, error) {
-	var publishers []domain.Publisher
-
+func (r *publisherRepository) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Publisher, int64, error) {
 	q := r.db.Model(&domain.Publisher{})
 
 	if opts.SearchQuery != "" {
 		q = q.Where("name LIKE ?", "%"+opts.SearchQuery+"%")
+	}
+
+	if householdID != uuid.Nil && opts.Scope != "" {
+		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+		q = q.Where(`EXISTS (
+			SELECT 1 FROM recipes
+			WHERE recipes.publisher_id = publishers.id
+			AND `+scopeWhere+`
+		)`, scopeArgs...)
 	}
 
 	var total int64
@@ -35,31 +43,49 @@ func (r *publisherRepository) Search(opts types.SearchOptions) ([]domain.Publish
 		return nil, 0, nil
 	}
 
-	q = q.Select("publishers.*")
+	sortByRecipes := strings.EqualFold(opts.Sort, "total_recipes")
 
-	if len(opts.Preload) != 0 {
-		if opts.Has("feeds") {
-			q = q.Preload("Feeds")
-		}
+	selectCols := []string{"publishers.*"}
+	var selectArgs []any
 
-		if opts.Has("images") {
-			q = q.Preload("Images")
-		}
-
-		if opts.Has("total_recipes") {
-			q = q.Select(`publishers.*, (
-					SELECT COUNT(*) FROM recipes
-					WHERE recipes.publisher_id = publishers.id
-				) AS total_recipes`)
+	if opts.Has("total_recipes") || sortByRecipes {
+		if householdID == uuid.Nil { // overall total, all households
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipes
+				WHERE recipes.publisher_id = publishers.id
+			) AS total_recipes`)
+		} else {
+			scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipes
+				WHERE recipes.publisher_id = publishers.id
+				AND `+scopeWhere+`
+			) AS total_recipes`)
+			selectArgs = append(selectArgs, scopeArgs...)
 		}
 	}
 
-	q = q.Offset(opts.Offset).Limit(opts.Limit)
-	q = q.Order(clause.OrderByColumn{
-		Column: clause.Column{Table: "publishers", Name: opts.Sort},
-		Desc:   strings.EqualFold(opts.Order, "DESC"),
-	})
+	q = q.Select(strings.Join(selectCols, ", "), selectArgs...)
 
+	if opts.Has("feeds") {
+		q = q.Preload("Feeds")
+	}
+	if opts.Has("images") {
+		q = q.Preload("Images")
+	}
+
+	if sortByRecipes {
+		q = q.Order("total_recipes " + opts.Order)
+	} else {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Table: "publishers", Name: opts.Sort},
+			Desc:   strings.EqualFold(opts.Order, "DESC"),
+		})
+	}
+
+	q = q.Offset(opts.Offset).Limit(opts.Limit)
+
+	var publishers []domain.Publisher
 	if err := q.Find(&publishers).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}

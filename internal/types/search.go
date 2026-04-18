@@ -2,6 +2,8 @@ package types
 
 import (
 	"encoding/json"
+	"slices"
+	"strings"
 
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
@@ -22,13 +24,22 @@ type SearchOptions struct {
 
 	Sort  string
 	Order string
+	Scope string
 
 	Pagination
 	PreloadOptions
 }
 
-// GetSearchOptions extracts search parameters from the request context.
-func GetSearchOptions(c fiber.Ctx) (SearchOptions, error) {
+var baseSortFields = []string{"id", "name", "updated", "created"}
+
+// SearchConfig defines validation rules applied inside GetSearchOptions.
+type SearchConfig struct {
+	AllowedSorts    []string
+	AllowedPreloads []string
+}
+
+// GetSearchOptions extracts and validates search parameters from the request context.
+func GetSearchOptions(c fiber.Ctx, cfg SearchConfig) (SearchOptions, error) {
 	searchQuery := c.Query("q")
 	taxonomies := utils.CsvSplitUUID(c.Query("taxonomies"))
 	publishers := utils.CsvSplitUUID(c.Query("publishers"))
@@ -45,14 +56,25 @@ func GetSearchOptions(c fiber.Ctx) (SearchOptions, error) {
 	}
 
 	sort := c.Query("sort", "id") // ids are UUIDv7 which are sortable by creation time
-	order := c.Query("order", "DESC")
+	order := strings.ToUpper(c.Query("order", "DESC"))
+	scope := c.Query("scope")
 
-	if !utils.ContainsFold(sort, "id", "name", "updated", "created") {
-		return SearchOptions{}, sentinels.BadRequest("invalid sort parameter, must be 'id', 'name', 'updated', or 'created'")
+	if order != "ASC" && order != "DESC" {
+		return SearchOptions{}, sentinels.BadRequest("invalid order parameter, must be 'ASC' or 'DESC'")
 	}
 
-	if !utils.ContainsFold(order, "ASC", "DESC") {
-		return SearchOptions{}, sentinels.BadRequest("invalid order parameter, must be 'asc' or 'desc'")
+	validSorts := slices.Concat(baseSortFields, cfg.AllowedSorts)
+	if !utils.ContainsFold(sort, validSorts...) {
+		return SearchOptions{}, sentinels.BadRequest("invalid sort parameter, must be one of: " + strings.Join(validSorts, ", "))
+	}
+
+	if scope != "" && !utils.ContainsFold(scope, "feeds", "saved") {
+		return SearchOptions{}, sentinels.BadRequest("invalid scope parameter, must be 'feeds' or 'saved'")
+	}
+
+	preloadOpts := GetPreloadOptions(c)
+	if err := preloadOpts.Validate(cfg.AllowedPreloads...); err != nil {
+		return SearchOptions{}, err
 	}
 
 	return SearchOptions{
@@ -66,8 +88,9 @@ func GetSearchOptions(c fiber.Ctx) (SearchOptions, error) {
 
 		Sort:           sort,
 		Order:          order,
+		Scope:          scope,
 		Pagination:     GetPagination(c),
-		PreloadOptions: GetPreloadOptions(c),
+		PreloadOptions: preloadOpts,
 	}, nil
 }
 

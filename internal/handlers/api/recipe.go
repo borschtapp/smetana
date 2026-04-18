@@ -15,9 +15,9 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 	return &RecipeHandler{recipeService: recipeService}
 }
 
-// Search godoc
-// @Summary Search recipes.
-// @Description Query user's recipes by text, tags. Supports full-text search on name/description.
+// GetRecipes godoc
+// @Summary List stored recipes.
+// @Description List recipes stored in the database, with optional search and filtering. Supports pagination and sorting.
 // @Tags recipes
 // @Accept */*
 // @Produce json
@@ -37,17 +37,16 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [get]
-func (h *RecipeHandler) Search(c fiber.Ctx) error {
+func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
 	tokenData, err := tokens.ParseJwtClaims(c)
 	if err != nil {
 		return err
 	}
 
-	opts, err := types.GetSearchOptions(c)
+	opts, err := types.GetSearchOptions(c, types.SearchConfig{
+		AllowedPreloads: []string{"publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"},
+	})
 	if err != nil {
-		return err
-	}
-	if err := opts.Validate("publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"); err != nil {
 		return err
 	}
 

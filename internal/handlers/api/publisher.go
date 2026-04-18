@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
 )
 
@@ -23,7 +24,8 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Produce json
 // @Param q query string false "Text search"
 // @Param preload query string false "Comma-separated extras to include: feeds, images, last3_recipes and total_recipes"
-// @Param sort query string false "Sort by field: id, name, created (default: id)"
+// @Param scope query string false "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)"
+// @Param sort query string false "Sort by field: id, name, created, total_recipes (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param offset query int false "Number of records to skip (default: 0)"
 // @Param limit query int false "Maximum number of records to return (default: 10)"
@@ -32,15 +34,20 @@ func NewPublisherHandler(publisherService domain.PublisherService) *PublisherHan
 // @Security ApiKeyAuth
 // @Router /api/v1/publishers [get]
 func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
-	opts, err := types.GetSearchOptions(c)
+	opts, err := types.GetSearchOptions(c, types.SearchConfig{
+		AllowedPreloads: []string{"feeds", "images", "last3_recipes", "total_recipes"},
+		AllowedSorts:    []string{"total_recipes"},
+	})
 	if err != nil {
 		return err
 	}
-	if err := opts.Validate("feeds", "images", "last3_recipes", "total_recipes"); err != nil {
+
+	tokenData, err := tokens.ParseJwtClaims(c)
+	if err != nil {
 		return err
 	}
 
-	publishers, total, err := h.publisherService.Search(opts)
+	publishers, total, err := h.publisherService.Search(tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}

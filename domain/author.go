@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -18,8 +19,9 @@ type Author struct {
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	Recipes []*Recipe `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
-	Images  []*Image  `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	TotalRecipes *int64    `gorm:"->;-:migration" json:"total_recipes,omitempty"`
+	Recipes      []*Recipe `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
+	Images       []*Image  `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (a *Author) BeforeCreate(_ *gorm.DB) error {
@@ -33,8 +35,10 @@ func (a *Author) BeforeCreate(_ *gorm.DB) error {
 
 type AuthorRepository interface {
 	FindOrCreate(author *Author) error
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Author, int64, error)
 }
 
 type AuthorService interface {
 	FindOrCreate(ctx context.Context, author *Author) error
+	Search(householdID uuid.UUID, opts types.SearchOptions) ([]Author, int64, error)
 }

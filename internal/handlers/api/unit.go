@@ -15,9 +15,9 @@ func NewUnitHandler(service domain.UnitService) *UnitHandler {
 	return &UnitHandler{service: service}
 }
 
-// Search godoc
-// @Summary Search units.
-// @Description Search for units by name or slug, optionally filtered by measurement system.
+// GetUnits godoc
+// @Summary List all the units.
+// @Description List all the units stored in the database, with optional search and filtering.
 // @Tags units
 // @Accept */*
 // @Produce json
@@ -29,7 +29,7 @@ func NewUnitHandler(service domain.UnitService) *UnitHandler {
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
 // @Router /api/v1/units [get]
-func (h *UnitHandler) Search(c fiber.Ctx) error {
+func (h *UnitHandler) GetUnits(c fiber.Ctx) error {
 	query := c.Query("q")
 	p := types.GetPagination(c)
 

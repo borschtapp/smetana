@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type equipmentService struct {
@@ -17,8 +19,8 @@ func NewEquipmentService(repo domain.EquipmentRepository, imageService domain.Im
 	return &equipmentService{repo: repo, imageService: imageService}
 }
 
-func (s *equipmentService) Search(query string, offset, limit int) ([]domain.Equipment, int64, error) {
-	return s.repo.Search(query, offset, limit)
+func (s *equipmentService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Equipment, int64, error) {
+	return s.repo.Search(householdID, opts)
 }
 
 func (s *equipmentService) FindOrCreate(ctx context.Context, equipment *domain.Equipment) error {

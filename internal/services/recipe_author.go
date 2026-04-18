@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type authorService struct {
@@ -15,6 +17,10 @@ type authorService struct {
 
 func NewAuthorService(repo domain.AuthorRepository, imageService domain.ImageService) domain.AuthorService {
 	return &authorService{repo: repo, imageService: imageService}
+}
+
+func (s *authorService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Author, int64, error) {
+	return s.repo.Search(householdID, opts)
 }
 
 func (s *authorService) FindOrCreate(ctx context.Context, author *domain.Author) error {

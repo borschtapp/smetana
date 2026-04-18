@@ -1,10 +1,14 @@
 package repositories
 
 import (
+	"strings"
+
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/types"
 )
 
 type taxonomyRepository struct {
@@ -15,20 +19,65 @@ func NewTaxonomyRepository(db *gorm.DB) domain.TaxonomyRepository {
 	return &taxonomyRepository{db: db}
 }
 
-func (r *taxonomyRepository) List(taxonomyType string, offset, limit int) ([]domain.Taxonomy, int64, error) {
-	query := r.db.Model(&domain.Taxonomy{})
-
+func (r *taxonomyRepository) Search(taxonomyType string, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Taxonomy, int64, error) {
+	q := r.db.Model(&domain.Taxonomy{})
 	if taxonomyType != "" {
-		query = query.Where("type = ?", taxonomyType)
+		q = q.Where("type = ?", taxonomyType)
+	}
+
+	if householdID != uuid.Nil && opts.Scope != "" {
+		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+		q = q.Where(`EXISTS (
+			SELECT 1 FROM recipe_taxonomies
+			JOIN recipes ON recipes.id = recipe_taxonomies.recipe_id
+			WHERE recipe_taxonomies.taxonomy_id = taxonomies.id
+			AND `+scopeWhere+`
+		)`, scopeArgs...)
 	}
 
 	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, mapErr(err)
+	} else if total == 0 {
+		return nil, 0, nil
+	}
+
+	sortByRecipes := strings.EqualFold(opts.Sort, "total_recipes")
+
+	selectCols := []string{"taxonomies.*"}
+	var selectArgs []any
+
+	if opts.Has("total_recipes") || sortByRecipes {
+		if householdID == uuid.Nil {
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipe_taxonomies
+				WHERE recipe_taxonomies.taxonomy_id = taxonomies.id
+			) AS total_recipes`)
+		} else {
+			scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+			selectCols = append(selectCols, `(
+				SELECT COUNT(*) FROM recipe_taxonomies
+				JOIN recipes ON recipes.id = recipe_taxonomies.recipe_id
+				WHERE recipe_taxonomies.taxonomy_id = taxonomies.id
+				AND `+scopeWhere+`
+			) AS total_recipes`)
+			selectArgs = append(selectArgs, scopeArgs...)
+		}
+	}
+
+	q = q.Select(strings.Join(selectCols, ", "), selectArgs...)
+
+	if sortByRecipes {
+		q = q.Order("total_recipes " + opts.Order)
+	} else {
+		q = q.Order(clause.OrderByColumn{
+			Column: clause.Column{Table: "taxonomies", Name: opts.Sort},
+			Desc:   strings.EqualFold(opts.Order, "DESC"),
+		})
 	}
 
 	var taxonomies []domain.Taxonomy
-	if err := query.Offset(offset).Limit(limit).Find(&taxonomies).Error; err != nil {
+	if err := q.Offset(opts.Offset).Limit(opts.Limit).Find(&taxonomies).Error; err != nil {
 		return nil, 0, mapErr(err)
 	}
 	return taxonomies, total, nil

@@ -8,33 +8,32 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-type TaxonomyHandler struct {
-	taxonomyService domain.TaxonomyService
+type AuthorHandler struct {
+	service domain.AuthorService
 }
 
-func NewTaxonomyHandler(taxonomyService domain.TaxonomyService) *TaxonomyHandler {
-	return &TaxonomyHandler{taxonomyService: taxonomyService}
+func NewAuthorHandler(service domain.AuthorService) *AuthorHandler {
+	return &AuthorHandler{service: service}
 }
 
-// GetTaxonomies godoc
-// @Summary List all taxonomies.
-// @Description Returns a list of all taxonomies. Supports filtering by type.
-// @Tags taxonomies
+// GetAuthors godoc
+// @Summary List all recipe authors.
+// @Description List recipe authors stored in the database.
+// @Tags authors
 // @Accept */*
 // @Produce json
-// @Param type query string false "Filter by taxonomy type"
+// @Param q query string false "Text search"
 // @Param preload query string false "Comma-separated extras to include: total_recipes"
 // @Param scope query string false "Restrict results to recipes visible in a given screen: feeds, saved (default: all household-visible recipes)"
 // @Param sort query string false "Sort by field: id, name, created, total_recipes (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param offset query int false "Number of records to skip (default: 0)"
 // @Param limit query int false "Maximum number of records to return (default: 10)"
-// @Success 200 {object} types.ListResponse[domain.Taxonomy]
+// @Success 200 {object} types.ListResponse[domain.Author]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth
-// @Router /api/v1/taxonomies [get]
-func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
-	taxonomyType := c.Query("type")
+// @Router /api/v1/authors [get]
+func (h *AuthorHandler) GetAuthors(c fiber.Ctx) error {
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"total_recipes"},
 		AllowedSorts:    []string{"total_recipes"},
@@ -48,13 +47,13 @@ func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
 		return err
 	}
 
-	taxonomies, total, err := h.taxonomyService.Search(taxonomyType, tokenData.HouseholdID, opts)
+	authors, total, err := h.service.Search(tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(types.ListResponse[domain.Taxonomy]{
-		Data: taxonomies,
+	return c.JSON(types.ListResponse[domain.Author]{
+		Data: authors,
 		Meta: types.Meta{
 			Pagination: opts.Pagination,
 			Total:      int(total),

@@ -82,7 +82,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	oidcGroup.Get("/callback", authHandler.OIDCCallback)
 
 	uploadHandler := api.NewUploadHandler(imageService)
-	router.Post("/uploads", uploadHandler.Upload, middlewares.Protected())
+	router.Post("/uploads", middlewares.Protected(), uploadHandler.Upload)
 
 	userHandler := api.NewUserHandler(userService)
 	usersGroup := router.Group("/users", middlewares.Protected())
@@ -140,7 +140,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	importHandler := api.NewImportHandler(importService)
 	recipeHandler := api.NewRecipeHandler(recipeService)
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
-	recipesGroup.Get("/", recipeHandler.Search)
+	recipesGroup.Get("/", recipeHandler.GetRecipes)
 	recipesGroup.Post("/", recipeHandler.CreateRecipe)
 	recipesGroup.Post("/import", importHandler.Import)
 	recipesGroup.Get("/:id", recipeHandler.GetRecipe)
@@ -161,18 +161,21 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup.Patch("/:id/instructions/:instructionId", recipeHandler.UpdateInstruction)
 	recipesGroup.Delete("/:id/instructions/:instructionId", recipeHandler.DeleteInstruction)
 
+	authorHandler := api.NewAuthorHandler(authorService)
+	router.Get("/authors", middlewares.Protected(), authorHandler.GetAuthors)
+
 	publisherHandler := api.NewPublisherHandler(publisherService)
 	publishersGroup := router.Group("/publishers", middlewares.Protected())
 	publishersGroup.Get("/", publisherHandler.GetPublishers)
 
 	taxonomyHandler := api.NewTaxonomyHandler(taxonomyService)
-	router.Get("/taxonomies", taxonomyHandler.GetTaxonomies, middlewares.Protected())
+	router.Get("/taxonomies", middlewares.Protected(), taxonomyHandler.GetTaxonomies)
 
 	unitHandler := api.NewUnitHandler(unitService)
-	router.Get("/units", unitHandler.Search, middlewares.Protected())
+	router.Get("/units", middlewares.Protected(), unitHandler.GetUnits)
 
 	equipmentHandler := api.NewEquipmentHandler(equipmentService)
-	router.Get("/equipment", equipmentHandler.Search, middlewares.Protected())
+	router.Get("/equipment", middlewares.Protected(), equipmentHandler.GetEquipment)
 
 	feedHandler := api.NewFeedHandler(feedService)
 	feedsGroup := router.Group("/feeds", middlewares.Protected())

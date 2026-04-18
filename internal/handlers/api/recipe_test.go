@@ -121,7 +121,7 @@ func buildApp(t *testing.T, svc *stubRecipeService) *fiber.App {
 	handler := api.NewRecipeHandler(svc)
 	protected := app.Group("/api/v1", middlewares.Protected())
 	protected.Get("/recipes/:id", handler.GetRecipe)
-	protected.Get("/recipes", handler.Search)
+	protected.Get("/recipes", handler.GetRecipes)
 	protected.Post("/recipes", handler.CreateRecipe)
 	protected.Patch("/recipes/:id", handler.UpdateRecipe)
 	protected.Delete("/recipes/:id", handler.DeleteRecipe)
