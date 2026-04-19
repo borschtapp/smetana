@@ -1,28 +1,23 @@
 package repositories_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/repositories"
 	"borscht.app/smetana/internal/types"
 )
 
-func openPrivateTestDB(t *testing.T) *gorm.DB {
+func linkRecipeEquipment(t *testing.T, db *gorm.DB, recipeID, equipmentID uuid.UUID) {
 	t.Helper()
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	require.NoError(t, err, "failed to open private in-memory SQLite")
-	require.NoError(t, database.Migrate(db), "failed to apply migrations")
-	return db
+	require.NoError(t, db.Table("recipe_equipment").Create(map[string]any{
+		"recipe_id": recipeID, "equipment_id": equipmentID,
+	}).Error)
 }
 
 func TestEquipmentRepository_FindOrCreate_CreatesNewEquipment(t *testing.T) {
@@ -110,4 +105,83 @@ func TestEquipmentRepository_Search_EmptyQuery_ReturnsAll(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, total)
+}
+
+func TestEquipmentRepository_Search_SortByTotalRecipes(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewEquipmentRepository(db)
+
+	eA := seedEquipment(t, db, "Instant Pot")
+	eB := seedEquipment(t, db, "Spatula")
+	eC := seedEquipment(t, db, "Whisk")
+
+	r1, r2, r3 := &domain.Recipe{}, &domain.Recipe{}, &domain.Recipe{}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	seedRecipe(t, db, r3)
+
+	// eA gets 2 recipes, eC gets 1, eB gets 0
+	linkRecipeEquipment(t, db, r1.ID, eA.ID)
+	linkRecipeEquipment(t, db, r2.ID, eA.ID)
+	linkRecipeEquipment(t, db, r3.ID, eC.ID)
+
+	opts := types.SearchOptions{Sort: "total_recipes", Order: "DESC", Pagination: types.Pagination{Limit: 10}}
+	results, total, err := repo.Search(uuid.Nil, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total)
+	require.Len(t, results, 3)
+	assert.Equal(t, eA.ID, results[0].ID, "equipment with 2 recipes must rank first")
+	assert.Equal(t, eC.ID, results[1].ID, "equipment with 1 recipe must rank second")
+	assert.Equal(t, eB.ID, results[2].ID, "equipment with 0 recipes must rank last")
+}
+
+func TestEquipmentRepository_Search_PreloadTotalRecipes(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewEquipmentRepository(db)
+
+	e := seedEquipment(t, db, "Cast Iron Skillet")
+	r1, r2 := &domain.Recipe{}, &domain.Recipe{}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	linkRecipeEquipment(t, db, r1.ID, e.ID)
+	linkRecipeEquipment(t, db, r2.ID, e.ID)
+
+	opts := types.SearchOptions{
+		Sort:           "id",
+		Pagination:     types.Pagination{Limit: 10},
+		PreloadOptions: types.Preload("total_recipes"),
+	}
+	results, _, err := repo.Search(uuid.Nil, opts)
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotNil(t, results[0].TotalRecipes, "TotalRecipes must be populated when preloaded")
+	assert.EqualValues(t, 2, *results[0].TotalRecipes)
+}
+
+func TestEquipmentRepository_Search_ScopeFeeds_FiltersToSubscribedFeed(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewEquipmentRepository(db)
+
+	hid := seedHousehold(t, db)
+	feed := seedFeed(t, db)
+	seedFeedSubscription(t, db, hid, feed.ID)
+
+	feedEq := seedEquipment(t, db, "Feed Wok")
+	otherEq := seedEquipment(t, db, "Other Wok")
+
+	feedRecipe := &domain.Recipe{FeedID: &feed.ID}
+	otherRecipe := &domain.Recipe{}
+	seedRecipe(t, db, feedRecipe)
+	seedRecipe(t, db, otherRecipe)
+	linkRecipeEquipment(t, db, feedRecipe.ID, feedEq.ID)
+	linkRecipeEquipment(t, db, otherRecipe.ID, otherEq.ID)
+
+	opts := types.SearchOptions{Sort: "id", Scope: "feeds", Pagination: types.Pagination{Limit: 10}}
+	results, total, err := repo.Search(hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total)
+	assert.Equal(t, feedEq.ID, results[0].ID)
 }

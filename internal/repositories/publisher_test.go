@@ -3,11 +3,13 @@ package repositories_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/repositories"
+	"borscht.app/smetana/internal/types"
 )
 
 func TestPublisherRepository_FindOrCreate_CreatesNewPublisher(t *testing.T) {
@@ -69,4 +71,74 @@ func TestPublisherRepository_FindOrCreate_CaseInsensitiveName_ReturnsExisting(t 
 	require.NoError(t, repo.FindOrCreate(lookup))
 
 	assert.Equal(t, original.ID, lookup.ID, "case-insensitive name match must return the existing row, not create a new one")
+}
+
+func TestPublisherRepository_Search_SortByTotalRecipes(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewPublisherRepository(db)
+
+	pubA := seedPublisher(t, db)
+	pubB := seedPublisher(t, db)
+	pubC := seedPublisher(t, db)
+
+	r1, r2, r3 := &domain.Recipe{PublisherID: &pubA.ID}, &domain.Recipe{PublisherID: &pubA.ID}, &domain.Recipe{PublisherID: &pubC.ID}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+	seedRecipe(t, db, r3)
+
+	opts := types.SearchOptions{Sort: "total_recipes", Order: "DESC", Pagination: types.Pagination{Limit: 10}}
+	results, total, err := repo.Search(uuid.Nil, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total)
+	require.Len(t, results, 3)
+	assert.Equal(t, pubA.ID, results[0].ID, "publisher with 2 recipes must rank first")
+	assert.Equal(t, pubC.ID, results[1].ID, "publisher with 1 recipe must rank second")
+	assert.Equal(t, pubB.ID, results[2].ID, "publisher with 0 recipes must rank last")
+}
+
+func TestPublisherRepository_Search_PreloadTotalRecipes(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewPublisherRepository(db)
+
+	pub := seedPublisher(t, db)
+	r1, r2 := &domain.Recipe{PublisherID: &pub.ID}, &domain.Recipe{PublisherID: &pub.ID}
+	seedRecipe(t, db, r1)
+	seedRecipe(t, db, r2)
+
+	opts := types.SearchOptions{
+		Sort:           "id",
+		Pagination:     types.Pagination{Limit: 10},
+		PreloadOptions: types.Preload("total_recipes"),
+	}
+	results, _, err := repo.Search(uuid.Nil, opts)
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotNil(t, results[0].TotalRecipes, "TotalRecipes must be populated when preloaded")
+	assert.EqualValues(t, 2, *results[0].TotalRecipes)
+}
+
+func TestPublisherRepository_Search_ScopeFeeds_FiltersToSubscribedFeed(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewPublisherRepository(db)
+
+	hid := seedHousehold(t, db)
+	feed := seedFeed(t, db)
+	seedFeedSubscription(t, db, hid, feed.ID)
+
+	feedPub := seedPublisher(t, db)
+	otherPub := seedPublisher(t, db)
+
+	feedRecipe := &domain.Recipe{FeedID: &feed.ID, PublisherID: &feedPub.ID}
+	otherRecipe := &domain.Recipe{PublisherID: &otherPub.ID}
+	seedRecipe(t, db, feedRecipe)
+	seedRecipe(t, db, otherRecipe)
+
+	opts := types.SearchOptions{Sort: "id", Scope: "feeds", Pagination: types.Pagination{Limit: 10}}
+	results, total, err := repo.Search(hid, opts)
+
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, total)
+	assert.Equal(t, feedPub.ID, results[0].ID)
 }

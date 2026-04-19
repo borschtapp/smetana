@@ -1,6 +1,7 @@
 package repositories_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,12 +18,21 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-// openTestDB creates a fresh in-memory SQLite database with the full production
-// schema applied via database.Migrate, ensuring parity with production tables.
+// openTestDB opens a shared in-memory SQLite database with the full production schema.
 func openTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	require.NoError(t, err, "failed to open in-memory SQLite")
+	require.NoError(t, database.Migrate(db), "failed to apply migrations")
+	return db
+}
+
+// openPrivateTestDB opens an isolated in-memory SQLite database per test, avoiding cross-test state.
+func openPrivateTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	require.NoError(t, err, "failed to open private in-memory SQLite")
 	require.NoError(t, database.Migrate(db), "failed to apply migrations")
 	return db
 }

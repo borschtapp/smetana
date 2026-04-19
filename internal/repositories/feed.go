@@ -105,10 +105,11 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 }
 
 func (r *feedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
+	wasActive := feed.Active // snapshot before Append triggers BeforeCreate and mutates the struct
 	if err := mapErr(r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed)); err != nil {
 		return err
 	}
-	if !feed.Active {
+	if !wasActive {
 		return mapErr(r.db.Model(feed).Update("active", true).Error)
 	}
 	return nil
