@@ -14,7 +14,7 @@ require (
 	github.com/gofiber/contrib/v3/jwt v1.1.0
 	github.com/gofiber/contrib/v3/swaggo v1.0.1
 	github.com/gofiber/fiber/v3 v3.1.0
-	github.com/gofiber/storage/s3/v2 v2.5.0
+	github.com/gofiber/storage/s3/v2 v2.6.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
