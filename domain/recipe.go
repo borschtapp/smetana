@@ -41,13 +41,13 @@ type Recipe struct {
 	Author       *Author              `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"author,omitempty"`
 	Publisher    *Publisher           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"publisher,omitempty"`
 	Feed         *Feed                `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
-	Nutrition    *RecipeNutrition     `gorm:"foreignKey:RecipeID" json:"nutrition,omitempty"`
+	Nutrition    *RecipeNutrition     `gorm:"foreignKey:RecipeID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"nutrition,omitempty"`
 	Images       []*Image             `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"images,omitempty"`
 	Ingredients  []*RecipeIngredient  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"ingredients,omitempty"`
 	Instructions []*RecipeInstruction `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"instructions,omitempty"`
-	Equipment    []*Equipment         `gorm:"many2many:recipe_equipment;" json:"equipment,omitempty"`
-	Taxonomies   []*Taxonomy          `gorm:"many2many:recipe_taxonomies;" json:"taxonomies,omitempty"`
-	Collections  []*Collection        `gorm:"many2many:collection_recipes;" json:"collections,omitempty"`
+	Equipment    []*Equipment         `gorm:"many2many:recipe_equipment;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"equipment,omitempty"`
+	Taxonomies   []*Taxonomy          `gorm:"many2many:recipe_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
+	Collections  []*Collection        `gorm:"many2many:collection_recipes;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"collections,omitempty"`
 }
 
 type Rating struct {

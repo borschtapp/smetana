@@ -18,7 +18,7 @@ type Household struct {
 	Created  time.Time `gorm:"autoCreateTime" json:"-"`
 
 	Members       []*User         `gorm:"foreignKey:HouseholdID" json:"members,omitempty"`
-	Feeds         []*Feed         `gorm:"many2many:feed_subscriptions;" json:"feeds,omitempty"`
+	Feeds         []*Feed         `gorm:"many2many:feed_subscriptions;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"feeds,omitempty"`
 	Collections   []*Collection   `gorm:"foreignKey:HouseholdID" json:"collections,omitempty"`
 	ShoppingLists []*ShoppingList `gorm:"foreignKey:HouseholdID" json:"shopping_lists,omitempty"`
 	Invites       []UserToken     `gorm:"-" json:"invites,omitempty"`

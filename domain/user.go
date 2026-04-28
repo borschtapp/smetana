@@ -21,7 +21,7 @@ type User struct {
 
 	Household *Household   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 	Tokens    []*UserToken `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;" json:"recipes,omitempty"`
+	Recipes   []*Recipe    `gorm:"many2many:recipes_saved;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
 	Images    []*Image     `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 

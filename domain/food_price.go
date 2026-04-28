@@ -19,8 +19,9 @@ type FoodPrice struct {
 	Amount      float64   `gorm:"not null;default:1" json:"amount"`
 	Created     time.Time `gorm:"index:idx_food_price_lookup,sort:desc;not null;autoCreateTime" json:"created"`
 
-	Food *Food `gorm:"foreignKey:FoodID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"food,omitempty"`
-	Unit *Unit `gorm:"foreignKey:UnitID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"unit,omitempty"`
+	Household *Household `gorm:"foreignKey:HouseholdID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	Food      *Food      `gorm:"foreignKey:FoodID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"food,omitempty"`
+	Unit      *Unit      `gorm:"foreignKey:UnitID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;" json:"unit,omitempty"`
 }
 
 func (gp *FoodPrice) BeforeCreate(_ *gorm.DB) error {

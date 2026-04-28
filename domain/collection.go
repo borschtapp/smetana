@@ -20,7 +20,7 @@ type Collection struct {
 
 	TotalRecipes *int64     `gorm:"->;-:migration" json:"total_recipes,omitempty"`
 	Household    *Household `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
-	Recipes      []*Recipe  `gorm:"many2many:collection_recipes;" json:"recipes,omitempty"`
+	Recipes      []*Recipe  `gorm:"many2many:collection_recipes;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"recipes,omitempty"`
 }
 
 func (c *Collection) BeforeCreate(_ *gorm.DB) error {

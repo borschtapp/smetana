@@ -28,7 +28,7 @@ type Feed struct {
 	TotalRecipes *int64       `gorm:"->;-:migration" json:"total_recipes,omitempty"`
 	Publisher    *Publisher   `json:"publisher,omitempty"`
 	Recipes      []*Recipe    `json:"recipes,omitempty"`
-	Households   []*Household `gorm:"many2many:feed_subscriptions;" json:"-"`
+	Households   []*Household `gorm:"many2many:feed_subscriptions;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (f *Feed) BeforeCreate(_ *gorm.DB) error {
