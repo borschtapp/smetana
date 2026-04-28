@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/borschtapp/krip"
-	"github.com/borschtapp/krip/utils"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 )
 
 type feedService struct {
@@ -75,6 +75,7 @@ func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 }
 
 func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string) (*domain.Feed, error) {
+	url = utils.NormalizeURL(url)
 	feed, err := s.repo.ByUrl(url)
 	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
 		return nil, err
@@ -119,6 +120,7 @@ func (s *feedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error
 }
 
 func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed, error) {
+	url = utils.NormalizeURL(url)
 	scrapeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -129,7 +131,7 @@ func (s *feedService) createFeed(ctx context.Context, url string) (*domain.Feed,
 	}
 
 	if feed.Publisher == nil {
-		feed.Publisher = &domain.Publisher{Name: feed.Name, Url: new(utils.BaseUrl(feed.Url))}
+		feed.Publisher = &domain.Publisher{Name: feed.Name, Url: new(utils.BaseURL(feed.Url))}
 	}
 
 	if err := s.publisherService.FindOrCreate(ctx, feed.Publisher); err != nil {
@@ -187,7 +189,7 @@ func (s *feedService) FetchFeed(ctx context.Context, feed *domain.Feed) (int, in
 	for _, recipe := range recipes {
 		url := ""
 		if recipe.SourceUrl != nil {
-			url = *recipe.SourceUrl
+			url = utils.NormalizeURL(*recipe.SourceUrl)
 		}
 		if url == "" {
 			continue

@@ -8,6 +8,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 )
 
 type authorService struct {
@@ -24,6 +25,9 @@ func (s *authorService) Search(householdID uuid.UUID, opts types.SearchOptions) 
 }
 
 func (s *authorService) FindOrCreate(ctx context.Context, author *domain.Author) error {
+	if author != nil && author.Url != nil && *author.Url != "" {
+		author.Url = new(utils.NormalizeURL(*author.Url))
+	}
 	if err := s.repo.FindOrCreate(author); err != nil {
 		return err
 	}

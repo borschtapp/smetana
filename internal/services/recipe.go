@@ -7,6 +7,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 )
 
 type recipeService struct {
@@ -52,7 +53,7 @@ func (s *recipeService) ByIDPreload(id, userID, householdID uuid.UUID, preload t
 }
 
 func (s *recipeService) ByUrl(url string, householdID uuid.UUID) (*domain.Recipe, error) {
-	recipe, err := s.repo.ByUrl(url)
+	recipe, err := s.repo.ByUrl(utils.NormalizeURL(url))
 	if err != nil {
 		return nil, err
 	}

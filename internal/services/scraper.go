@@ -61,7 +61,7 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts
 		feed.Name = scrapedFeed.Name
 	}
 	if scrapedFeed.Url != "" && feed.Url != scrapedFeed.Url {
-		feed.Url = scrapedFeed.Url
+		feed.Url = utils.NormalizeURL(scrapedFeed.Url)
 	}
 	if scrapedFeed.Publisher != nil && feed.Publisher == nil {
 		feed.Publisher = s.kripToPublisher(scrapedFeed.Publisher)
@@ -111,7 +111,7 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 
 func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	recipe := &domain.Recipe{}
-	recipe.SourceUrl = &kripRecipe.Url
+	recipe.SourceUrl = new(utils.NormalizeURL(kripRecipe.Url))
 	if len(kripRecipe.Name) > 0 {
 		recipe.Name = &kripRecipe.Name
 	}
@@ -259,7 +259,7 @@ func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
 		Name: person.Name,
 	}
 	if len(person.Url) > 0 {
-		author.Url = &person.Url
+		author.Url = new(utils.NormalizeURL(person.Url))
 	}
 	if len(person.Description) > 0 {
 		author.Description = &person.Description
@@ -295,7 +295,7 @@ func (s *scraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeI
 		ins.Text = item.Text
 	}
 	if len(item.Url) != 0 {
-		ins.Url = &item.Url
+		ins.Url = new(utils.NormalizeURL(item.Url))
 	}
 	if len(item.Image) != 0 {
 		ins.Images = []*domain.Image{{SourceURL: item.Image}}
@@ -356,7 +356,7 @@ func (s *scraperService) kripToPublisher(org *krip.Organization) *domain.Publish
 		pub.Description = &org.Description
 	}
 	if len(org.Url) != 0 {
-		pub.Url = &org.Url
+		pub.Url = new(utils.NormalizeURL(org.Url))
 	}
 	if len(org.Logo) != 0 {
 		pub.Images = []*domain.Image{{SourceURL: org.Logo}}
