@@ -88,8 +88,8 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 		return // structured fields already set during conversion
 	}
 
-	parsed, err := kapusta.ParseIngredient(ingredient.RawText, language)
-	if err != nil || parsed == nil {
+	parsed, err := kapusta.ParseIngredient(ingredient.RawText, kapusta.IngredientOptions{Lang: language})
+	if err != nil {
 		return
 	}
 

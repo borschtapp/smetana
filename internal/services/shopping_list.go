@@ -136,10 +136,11 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.
 func (s *shoppingListService) parseItemText(ctx context.Context, item *domain.ShoppingItem) {
-	parsed, err := kapusta.ParseIngredient(item.Text, "")
-	if err != nil || parsed == nil {
+	parsed, err := kapusta.ParseIngredient(item.Text)
+	if err != nil {
 		return
 	}
+
 	if parsed.Amount != 0 && item.Amount == nil {
 		item.Amount = &parsed.Amount
 	}
