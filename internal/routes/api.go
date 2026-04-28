@@ -56,7 +56,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, foodService, unitService)
 	importService := services.NewImportService(recipeService, imageService, publisherService, authorService, foodService, unitService, taxonomyService, equipmentService, scraperService)
 	feedService := services.NewFeedService(feedRepo, publisherService, recipeService, importService, scraperService)
-	userService := services.NewUserService(userRepo)
+	userService := services.NewUserService(userRepo, householdRepo)
 	collectionService := services.NewCollectionService(collectionRepo, recipeService)
 	mealPlanService := services.NewMealPlanService(mealPlanRepo)
 	householdService := services.NewHouseholdService(householdRepo, userRepo, emailService)

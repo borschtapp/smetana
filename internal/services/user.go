@@ -9,11 +9,12 @@ import (
 )
 
 type userService struct {
-	repo domain.UserRepository
+	repo          domain.UserRepository
+	householdRepo domain.HouseholdRepository
 }
 
-func NewUserService(repo domain.UserRepository) domain.UserService {
-	return &userService{repo: repo}
+func NewUserService(repo domain.UserRepository, householdRepo domain.HouseholdRepository) domain.UserService {
+	return &userService{repo: repo, householdRepo: householdRepo}
 }
 
 func (s *userService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, error) {
@@ -57,5 +58,20 @@ func (s *userService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 	if id != requesterID {
 		return sentinels.ErrForbidden
 	}
-	return s.repo.Delete(id)
+	user, err := s.repo.ByID(id)
+	if err != nil {
+		return err
+	}
+	householdID := user.HouseholdID
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+	_, total, err := s.householdRepo.Members(householdID, 0, 1)
+	if err != nil {
+		return err
+	}
+	if total == 0 {
+		return s.householdRepo.Delete(householdID)
+	}
+	return nil
 }

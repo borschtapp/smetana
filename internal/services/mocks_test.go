@@ -140,20 +140,61 @@ func (s *stubRecipeRepo) ReplaceRecipePointers(old, newID, hid uuid.UUID) error 
 type stubUserRepo struct {
 	domain.UserRepository
 
+	byIDFn        func(uuid.UUID) (*domain.User, error)
 	byEmailFn     func(string) (*domain.User, error)
 	createFn      func(*domain.User) error
+	updateFn      func(*domain.User) error
+	deleteFn      func(uuid.UUID) error
 	findTokenFn   func(string, string) (*domain.UserToken, error)
 	createTokenFn func(*domain.UserToken) error
 	deleteTokenFn func(string) (bool, error)
 }
 
+func (s *stubUserRepo) ByID(id uuid.UUID) (*domain.User, error) {
+	if s.byIDFn != nil {
+		return s.byIDFn(id)
+	}
+	return nil, nil
+}
 func (s *stubUserRepo) ByEmail(email string) (*domain.User, error) { return s.byEmailFn(email) }
 func (s *stubUserRepo) Create(u *domain.User) error                { return s.createFn(u) }
+func (s *stubUserRepo) Update(u *domain.User) error {
+	if s.updateFn != nil {
+		return s.updateFn(u)
+	}
+	return nil
+}
+func (s *stubUserRepo) Delete(id uuid.UUID) error {
+	if s.deleteFn != nil {
+		return s.deleteFn(id)
+	}
+	return nil
+}
 func (s *stubUserRepo) FindToken(tok, typ string) (*domain.UserToken, error) {
 	return s.findTokenFn(tok, typ)
 }
 func (s *stubUserRepo) CreateToken(t *domain.UserToken) error { return s.createTokenFn(t) }
 func (s *stubUserRepo) DeleteToken(tok string) (bool, error)  { return s.deleteTokenFn(tok) }
+
+type stubHouseholdRepo struct {
+	domain.HouseholdRepository
+
+	membersFn func(uuid.UUID, int, int) ([]domain.User, int64, error)
+	deleteFn  func(uuid.UUID) error
+}
+
+func (s *stubHouseholdRepo) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
+	if s.membersFn != nil {
+		return s.membersFn(householdID, offset, limit)
+	}
+	return nil, 0, nil
+}
+func (s *stubHouseholdRepo) Delete(id uuid.UUID) error {
+	if s.deleteFn != nil {
+		return s.deleteFn(id)
+	}
+	return nil
+}
 
 type stubImageService struct {
 	domain.ImageService
