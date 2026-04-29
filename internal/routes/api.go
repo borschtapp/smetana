@@ -54,8 +54,9 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	publisherService := services.NewPublisherService(publisherRepo, imageService)
 	authorService := services.NewAuthorService(authorRepo, imageService)
 	recipeService := services.NewRecipeService(recipeRepo, userRepo, imageService, foodService, unitService)
-	importService := services.NewImportService(recipeService, imageService, publisherService, authorService, foodService, unitService, taxonomyService, equipmentService, scraperService)
-	feedService := services.NewFeedService(feedRepo, publisherService, recipeService, importService, scraperService)
+	recipeIngestService := services.NewRecipeIngestService(recipeService, imageService, foodService, unitService, publisherService, authorService, taxonomyService, equipmentService)
+	feedService := services.NewFeedService(feedRepo, publisherService, recipeService, recipeIngestService, scraperService)
+	importService := services.NewImportService(recipeService, recipeIngestService, feedService, scraperService)
 	userService := services.NewUserService(userRepo, householdRepo)
 	collectionService := services.NewCollectionService(collectionRepo, recipeService)
 	mealPlanService := services.NewMealPlanService(mealPlanRepo)
@@ -138,6 +139,8 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	foodGroup.Delete("/:id/price/:priceId", foodHandler.DeletePrice)
 
 	importHandler := api.NewImportHandler(importService)
+	router.Post("/import", middlewares.Protected(), importHandler.DetectAndImport)
+
 	recipeHandler := api.NewRecipeHandler(recipeService)
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
 	recipesGroup.Get("/", recipeHandler.GetRecipes)

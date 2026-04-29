@@ -38,14 +38,14 @@ func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 }
 
 func (r *authorRepository) find(author *domain.Author) error {
-	if author.Url != nil && len(*author.Url) > 0 {
+	if author.Url != nil && *author.Url != "" {
 		var existing domain.Author
 		if err := r.db.First(&existing, "url = ?", author.Url).Error; err == nil {
 			*author = existing
 			return nil
 		}
 	}
-	if len(author.Name) > 0 {
+	if author.Name != "" {
 		var existing domain.Author
 		if err := r.db.First(&existing, "name = ?", author.Name).Error; err == nil {
 			*author = existing

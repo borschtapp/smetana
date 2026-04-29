@@ -20,14 +20,14 @@ func newTestFeedService(
 	feedRepo *stubFeedRepo,
 	pubSvc *stubPublisherService,
 	recipeSvc *stubRecipeService,
-	importSvc *stubImportService,
+	recipeIngest *stubRecipeIngestService,
 	scraper *stubScraperService,
 ) domain.FeedService {
-	return services.NewFeedService(feedRepo, pubSvc, recipeSvc, importSvc, scraper)
+	return services.NewFeedService(feedRepo, pubSvc, recipeSvc, recipeIngest, scraper)
 }
 
 func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, &stubRecipeService{}, &stubImportService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, &stubScraperService{})
 	recipes, total, err := svc.Stream(uuid.New(), uuid.New(), types.SearchOptions{})
 
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestFeedService_Stream_SwapsGlobalWithHouseholdOverrides(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeSvc, &stubImportService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeSvc, &stubRecipeIngestService{}, &stubScraperService{})
 	got, total, err := svc.Stream(uuid.New(), hid, types.SearchOptions{})
 
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestFeedService_Stream_OverrideLookupFailure_ReturnsOriginalResults(t *test
 		},
 	}
 
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeSvc, &stubImportService{}, &stubScraperService{})
+	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, recipeSvc, &stubRecipeIngestService{}, &stubScraperService{})
 	got, total, err := svc.Stream(uuid.New(), uuid.New(), types.SearchOptions{})
 
 	require.NoError(t, err, "override lookup failure must not propagate as an error")
@@ -108,7 +108,7 @@ func TestFeedService_FetchFeed_ScrapeError_IncrementsErrorCount(t *testing.T) {
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubImportService{}, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.Error(t, err)
@@ -131,7 +131,7 @@ func TestFeedService_FetchFeed_ExceedErrorThreshold_DeactivatesFeed(t *testing.T
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubImportService{}, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.Error(t, err)
@@ -144,7 +144,7 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/borsch")}
+	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -154,20 +154,18 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 		},
 	}
 	recipeSvc := &stubRecipeService{
-		// ByUrl returning no error means the recipe already exists
 		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) {
 			return &domain.Recipe{ID: uuid.New()}, nil
 		},
 	}
+	recipeIngest := &stubRecipeIngestService{}
 	importCalled := false
-	importSvc := &stubImportService{
-		importRecipeFn: func(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
-			importCalled = true
-			return nil, nil
-		},
+	recipeIngest.importRecipeFn = func(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
+		importCalled = true
+		return nil, nil
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, importSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, recipeIngest, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
@@ -178,7 +176,7 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/new")}
+	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/new")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -188,26 +186,97 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 		},
 	}
 	recipeSvc := &stubRecipeService{
-		// ByUrl returning ErrNotFound means recipe is new
 		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) {
 			return nil, sentinels.ErrNotFound
 		},
 	}
+	recipeIngest := &stubRecipeIngestService{}
 	var importedRecipe *domain.Recipe
-	importSvc := &stubImportService{
-		importRecipeFn: func(_ context.Context, r *domain.Recipe) (*domain.Recipe, error) {
-			importedRecipe = r
-			r.ID, _ = uuid.NewV7()
-			return r, nil
-		},
+	recipeIngest.importRecipeFn = func(_ context.Context, r *domain.Recipe) (*domain.Recipe, error) {
+		importedRecipe = r
+		r.ID, _ = uuid.NewV7()
+		return r, nil
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, importSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, recipeIngest, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)
 	require.NotNil(t, importedRecipe)
 	assert.Equal(t, feedID, *importedRecipe.FeedID, "imported recipe must be linked to the source feed")
+}
+
+func TestFeedService_FetchFeed_ExistingPublicRecipeWithNoFeedID_BackfillsFeedID(t *testing.T) {
+	feedID := uuid.New()
+	existingID := uuid.New()
+	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
+	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
+
+	feedRepo := &stubFeedRepo{updateFn: func(_ *domain.Feed) error { return nil }}
+	scraper := &stubScraperService{
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
+			return []*domain.Recipe{scraped}, nil
+		},
+	}
+	var setFeedIDRecipeID, setFeedIDFeedID uuid.UUID
+	recipeSvc := &stubRecipeService{
+		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) {
+			return &domain.Recipe{ID: existingID, FeedID: nil}, nil
+		},
+		setFeedIDFn: func(recipeID, fid uuid.UUID) error {
+			setFeedIDRecipeID = recipeID
+			setFeedIDFeedID = fid
+			return nil
+		},
+	}
+	importCalled := false
+	recipeIngest := &stubRecipeIngestService{
+		importRecipeFn: func(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
+			importCalled = true
+			return nil, nil
+		},
+	}
+
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, recipeIngest, scraper)
+	_, _, err := svc.FetchFeed(context.Background(), &feed)
+
+	require.NoError(t, err)
+	assert.False(t, importCalled, "should not re-import an already public recipe")
+	assert.Equal(t, existingID, setFeedIDRecipeID, "must link the existing recipe")
+	assert.Equal(t, feedID, setFeedIDFeedID, "must link to the current feed")
+}
+
+func TestFeedService_FetchFeed_ExistingPrivateRecipe_ImportsNewPublicCopy(t *testing.T) {
+	feedID := uuid.New()
+	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
+	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
+
+	feedRepo := &stubFeedRepo{updateFn: func(_ *domain.Feed) error { return nil }}
+	scraper := &stubScraperService{
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
+			return []*domain.Recipe{scraped}, nil
+		},
+	}
+	recipeSvc := &stubRecipeService{
+		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) {
+			return nil, sentinels.ErrForbidden
+		},
+	}
+	importCalled := false
+	recipeIngest := &stubRecipeIngestService{
+		importRecipeFn: func(_ context.Context, r *domain.Recipe) (*domain.Recipe, error) {
+			importCalled = true
+			r.ID, _ = uuid.NewV7()
+			return r, nil
+		},
+	}
+
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, recipeIngest, scraper)
+	_, imported, err := svc.FetchFeed(context.Background(), &feed)
+
+	require.NoError(t, err)
+	assert.True(t, importCalled, "must import a new public copy when the existing recipe is privately owned")
+	assert.Equal(t, 1, imported)
 }
 
 func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
@@ -225,14 +294,14 @@ func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 		},
 	}
 	importCalled := false
-	recipeSvc := &stubImportService{
+	recipeIngest := &stubRecipeIngestService{
 		importRecipeFn: func(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
 			importCalled = true
 			return nil, nil
 		},
 	}
 
-	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, recipeSvc, scraper)
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, recipeIngest, scraper)
 	_, _, err := svc.FetchFeed(context.Background(), &feed)
 
 	require.NoError(t, err)

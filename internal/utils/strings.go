@@ -19,7 +19,7 @@ func ContainsFold(target string, list ...string) bool {
 // CsvSplit splits a comma-separated string into a slice of strings, trimming whitespace and converting to lowercase.
 func CsvSplit(target string) []string {
 	var result []string
-	if len(target) != 0 {
+	if target != "" {
 		for _, raw := range strings.Split(target, ",") {
 			result = append(result, strings.ToLower(strings.TrimSpace(raw)))
 		}
@@ -30,7 +30,7 @@ func CsvSplit(target string) []string {
 // CsvSplitUUID splits a comma-separated string into a slice of UUIDs, ignoring invalid UUIDs.
 func CsvSplitUUID(target string) []uuid.UUID {
 	var result []uuid.UUID
-	if len(target) != 0 {
+	if target != "" {
 		for _, raw := range strings.Split(target, ",") {
 			if id, err := uuid.Parse(strings.TrimSpace(raw)); err == nil {
 				result = append(result, id)

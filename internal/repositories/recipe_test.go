@@ -605,3 +605,46 @@ func TestRecipeRepository_Search_Equipment_FiltersRecipesByEquipment(t *testing.
 	assert.EqualValues(t, 1, total, "only recipes linked to the specified equipment must appear")
 	assert.Equal(t, r1.ID, recipes[0].ID)
 }
+
+func TestRecipeRepository_Import_ReusesIDBySourceUrl(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	testURL := "https://example.com/unique"
+	existing := &domain.Recipe{SourceUrl: &testURL}
+	seedRecipe(t, db, existing)
+
+	// Import a new recipe object with the same SourceUrl but no ID
+	imported := &domain.Recipe{SourceUrl: &testURL}
+	err := repo.Import(imported)
+
+	require.NoError(t, err)
+	assert.Equal(t, existing.ID, imported.ID, "Import must reuse the ID of an existing global recipe with the same SourceUrl")
+}
+
+func TestRecipeRepository_Import_UpsertsData(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	rid := uuid.New()
+	name1, name2 := "Old Name", "New Name"
+	existing := &domain.Recipe{ID: rid, Name: &name1}
+	seedRecipe(t, db, existing)
+	require.NoError(t, db.Create(&domain.RecipeIngredient{RecipeID: rid, RawText: "old ingredient"}).Error)
+
+	// Import with same ID but different data
+	updated := &domain.Recipe{
+		ID:   rid,
+		Name: &name2,
+		Ingredients: []*domain.RecipeIngredient{
+			{RawText: "new ingredient"},
+		},
+	}
+	err := repo.Import(updated)
+
+	require.NoError(t, err)
+	got, _ := repo.ByIDPreload(rid, uuid.Nil, uuid.Nil, types.Preload("ingredients"))
+	assert.Equal(t, name2, *got.Name)
+	require.Len(t, got.Ingredients, 1)
+	assert.Equal(t, "new ingredient", got.Ingredients[0].RawText)
+}

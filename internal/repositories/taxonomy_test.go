@@ -39,7 +39,7 @@ func TestTaxonomyRepository_FindOrCreate_CreatesNew(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewTaxonomyRepository(db)
 
-	tax := &domain.Taxonomy{Label: "Italian", Slug: "italian", Type: "cuisine"}
+	tax := &domain.Taxonomy{Label: "Italian", Slug: "italian", Type: domain.TaxonomyTypeCuisine}
 	require.NoError(t, repo.FindOrCreate(tax))
 
 	assert.NotEmpty(t, tax.ID)
@@ -52,10 +52,10 @@ func TestTaxonomyRepository_FindOrCreate_ReturnsExistingBySlug(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewTaxonomyRepository(db)
 
-	first := &domain.Taxonomy{Label: "Vegan", Slug: "vegan", Type: "diet"}
+	first := &domain.Taxonomy{Label: "Vegan", Slug: "vegan", Type: domain.TaxonomyTypeDiet}
 	require.NoError(t, repo.FindOrCreate(first))
 
-	second := &domain.Taxonomy{Label: "Vegan", Slug: "vegan", Type: "diet"}
+	second := &domain.Taxonomy{Label: "Vegan", Slug: "vegan", Type: domain.TaxonomyTypeDiet}
 	require.NoError(t, repo.FindOrCreate(second))
 
 	assert.Equal(t, first.ID, second.ID, "same slug must resolve to the same taxonomy row")
@@ -68,9 +68,9 @@ func TestTaxonomyRepository_Search_SortByTotalRecipes(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewTaxonomyRepository(db)
 
-	taxA := seedTaxonomy(t, db, "Category A", "category")
-	taxB := seedTaxonomy(t, db, "Category B", "category")
-	taxC := seedTaxonomy(t, db, "Category C", "category")
+	taxA := seedTaxonomy(t, db, "Category A", domain.TaxonomyTypeCategory)
+	taxB := seedTaxonomy(t, db, "Category B", domain.TaxonomyTypeCategory)
+	taxC := seedTaxonomy(t, db, "Category C", domain.TaxonomyTypeCategory)
 
 	r1 := &domain.Recipe{}
 	r2 := &domain.Recipe{}
@@ -85,7 +85,7 @@ func TestTaxonomyRepository_Search_SortByTotalRecipes(t *testing.T) {
 	linkRecipeTaxonomy(t, db, r3.ID, taxC.ID)
 
 	opts := types.SearchOptions{Sort: "total_recipes", Order: "DESC", Pagination: types.Pagination{Limit: 10}}
-	results, total, err := repo.Search("category", uuid.Nil, opts)
+	results, total, err := repo.Search(domain.TaxonomyTypeCategory, uuid.Nil, opts)
 
 	require.NoError(t, err)
 	assert.EqualValues(t, 3, total)
@@ -99,7 +99,7 @@ func TestTaxonomyRepository_Search_PreloadTotalRecipes(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewTaxonomyRepository(db)
 
-	tax := seedTaxonomy(t, db, "Gluten Free", "diet")
+	tax := seedTaxonomy(t, db, "Gluten Free", domain.TaxonomyTypeDiet)
 	r1, r2 := &domain.Recipe{}, &domain.Recipe{}
 	seedRecipe(t, db, r1)
 	seedRecipe(t, db, r2)
@@ -135,8 +135,8 @@ func TestTaxonomyRepository_Search_ScopeFeeds_FiltersToSubscribedFeed(t *testing
 	otherRecipe := &domain.Recipe{}
 	seedRecipe(t, db, otherRecipe)
 
-	taxFeed := seedTaxonomy(t, db, "From Feed", "category")
-	taxOther := seedTaxonomy(t, db, "Not In Feed", "category")
+	taxFeed := seedTaxonomy(t, db, "From Feed", domain.TaxonomyTypeCategory)
+	taxOther := seedTaxonomy(t, db, "Not In Feed", domain.TaxonomyTypeCategory)
 	linkRecipeTaxonomy(t, db, feedRecipe.ID, taxFeed.ID)
 	linkRecipeTaxonomy(t, db, otherRecipe.ID, taxOther.ID)
 
@@ -160,8 +160,8 @@ func TestTaxonomyRepository_Search_ScopeSaved_FiltersToSavedRecipes(t *testing.T
 	seedRecipe(t, db, unseenRecipe)
 	seedSavedRecipe(t, db, savedRecipe.ID, hid)
 
-	taxSaved := seedTaxonomy(t, db, "Saved Only", "category")
-	taxUnseen := seedTaxonomy(t, db, "Not Saved", "category")
+	taxSaved := seedTaxonomy(t, db, "Saved Only", domain.TaxonomyTypeCategory)
+	taxUnseen := seedTaxonomy(t, db, "Not Saved", domain.TaxonomyTypeCategory)
 	linkRecipeTaxonomy(t, db, savedRecipe.ID, taxSaved.ID)
 	linkRecipeTaxonomy(t, db, unseenRecipe.ID, taxUnseen.ID)
 

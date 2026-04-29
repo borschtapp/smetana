@@ -3,12 +3,8 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sync"
 
-	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -16,51 +12,44 @@ import (
 )
 
 type importService struct {
-	recipeService    domain.RecipeService
-	imageService     domain.ImageService
-	publisherService domain.PublisherService
-	authorService    domain.AuthorService
-	foodService      domain.FoodService
-	unitService      domain.UnitService
-	taxonomyService  domain.TaxonomyService
-	equipmentService domain.EquipmentService
-	scraperService   domain.ScraperService
-	fetchConcurrency int
+	recipeService  domain.RecipeService
+	recipeIngest   domain.RecipeIngestService
+	feedService    domain.FeedService
+	scraperService domain.ScraperService
 }
 
-func NewImportService(recipeService domain.RecipeService, imageService domain.ImageService, publisherService domain.PublisherService, authorService domain.AuthorService, foodService domain.FoodService, unitService domain.UnitService, taxonomyService domain.TaxonomyService, equipmentService domain.EquipmentService, scraperService domain.ScraperService) domain.ImportService {
+func NewImportService(recipeService domain.RecipeService, recipeIngest domain.RecipeIngestService, feedService domain.FeedService, scraperService domain.ScraperService) domain.ImportService {
 	return &importService{
-		recipeService:    recipeService,
-		imageService:     imageService,
-		publisherService: publisherService,
-		authorService:    authorService,
-		foodService:      foodService,
-		unitService:      unitService,
-		taxonomyService:  taxonomyService,
-		equipmentService: equipmentService,
-		scraperService:   scraperService,
-		fetchConcurrency: utils.GetenvInt("FETCH_CONCURRENCY", 5),
+		recipeService:  recipeService,
+		recipeIngest:   recipeIngest,
+		feedService:    feedService,
+		scraperService: scraperService,
 	}
 }
 
-// ImportFromURL imports a recipe from URL and saves it for the given user.
+// ImportFromURL scrapes the given URL and imports it as a recipe.
+// Returns an error if the URL points to a feed rather than a single recipe.
 func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
-	existing, err := s.recipeService.ByUrl(url, householdID)
-	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
-		return nil, err
-	}
-	if existing != nil {
-		if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
+	url = utils.NormalizeURL(url)
+	if !forceUpdate {
+		existing, err := s.recipeService.ByUrl(url, householdID)
+		if err != nil && !errors.Is(err, sentinels.ErrNotFound) && !errors.Is(err, sentinels.ErrForbidden) {
 			return nil, err
 		}
-		return existing, nil
+		if existing != nil {
+			if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
+				return nil, err
+			}
+			return existing, nil
+		}
 	}
 
 	scraped, err := s.scraperService.ScrapeRecipe(ctx, url)
 	if err != nil {
 		return nil, err
 	}
-	recipe, err := s.ImportRecipe(ctx, scraped)
+
+	recipe, err := s.recipeIngest.ImportRecipe(ctx, scraped)
 	if err != nil {
 		return nil, err
 	}
@@ -70,181 +59,44 @@ func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpda
 	return recipe, nil
 }
 
-func (s *importService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
-	for _, ing := range recipe.Ingredients {
-		if ing.Food != nil {
-			if err := s.foodService.FindOrCreate(ctx, ing.Food); err == nil {
-				ing.FoodID = &ing.Food.ID
-				for _, taxonomy := range ing.Food.Taxonomies {
-					if err := s.taxonomyService.FindOrCreate(taxonomy); err == nil {
-						_ = s.foodService.AddTaxonomy(ing.Food.ID, taxonomy)
-					} else {
-						log.Warnw("error creating food taxonomy", "taxonomy", taxonomy, "error", err.Error())
-					}
-				}
-			} else {
-				log.Warnw("error creating food", "food", ing.Food, "error", err.Error())
-				ing.Food = nil
+// DetectAndImport scrapes the given URL and imports it as either a recipe or a feed subscription.
+func (s *importService) DetectAndImport(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.ImportResult, error) {
+	url = utils.NormalizeURL(url)
+
+	if !forceUpdate {
+		// Check recipe cache before paying the cost of a network scrape.
+		existing, err := s.recipeService.ByUrl(url, householdID)
+		if err != nil && !errors.Is(err, sentinels.ErrNotFound) && !errors.Is(err, sentinels.ErrForbidden) {
+			return nil, err
+		}
+		if existing != nil {
+			if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
+				return nil, err
 			}
-		}
-		if ing.Unit != nil {
-			if err := s.unitService.FindOrCreate(ing.Unit); err == nil {
-				ing.UnitID = &ing.Unit.ID
-			} else {
-				log.Warnw("error creating unit", "unit", ing.Unit, "error", err.Error())
-				ing.Unit = nil
-			}
+			return &domain.ImportResult{Recipe: existing}, nil
 		}
 	}
 
-	resolved := recipe.Taxonomies[:0]
-	for _, taxonomy := range recipe.Taxonomies {
-		if err := s.taxonomyService.FindOrCreate(taxonomy); err == nil {
-			resolved = append(resolved, taxonomy)
-		} else {
-			log.Warnw("error creating taxonomy", "taxonomy", taxonomy, "error", err.Error())
-		}
-	}
-	recipe.Taxonomies = resolved
-
-	resolvedEquipment := recipe.Equipment[:0]
-	for _, equipment := range recipe.Equipment {
-		if err := s.equipmentService.FindOrCreate(ctx, equipment); err == nil {
-			resolvedEquipment = append(resolvedEquipment, equipment)
-		} else {
-			log.Warnw("error creating equipment", "equipment", equipment, "error", err.Error())
-		}
-	}
-	recipe.Equipment = resolvedEquipment
-
-	if recipe.Publisher != nil {
-		if err := s.publisherService.FindOrCreate(ctx, recipe.Publisher); err != nil {
-			log.Warnw("error creating publisher", "publisher", recipe.Publisher, "error", err.Error())
-		} else {
-			recipe.PublisherID = &recipe.Publisher.ID
-		}
-	}
-
-	if recipe.Author != nil {
-		if err := s.authorService.FindOrCreate(ctx, recipe.Author); err != nil {
-			log.Warnw("error creating recipe author", "author", recipe.Author, "error", err.Error())
-		} else {
-			recipe.AuthorID = &recipe.Author.ID
-		}
-	}
-
-	if err := s.recipeService.Import(recipe); err != nil {
+	// Unknown URL — must scrape to determine whether it's a recipe or a feed.
+	scraped, err := s.scraperService.ScrapeUrl(ctx, url)
+	if err != nil {
 		return nil, err
 	}
 
-	s.processRecipeImages(ctx, recipe)
-	s.processInstructionImages(ctx, recipe)
-	return recipe, nil
-}
-
-// selectBestImage picks the most suitable thumbnail from a set of downloaded images.
-// Preference: largest image whose longest side is ≤ 1000 px (avoids oversized originals).
-func selectBestImage(images []*domain.Image) *domain.Image {
-	const maxPreferredDim = 1000
-
-	var (
-		best        *domain.Image
-		bestDim     int
-		fallback    *domain.Image
-		fallbackDim int
-	)
-
-	for _, image := range images {
-		if image == nil || image.Path == nil || image.Width == nil || image.Height == nil {
-			continue
+	if scraped.Type == domain.PageTypeFeed {
+		feed, err := s.feedService.Subscribe(ctx, householdID, url, scraped.Feed)
+		if err != nil {
+			return nil, err
 		}
-		dim := max(*image.Width, *image.Height)
-		if dim <= maxPreferredDim && dim > bestDim {
-			best = image
-			bestDim = dim
-		}
-		if dim > fallbackDim {
-			fallback = image
-			fallbackDim = dim
-		}
+		return &domain.ImportResult{Created: true, Feed: feed}, nil
 	}
 
-	if best != nil {
-		return best
+	recipe, err := s.recipeIngest.ImportRecipe(ctx, scraped.Recipe)
+	if err != nil {
+		return nil, err
 	}
-	return fallback
-}
-
-func (s *importService) processRecipeImages(ctx context.Context, recipe *domain.Recipe) {
-	if len(recipe.Images) == 0 {
-		return
+	if err := s.recipeService.UserSave(recipe.ID, userID, householdID); err != nil {
+		return nil, err
 	}
-
-	var (
-		mu      sync.Mutex
-		results []*domain.Image
-	)
-
-	var g errgroup.Group
-	g.SetLimit(s.fetchConcurrency)
-
-	for _, image := range recipe.Images {
-		if image.SourceURL == "" {
-			continue
-		}
-		g.Go(func() error {
-			image.EntityType = "recipes"
-			image.EntityID = recipe.ID
-
-			if err := s.imageService.PersistRemote(ctx, image, ""); err != nil {
-				return fmt.Errorf("failed to download recipe image %s: %w", image.SourceURL, err)
-			}
-
-			mu.Lock()
-			results = append(results, image)
-			mu.Unlock()
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Warnw("recipe image processing completed with errors", "error", err.Error())
-	}
-
-	best := selectBestImage(results)
-	if best == nil {
-		return
-	}
-
-	if err := s.imageService.SetDefault(best); err != nil {
-		log.Warnw("failed to set default recipe image", "error", err.Error())
-		return
-	}
-
-	recipe.ImagePath = best.Path
-}
-
-func (s *importService) processInstructionImages(ctx context.Context, recipe *domain.Recipe) {
-	var g errgroup.Group
-	g.SetLimit(s.fetchConcurrency)
-
-	for _, instruction := range recipe.Instructions {
-		ins := instruction // capture for closure
-		if ins == nil || ins.ImagePath != nil || len(ins.Images) < 1 {
-			continue // already has image, or has no new images
-		}
-		g.Go(func() error {
-			// Group instruction images under recipes/{recipeID}/ alongside recipe images.
-			path, err := s.imageService.PersistRemoteAsDefault(ctx, ins.Images[0], "recipe_instructions", ins.ID, "recipes/"+recipe.ID.String())
-			if err != nil {
-				return fmt.Errorf("failed to process instruction image %v: %w", ins.Images[0].SourceURL, err)
-			}
-			ins.ImagePath = path
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Warnw("instruction image processing completed with errors", "error", err.Error())
-	}
+	return &domain.ImportResult{Created: true, Recipe: recipe}, nil
 }

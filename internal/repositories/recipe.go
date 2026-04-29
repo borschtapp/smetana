@@ -196,7 +196,18 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Omit(
+		if recipe.ID == uuid.Nil && recipe.SourceUrl != nil {
+			var urlExisting domain.Recipe
+			if err := tx.Where("source_url = ? AND household_id IS NULL", *recipe.SourceUrl).First(&urlExisting).Error; err == nil {
+				recipe.ID = urlExisting.ID
+			}
+		}
+
+		var existing domain.Recipe
+		err := tx.First(&existing, "id = ?", recipe.ID).Error
+		isUpdate := err == nil
+
+		omitFields := []string{
 			"Parent",
 			"Author",
 			"Publisher",
@@ -207,8 +218,23 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 			"Equipment.*",
 			"Taxonomies.*",
 			"Collection.*",
-		).Create(recipe).Error; err != nil {
-			return mapErr(err)
+		}
+
+		if isUpdate {
+			if err := tx.Omit(omitFields...).Updates(recipe).Error; err != nil {
+				return mapErr(err)
+			}
+			// Clean up associations that will be re-added
+			if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&domain.RecipeIngredient{}).Error; err != nil {
+				return mapErr(err)
+			}
+			if err := tx.Where("recipe_id = ?", recipe.ID).Delete(&domain.RecipeInstruction{}).Error; err != nil {
+				return mapErr(err)
+			}
+		} else {
+			if err := tx.Omit(omitFields...).Create(recipe).Error; err != nil {
+				return mapErr(err)
+			}
 		}
 
 		if len(recipe.Ingredients) > 0 {

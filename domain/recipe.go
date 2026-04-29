@@ -128,6 +128,7 @@ type RecipeService interface {
 	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Import(recipe *Recipe) error
+	SetFeedID(recipeID, feedID uuid.UUID) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Delete(id uuid.UUID, householdID uuid.UUID) error
 

@@ -10,11 +10,14 @@ const normalizeFlags = purell.FlagsUsuallySafeGreedy |
 	purell.FlagRemoveWWW | purell.FlagRemoveDuplicateSlashes | purell.FlagSortQuery | purell.FlagRemoveFragment
 
 func NormalizeURL(rawURL string) string {
-	if normalized, err := purell.NormalizeURLString(rawURL, normalizeFlags); err != nil {
+	if rawURL == "" {
 		return rawURL
-	} else {
-		return normalized
 	}
+	normalized, err := purell.NormalizeURLString(rawURL, normalizeFlags)
+	if err != nil {
+		return rawURL
+	}
+	return normalized
 }
 
 func BaseURL(rawURL string) string {

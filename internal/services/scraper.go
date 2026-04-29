@@ -2,13 +2,17 @@ package services
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
+	"github.com/borschtapp/krip/model"
+	"github.com/borschtapp/krip/scraper"
 	kUtils "github.com/borschtapp/krip/utils"
 	"github.com/doyensec/safeurl"
+	"github.com/gofiber/fiber/v3/log"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/types"
@@ -21,29 +25,68 @@ func NewScraperService() domain.ScraperService {
 	return &scraperService{}
 }
 
+func defaultRequestOptions(ctx context.Context) krip.RequestOptions {
+	return krip.RequestOptions{
+		Context:    ctx,
+		HttpClient: safeurl.Client(safeurl.GetConfigBuilder().Build()),
+	}
+}
+
+func (s *scraperService) ScrapeUrl(ctx context.Context, url string) (*domain.ScrapeResult, error) {
+	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	options := krip.FeedOptions{
+		ScrapeOptions: krip.ScrapeOptions{
+			RequestOptions: defaultRequestOptions(scrapeCtx),
+		},
+	}
+
+	data, err := scraper.UrlInput(url, options.ScrapeOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	kripRecipe := &krip.Recipe{}
+	if err := scraper.Scrape(data, kripRecipe, options.ScrapeOptions); err != nil {
+		log.Infow("failed to scrape", "url", url, "error", err.Error())
+	}
+
+	if kripRecipe.IsValid() {
+		return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
+	}
+
+	kripFeed := &model.Feed{}
+	if err := scraper.ScrapeFeed(data, kripFeed, options); err == nil && len(kripFeed.Entries) > 0 {
+		return &domain.ScrapeResult{Type: domain.PageTypeFeed, Feed: s.kripToFeed(kripFeed)}, nil
+	}
+
+	// fallback to weak recipe
+	if kripRecipe.Name != "" {
+		return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
+	}
+
+	return nil, errors.New("auto: page type could not be determined")
+}
+
 func (s *scraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	kripRecipe, err := krip.ScrapeUrl(url, krip.ScrapeOptions{
-		RequestOptions: krip.RequestOptions{
-			Context:    scrapeCtx,
-			HttpClient: safeurl.Client(safeurl.GetConfigBuilder().Build()),
-		},
+		RequestOptions: defaultRequestOptions(scrapeCtx),
 	})
 	if err != nil {
 		return nil, err
 	}
-	recipe := s.kripToRecipe(kripRecipe)
-	s.enrichIngredients(recipe.Ingredients, kripRecipe.Language)
-	return recipe, nil
+	return s.kripToRecipe(kripRecipe), nil
 }
 
 func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	opts.Context = scrapeCtx
+	opts.RequestOptions = defaultRequestOptions(scrapeCtx)
 	scrapedFeed, err := krip.ScrapeFeedUrl(feed.Url, opts)
 	if err != nil {
 		return nil, err
@@ -51,9 +94,7 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts
 
 	recipes := make([]*domain.Recipe, 0, len(scrapedFeed.Entries))
 	for _, entry := range scrapedFeed.Entries {
-		recipe := s.kripToRecipe(entry)
-		s.enrichIngredients(recipe.Ingredients, entry.Language)
-		recipes = append(recipes, recipe)
+		recipes = append(recipes, s.kripToRecipe(entry))
 	}
 
 	// Back-populate the feed with scraped metadata.
@@ -97,14 +138,14 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 	if parsed.MaxAmount != 0 {
 		ingredient.MaxAmount = &parsed.MaxAmount
 	}
-	if len(parsed.Unit) != 0 {
+	if parsed.Unit != "" {
 		ingredient.Unit = &domain.Unit{Name: parsed.Unit, Slug: utils.CreateTag(parsed.UnitCode)}
 	}
-	if len(parsed.Name) != 0 {
+	if parsed.Name != "" {
 		ingredient.Name = &parsed.Name
 		ingredient.Food = &domain.Food{Name: parsed.Name, Slug: utils.CreateTag(parsed.Name)}
 	}
-	if len(parsed.Description) != 0 {
+	if parsed.Description != "" {
 		ingredient.Description = &parsed.Description
 	}
 }
@@ -112,60 +153,52 @@ func (s *scraperService) enrichIngredient(ingredient *domain.RecipeIngredient, l
 func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	recipe := &domain.Recipe{}
 	recipe.SourceUrl = new(utils.NormalizeURL(kripRecipe.Url))
-	if len(kripRecipe.Name) > 0 {
+	if kripRecipe.Name != "" {
 		recipe.Name = &kripRecipe.Name
 	}
-	if len(kripRecipe.Description) > 0 {
+	if kripRecipe.Description != "" {
 		recipe.Description = &kripRecipe.Description
 	}
-	if len(kripRecipe.Language) > 0 {
+	if kripRecipe.Language != "" {
 		recipe.Language = &kripRecipe.Language
 	}
 	for _, image := range kripRecipe.Images {
-		if len(image.Url) != 0 {
+		if image.Url != "" {
 			recipe.Images = append(recipe.Images, s.kripToImage(image))
 		}
 	}
 	if kripRecipe.Author != nil && kripRecipe.Author.Name != "" {
 		recipe.Author = s.kripToAuthor(kripRecipe.Author)
 	}
-	if len(kripRecipe.Text) > 0 {
+	if kripRecipe.Text != "" {
 		recipe.Text = &kripRecipe.Text
 	}
-	if len(kripRecipe.PrepTime) != 0 {
+	if kripRecipe.PrepTime != "" {
 		if d, err := types.DurationFromISO8601(kripRecipe.PrepTime); err == nil {
 			recipe.PrepTime = &d
 		}
 	}
-	if len(kripRecipe.CookTime) != 0 {
+	if kripRecipe.CookTime != "" {
 		if d, err := types.DurationFromISO8601(kripRecipe.CookTime); err == nil {
 			recipe.CookTime = &d
 		}
 	}
-	if len(kripRecipe.TotalTime) != 0 {
+	if kripRecipe.TotalTime != "" {
 		if d, err := types.DurationFromISO8601(kripRecipe.TotalTime); err == nil {
 			recipe.TotalTime = &d
 		}
 	}
-	if len(kripRecipe.Difficulty) > 0 {
+	if kripRecipe.Difficulty != "" {
 		recipe.Difficulty = &kripRecipe.Difficulty
 	}
-	if len(kripRecipe.CookingMethod) > 0 {
+	if kripRecipe.CookingMethod != "" {
 		recipe.Method = &kripRecipe.CookingMethod
 	}
-	for _, diet := range kripRecipe.Diets {
-		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{Type: "diet", Label: diet, Slug: utils.CreateTag(diet)})
-	}
-	for _, cat := range kripRecipe.Categories {
-		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{Type: "category", Label: cat, Slug: utils.CreateTag(cat)})
-	}
-	for _, cuisine := range kripRecipe.Cuisines {
-		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{Type: "cuisine", Label: cuisine, Slug: utils.CreateTag(cuisine)})
-	}
-	for _, keyword := range kripRecipe.Keywords {
-		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{Type: "keyword", Label: keyword, Slug: utils.CreateTag(keyword)})
-	}
-	if len(kripRecipe.Yield) != 0 {
+	addTaxonomies(recipe, domain.TaxonomyTypeDiet, kripRecipe.Diets)
+	addTaxonomies(recipe, domain.TaxonomyTypeCategory, kripRecipe.Categories)
+	addTaxonomies(recipe, domain.TaxonomyTypeCuisine, kripRecipe.Cuisines)
+	addTaxonomies(recipe, domain.TaxonomyTypeKeyword, kripRecipe.Keywords)
+	if kripRecipe.Yield != "" {
 		if yield := kUtils.FindInt(kripRecipe.Yield); yield > 0 {
 			recipe.Yield = &yield
 		}
@@ -203,19 +236,19 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	}
 	if kripRecipe.Video != nil {
 		recipe.Video = &domain.Video{}
-		if len(kripRecipe.Video.Name) > 0 {
+		if kripRecipe.Video.Name != "" {
 			recipe.Video.Name = &kripRecipe.Video.Name
 		}
-		if len(kripRecipe.Video.Description) > 0 {
+		if kripRecipe.Video.Description != "" {
 			recipe.Video.Description = &kripRecipe.Video.Description
 		}
-		if len(kripRecipe.Video.EmbedUrl) > 0 {
+		if kripRecipe.Video.EmbedUrl != "" {
 			recipe.Video.EmbedUrl = &kripRecipe.Video.EmbedUrl
 		}
-		if len(kripRecipe.Video.ContentUrl) > 0 {
+		if kripRecipe.Video.ContentUrl != "" {
 			recipe.Video.ContentUrl = &kripRecipe.Video.ContentUrl
 		}
-		if len(kripRecipe.Video.ThumbnailUrl) > 0 {
+		if kripRecipe.Video.ThumbnailUrl != "" {
 			recipe.Video.ThumbnailUrl = &kripRecipe.Video.ThumbnailUrl
 		}
 	}
@@ -230,20 +263,18 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 	for _, item := range kripRecipe.Ingredients {
 		recipe.Ingredients = append(recipe.Ingredients, s.kripToIngredient(item))
 	}
-	if len(kripRecipe.Equipment) > 0 {
-		equipment := make([]*domain.Equipment, 0, len(kripRecipe.Equipment))
-		for _, item := range kripRecipe.Equipment {
-			eq := &domain.Equipment{
-				Name:        item.Name,
-				Slug:        utils.CreateTag(item.Name),
-				Description: &item.Description,
-			}
-			if len(item.Image) != 0 {
-				eq.Images = []*domain.Image{{SourceURL: item.Image}}
-			}
-			equipment = append(equipment, eq)
+	for _, item := range kripRecipe.Equipment {
+		eq := &domain.Equipment{
+			Name: item.Name,
+			Slug: utils.CreateTag(item.Name),
 		}
-		recipe.Equipment = equipment
+		if item.Description != "" {
+			eq.Description = &item.Description
+		}
+		if item.Image != "" {
+			eq.Images = []*domain.Image{{SourceURL: item.Image}}
+		}
+		recipe.Equipment = append(recipe.Equipment, eq)
 	}
 	for _, item := range kripRecipe.Instructions {
 		recipe.Instructions = append(recipe.Instructions, s.kripToInstruction(&item.HowToStep))
@@ -251,20 +282,31 @@ func (s *scraperService) kripToRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 			recipe.Instructions = append(recipe.Instructions, s.kripToInstruction(step))
 		}
 	}
+	s.enrichIngredients(recipe.Ingredients, kripRecipe.Language)
 	return recipe
+}
+
+func addTaxonomies(recipe *domain.Recipe, taxType string, labels []string) {
+	for _, label := range labels {
+		recipe.Taxonomies = append(recipe.Taxonomies, &domain.Taxonomy{
+			Type:  taxType,
+			Label: label,
+			Slug:  utils.CreateTag(label),
+		})
+	}
 }
 
 func (s *scraperService) kripToAuthor(person *krip.Person) *domain.Author {
 	author := &domain.Author{
 		Name: person.Name,
 	}
-	if len(person.Url) > 0 {
+	if person.Url != "" {
 		author.Url = new(utils.NormalizeURL(person.Url))
 	}
-	if len(person.Description) > 0 {
+	if person.Description != "" {
 		author.Description = &person.Description
 	}
-	if len(person.Image) > 0 {
+	if person.Image != "" {
 		author.Images = []*domain.Image{{SourceURL: person.Image}}
 	}
 	return author
@@ -280,7 +322,7 @@ func (s *scraperService) kripToImage(image *krip.ImageObject) *domain.Image {
 	if image.Height > 0 {
 		img.Height = &image.Height
 	}
-	if len(image.Caption) > 0 {
+	if image.Caption != "" {
 		img.Caption = &image.Caption
 	}
 	return img
@@ -288,19 +330,19 @@ func (s *scraperService) kripToImage(image *krip.ImageObject) *domain.Image {
 
 func (s *scraperService) kripToInstruction(item *krip.HowToStep) *domain.RecipeInstruction {
 	ins := &domain.RecipeInstruction{}
-	if len(item.Name) != 0 {
+	if item.Name != "" {
 		ins.Title = &item.Name
 	}
-	if len(item.Text) != 0 {
+	if item.Text != "" {
 		ins.Text = item.Text
 	}
-	if len(item.Url) != 0 {
+	if item.Url != "" {
 		ins.Url = new(utils.NormalizeURL(item.Url))
 	}
-	if len(item.Image) != 0 {
+	if item.Image != "" {
 		ins.Images = []*domain.Image{{SourceURL: item.Image}}
 	}
-	if len(item.Video) != 0 {
+	if item.Video != "" {
 		ins.VideoUrl = &item.Video
 	}
 	return ins
@@ -350,15 +392,30 @@ func (s *scraperService) kripToIngredient(item *krip.PropertyValue) *domain.Reci
 	return ing
 }
 
+func (s *scraperService) kripToFeed(f *model.Feed) *domain.Feed {
+	feed := &domain.Feed{
+		Url:        utils.NormalizeURL(f.Url),
+		Name:       f.Name,
+		Discovered: f.Discovered,
+	}
+	if f.Description != "" {
+		feed.Description = &f.Description
+	}
+	if f.Publisher != nil {
+		feed.Publisher = s.kripToPublisher(f.Publisher)
+	}
+	return feed
+}
+
 func (s *scraperService) kripToPublisher(org *krip.Organization) *domain.Publisher {
 	pub := &domain.Publisher{Name: org.Name}
-	if len(org.Description) != 0 {
+	if org.Description != "" {
 		pub.Description = &org.Description
 	}
-	if len(org.Url) != 0 {
+	if org.Url != "" {
 		pub.Url = new(utils.NormalizeURL(org.Url))
 	}
-	if len(org.Logo) != 0 {
+	if org.Logo != "" {
 		pub.Images = []*domain.Image{{SourceURL: org.Logo}}
 	}
 	return pub

@@ -42,7 +42,7 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	feed, err := h.feedService.Subscribe(c.Context(), claims.HouseholdID, req.Url)
+	feed, err := h.feedService.Subscribe(c.Context(), claims.HouseholdID, req.Url, nil)
 	if err != nil {
 		return err
 	}

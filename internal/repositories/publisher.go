@@ -123,14 +123,14 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 }
 
 func (r *publisherRepository) find(pub *domain.Publisher) error {
-	if pub.Url != nil && len(*pub.Url) > 0 {
+	if pub.Url != nil && *pub.Url != "" {
 		var existing domain.Publisher
 		if err := r.db.First(&existing, "url = ?", pub.Url).Error; err == nil {
 			*pub = existing
 			return nil
 		}
 	}
-	if len(pub.Name) > 0 {
+	if pub.Name != "" {
 		var existing domain.Publisher
 		if err := r.db.First(&existing, "lower(name) = lower(?)", pub.Name).Error; err == nil {
 			*pub = existing

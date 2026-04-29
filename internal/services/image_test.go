@@ -151,7 +151,7 @@ func TestImageService_PersistUploaded_StoresFileAndReturnsAbsoluteURL(t *testing
 	uploaded, err := svc.PersistUploaded(context.Background(), data, "image/jpeg")
 
 	require.NoError(t, err)
-	assert.True(t, len(uploaded.Path) > 0, "path must not be empty")
+	assert.True(t, uploaded.Path != "", "path must not be empty")
 	assert.Contains(t, string(uploaded.Path), "uploads/")
 	// Exactly one file must be saved.
 	assert.Len(t, fs.saved, 1)
@@ -179,7 +179,7 @@ func TestImageService_SetDefault_MarksImageAsDefault(t *testing.T) {
 		ID:         imgID,
 		EntityType: "publishers",
 		EntityID:   entityID,
-		Path:       new(storage.Path("publisher/abc/img.jpg")),
+		Path:       ptr(storage.Path("publisher/abc/img.jpg")),
 	}
 
 	err := svc.SetDefault(repo.images[imgID])
@@ -198,7 +198,7 @@ func TestImageService_Delete_RemovesStorageFileAndDBRecord(t *testing.T) {
 		ID:         imgID,
 		EntityType: "food",
 		EntityID:   uuid.New(),
-		Path:       new(storage.Path("food/abc/img.jpg")),
+		Path:       ptr(storage.Path("food/abc/img.jpg")),
 	}
 
 	require.NoError(t, svc.Delete(imgID))

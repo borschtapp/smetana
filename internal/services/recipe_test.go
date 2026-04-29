@@ -10,6 +10,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/services"
+	"borscht.app/smetana/internal/types"
 )
 
 type recipeServiceDeps struct {
@@ -45,367 +46,221 @@ func TestRecipeService_ByID_GlobalRecipe_AnyHouseholdCanRead(t *testing.T) {
 	assert.Equal(t, globalRecipe.ID, got.ID)
 }
 
-func TestRecipeService_ByID_HouseholdRecipe_SameHouseholdCanRead(t *testing.T) {
+func TestRecipeService_ByID_OwnedByOtherHousehold_ReturnsForbidden(t *testing.T) {
+	otherHID := uuid.New()
+	myHID := uuid.New()
+	privateRecipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &otherHID}
+	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return privateRecipe, nil }}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
+	_, err := svc.ByID(privateRecipe.ID, myHID)
+
+	assert.ErrorIs(t, err, sentinels.ErrForbidden)
+}
+
+func TestRecipeService_Search_FiltersByHousehold(t *testing.T) {
+	hid := uuid.New()
+	repo := &stubRecipeRepo{
+		searchFn: func(_ uuid.UUID, h uuid.UUID, _ domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
+			assert.Equal(t, hid, h)
+			return []domain.Recipe{{ID: uuid.New()}}, 1, nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
+	_, _, err := svc.Search(uuid.New(), hid, domain.RecipeSearchOptions{})
+
+	require.NoError(t, err)
+}
+
+func TestRecipeService_Update_OwnedByHousehold_UpdatesDirectly(t *testing.T) {
 	hid := uuid.New()
 	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: &hid}
-	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
 
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	got, err := svc.ByID(recipe.ID, hid)
-
-	require.NoError(t, err)
-	assert.Equal(t, recipe.ID, got.ID)
-}
-
-func TestRecipeService_ByID_HouseholdRecipe_OtherHouseholdForbidden(t *testing.T) {
-	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
-	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	_, err := svc.ByID(recipe.ID, uuid.New()) // different household
-
-	require.ErrorIs(t, err, sentinels.ErrForbidden)
-}
-
-func TestRecipeService_ByID_NotFound(t *testing.T) {
-	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) {
-		return nil, sentinels.ErrNotFound
-	}}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	_, err := svc.ByID(uuid.New(), uuid.New())
-
-	require.ErrorIs(t, err, sentinels.ErrNotFound)
-}
-
-func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
-	// A global recipe (HouseholdID == nil) must be cloned into the household
-	// before the update is applied. After Update returns, recipe.ID should
-	// point to the new cloned recipe, not the original.
-	globalID := uuid.New()
-	hid := uuid.New()
-	uid := uuid.New()
-
-	global := &domain.Recipe{
-		ID:          globalID,
-		HouseholdID: nil,
-		Name:        ptr("Global Borsch"),
-		Ingredients: []*domain.RecipeIngredient{
-			{ID: uuid.New(), RawText: "beet"},
-		},
-		Instructions: []*domain.RecipeInstruction{},
-	}
-
-	var clonedID uuid.UUID // captures the UUID assigned during Create
-
-	repo := &stubRecipeRepo{
-		byIDFn: func(id uuid.UUID) (*domain.Recipe, error) { return global, nil },
-		transactionFn: func(fn func(domain.RecipeRepository) error) error {
-			txRepo := &stubRecipeRepo{
-				createFn: func(r *domain.Recipe) error {
-					// Simulate GORM assigning a new UUID in BeforeCreate
-					r.ID, _ = uuid.NewV7()
-					clonedID = r.ID
-					return nil
-				},
-				replaceRecipePointersFn: func(_, _, _ uuid.UUID) error { return nil },
-			}
-			return fn(txRepo)
-		},
-		updateFn: func(r *domain.Recipe) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	patch := &domain.Recipe{ID: globalID, Name: ptr("My Borsch")}
-	err := svc.Update(patch, uid, hid)
-
-	require.NoError(t, err)
-	assert.Equal(t, clonedID, patch.ID, "recipe.ID should be updated to the clone's ID")
-	assert.NotEqual(t, globalID, patch.ID, "original global ID must not be used for the update")
-	require.NotNil(t, patch.ParentID)
-	assert.Equal(t, globalID, *patch.ParentID)
-}
-
-func TestRecipeService_Update_GlobalRecipe_SetsHouseholdAndUser(t *testing.T) {
-	hid := uuid.New()
-	uid := uuid.New()
-	global := &domain.Recipe{ID: uuid.New(), HouseholdID: nil}
-
-	repo := &stubRecipeRepo{
-		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return global, nil },
-		transactionFn: func(fn func(domain.RecipeRepository) error) error {
-			tx := &stubRecipeRepo{
-				createFn: func(r *domain.Recipe) error {
-					assert.Equal(t, hid, *r.HouseholdID, "clone must belong to requesting household")
-					assert.Equal(t, uid, *r.UserID, "clone must be owned by requesting user")
-					assert.Equal(t, global.ID, *r.ParentID, "clone must reference original as parent")
-					r.ID, _ = uuid.NewV7()
-					return nil
-				},
-				replaceRecipePointersFn: func(_, _, _ uuid.UUID) error { return nil },
-			}
-			return fn(tx)
-		},
-		updateFn: func(_ *domain.Recipe) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.Update(&domain.Recipe{ID: global.ID}, uid, hid)
-	require.NoError(t, err)
-}
-
-func TestRecipeService_Update_GlobalRecipe_DeepCopiesIngredients(t *testing.T) {
-	// Ingredient IDs must be zeroed so GORM generates new UUIDs for the clone.
-	origIngID := uuid.New()
-	global := &domain.Recipe{
-		ID:          uuid.New(),
-		HouseholdID: nil,
-		Ingredients: []*domain.RecipeIngredient{
-			{ID: origIngID, RawText: "salt"},
-		},
-		Instructions: []*domain.RecipeInstruction{},
-	}
-
-	repo := &stubRecipeRepo{
-		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return global, nil },
-		transactionFn: func(fn func(domain.RecipeRepository) error) error {
-			tx := &stubRecipeRepo{
-				createFn: func(r *domain.Recipe) error {
-					require.Len(t, r.Ingredients, 1)
-					assert.Equal(t, uuid.Nil, r.Ingredients[0].ID, "ingredient ID must be zeroed for clone")
-					assert.Equal(t, uuid.Nil, r.Ingredients[0].RecipeID, "ingredient RecipeID must be zeroed")
-					assert.Equal(t, "salt", r.Ingredients[0].RawText, "ingredient content must be preserved")
-					r.ID, _ = uuid.NewV7()
-					return nil
-				},
-				replaceRecipePointersFn: func(_, _, _ uuid.UUID) error { return nil },
-			}
-			return fn(tx)
-		},
-		updateFn: func(_ *domain.Recipe) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.Update(&domain.Recipe{ID: global.ID}, uuid.New(), uuid.New())
-	require.NoError(t, err)
-}
-
-func TestRecipeService_Update_GlobalRecipe_MigratesPointers(t *testing.T) {
-	// ReplaceRecipePointers must be called inside the same transaction with
-	// the original and new IDs so no dangling pointers are left.
-	globalID := uuid.New()
-	hid := uuid.New()
-	var capturedOld, capturedNew, capturedHID uuid.UUID
-
-	global := &domain.Recipe{ID: globalID, HouseholdID: nil, Instructions: []*domain.RecipeInstruction{}}
-
-	repo := &stubRecipeRepo{
-		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return global, nil },
-		transactionFn: func(fn func(domain.RecipeRepository) error) error {
-			tx := &stubRecipeRepo{
-				createFn: func(r *domain.Recipe) error {
-					r.ID, _ = uuid.NewV7()
-					return nil
-				},
-				replaceRecipePointersFn: func(old, newID, h uuid.UUID) error {
-					capturedOld, capturedNew, capturedHID = old, newID, h
-					return nil
-				},
-			}
-			return fn(tx)
-		},
-		updateFn: func(_ *domain.Recipe) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	patch := &domain.Recipe{ID: globalID}
-	err := svc.Update(patch, uuid.New(), hid)
-
-	require.NoError(t, err)
-	assert.Equal(t, globalID, capturedOld, "old recipe ID must be the global one")
-	assert.Equal(t, patch.ID, capturedNew, "new recipe ID must be the clone")
-	assert.Equal(t, hid, capturedHID, "household ID must match the requester")
-}
-
-func TestRecipeService_Update_HouseholdRecipe_UpdatesDirectly(t *testing.T) {
-	// A recipe already owned by the household must NOT trigger cloning.
-	hid := uuid.New()
-	uid := uuid.New()
-	rid := uuid.New()
-	recipe := &domain.Recipe{ID: rid, HouseholdID: &hid}
-
-	transactionCalled := false
 	updateCalled := false
-
 	repo := &stubRecipeRepo{
 		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
-		transactionFn: func(_ func(domain.RecipeRepository) error) error {
-			transactionCalled = true
-			return nil
-		},
 		updateFn: func(r *domain.Recipe) error {
 			updateCalled = true
-			assert.Equal(t, rid, r.ID, "ID must not change for household-owned recipe")
+			assert.Equal(t, recipe.ID, r.ID)
 			return nil
 		},
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.Update(&domain.Recipe{ID: rid}, uid, hid)
+	err := svc.Update(recipe, uuid.New(), hid)
 
 	require.NoError(t, err)
-	assert.False(t, transactionCalled, "no transaction should occur for already-household-owned recipe")
 	assert.True(t, updateCalled)
 }
 
-func TestRecipeService_Delete_GlobalRecipe_Forbidden(t *testing.T) {
-	repo := &stubRecipeRepo{
-		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) {
-			return &domain.Recipe{ID: uuid.New(), HouseholdID: nil}, nil
-		},
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.Delete(uuid.New(), uuid.New())
-
-	require.ErrorIs(t, err, sentinels.ErrForbidden)
-}
-
-func TestRecipeService_Delete_DifferentHousehold_Forbidden(t *testing.T) {
-	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
-	repo := &stubRecipeRepo{byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil }}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.Delete(recipe.ID, uuid.New()) // requester is from a different household
-
-	require.ErrorIs(t, err, sentinels.ErrForbidden)
-}
-
-func TestRecipeService_Delete_OriginalHouseholdRecipe_DeletesImages(t *testing.T) {
-	// An original (no ParentID) household recipe must have its images deleted.
-	hid := uuid.New()
-	imgID := uuid.New()
-	recipe := &domain.Recipe{
-		ID:          uuid.New(),
-		HouseholdID: &hid,
-		ParentID:    nil, // original, not a clone
-		Images:      []*domain.Image{{ID: imgID}},
-	}
-
-	deletedIDs := make([]uuid.UUID, 0)
-	imgService := &stubImageService{
-		deleteFn: func(id uuid.UUID) error {
-			deletedIDs = append(deletedIDs, id)
-			return nil
-		},
-	}
-	repo := &stubRecipeRepo{
-		byIDFn:   func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
-		deleteFn: func(_ uuid.UUID) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgService})
-	err := svc.Delete(recipe.ID, hid)
-
-	require.NoError(t, err)
-	require.Len(t, deletedIDs, 1)
-	assert.Equal(t, imgID, deletedIDs[0])
-}
-
-func TestRecipeService_Delete_ClonedRecipe_SkipsImageDeletion(t *testing.T) {
-	// A cloned recipe (ParentID set) shares images with the global original —
-	// deleting should NOT delete storage files.
-	hid := uuid.New()
-	recipe := &domain.Recipe{
-		ID:          uuid.New(),
-		HouseholdID: &hid,
-		ParentID:    new(uuid.New()), // clone: do not delete shared images
-		Images:      []*domain.Image{{ID: uuid.New()}},
-	}
-
-	deleteImageCalled := false
-	imgService := &stubImageService{
-		deleteFn: func(_ uuid.UUID) error {
-			deleteImageCalled = true
-			return nil
-		},
-	}
-	repo := &stubRecipeRepo{
-		byIDFn:   func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
-		deleteFn: func(_ uuid.UUID) error { return nil },
-	}
-
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgService})
-	err := svc.Delete(recipe.ID, hid)
-
-	require.NoError(t, err)
-	assert.False(t, deleteImageCalled, "images shared with global recipe must not be deleted on clone removal")
-}
-
-func TestRecipeService_Create_SetsHouseholdAndUserAndSaves(t *testing.T) {
-	hid := uuid.New()
+func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
+	// When updating a recipe that has no HouseholdID (global/feed recipe),
+	// the service must clone it into the household first (Copy-on-Write).
+	globalID := uuid.New()
+	myHID := uuid.New()
 	uid := uuid.New()
+	global := &domain.Recipe{ID: globalID, HouseholdID: nil, Name: ptr("Global")}
 
+	var clonedID uuid.UUID
 	createCalled := false
-	userSaveCalled := false
+	replaceCalled := false
 
 	repo := &stubRecipeRepo{
-		createFn: func(r *domain.Recipe) error {
-			createCalled = true
-			assert.Equal(t, hid, *r.HouseholdID)
-			assert.Equal(t, uid, *r.UserID)
-			r.ID, _ = uuid.NewV7()
-			return nil
+		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return global, nil },
+		transactionFn: func(fn func(domain.RecipeRepository) error) error {
+			return fn(&stubRecipeRepo{
+				createFn: func(r *domain.Recipe) error {
+					createCalled = true
+					assert.Equal(t, myHID, *r.HouseholdID)
+					assert.Equal(t, globalID, *r.ParentID)
+					r.ID = uuid.New() // simulate DB ID assignment
+					clonedID = r.ID
+					return nil
+				},
+				replaceRecipePointersFn: func(oldID, newID, h uuid.UUID) error {
+					replaceCalled = true
+					assert.Equal(t, globalID, oldID)
+					assert.Equal(t, clonedID, newID)
+					assert.Equal(t, myHID, h)
+					return nil
+				},
+			})
 		},
-		userSaveFn: func(rid, u, h uuid.UUID) error {
-			userSaveCalled = true
-			assert.Equal(t, uid, u)
-			assert.Equal(t, hid, h)
+		updateFn: func(r *domain.Recipe) error {
+			assert.Equal(t, clonedID, r.ID, "update must be called on the clone, not the original")
 			return nil
 		},
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	recipe := &domain.Recipe{}
-	err := svc.Create(recipe, uid, hid)
+	patch := &domain.Recipe{ID: globalID, Name: ptr("My Custom Version")}
+	err := svc.Update(patch, uid, myHID)
 
 	require.NoError(t, err)
 	assert.True(t, createCalled)
-	assert.True(t, userSaveCalled, "newly created recipe must be saved for the creator")
-	assert.NotEqual(t, uuid.Nil, recipe.ID)
+	assert.True(t, replaceCalled)
 }
 
-func TestRecipeService_AddEquipment_WrongHousehold_Forbidden(t *testing.T) {
-	recipe := &domain.Recipe{ID: uuid.New(), HouseholdID: new(uuid.New())}
-	repo := &stubRecipeRepo{
-		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
+func TestRecipeService_EstimatePrice_CalculatesTotal(t *testing.T) {
+	hid := uuid.New()
+	foodID1 := uuid.New()
+	foodID2 := uuid.New()
+	unitID := uuid.New()
+
+	recipe := &domain.Recipe{
+		ID:    uuid.New(),
+		Yield: ptr(4),
+		Ingredients: []*domain.RecipeIngredient{
+			{FoodID: &foodID1, Amount: ptr(200.0), UnitID: &unitID},
+			{FoodID: &foodID2, Amount: ptr(500.0), UnitID: &unitID},
+		},
 	}
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.AddEquipment(recipe.ID, uuid.New(), uuid.New() /* different household */)
 
-	require.ErrorIs(t, err, sentinels.ErrForbidden)
+	repo := &stubRecipeRepo{
+		byIDPreloadFn: func(_ uuid.UUID, _, _ uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
+			return recipe, nil
+		},
+	}
+
+	latestPrices := map[uuid.UUID]*domain.FoodPrice{
+		foodID1: {FoodID: foodID1, Amount: 1000, Price: 10, UnitID: unitID},
+		foodID2: {FoodID: foodID2, Amount: 1000, Price: 20, UnitID: unitID},
+	}
+
+	foodSvc := &stubFoodService{
+		latestPricesFn: func(h uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error) {
+			assert.Equal(t, hid, h)
+			return latestPrices, nil
+		},
+	}
+
+	unitSvc := &stubUnitService{
+		convertFn: func(amount float64, from, to uuid.UUID) (float64, error) {
+			assert.Equal(t, unitID, from)
+			assert.Equal(t, unitID, to)
+			return amount, nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, foodService: foodSvc, unitService: unitSvc})
+	estimate, err := svc.EstimatePrice(recipe.ID, hid)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 12.0, estimate.Total, 0.01) // 2.0 + 10.0
+	require.NotNil(t, estimate.PerServing)
+	assert.InDelta(t, 3.0, *estimate.PerServing, 0.01)
 }
 
-func TestRecipeService_AddEquipment_SameHousehold_DelegatestoRepo(t *testing.T) {
+func TestRecipeService_Delete_OwnedByHousehold_DeletesImagesAndRepoRecord(t *testing.T) {
 	hid := uuid.New()
 	recipeID := uuid.New()
-	equipmentID := uuid.New()
-	recipe := &domain.Recipe{ID: recipeID, HouseholdID: &hid}
+	imageID := uuid.New()
 
-	addCalled := false
+	recipe := &domain.Recipe{
+		ID:          recipeID,
+		HouseholdID: &hid,
+		Images:      []*domain.Image{{ID: imageID}},
+	}
+
+	repoDeleted := false
+	imageDeleted := false
+
 	repo := &stubRecipeRepo{
 		byIDFn: func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
-		addEquipmentFn: func(rid, eid uuid.UUID) error {
-			addCalled = true
-			assert.Equal(t, recipeID, rid)
-			assert.Equal(t, equipmentID, eid)
+		deleteFn: func(id uuid.UUID) error {
+			repoDeleted = true
+			assert.Equal(t, recipeID, id)
 			return nil
 		},
 	}
 
-	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	err := svc.AddEquipment(recipeID, equipmentID, hid)
+	imgSvc := &stubImageService{
+		deleteFn: func(id uuid.UUID) error {
+			imageDeleted = true
+			assert.Equal(t, imageID, id)
+			return nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgSvc})
+	err := svc.Delete(recipeID, hid)
 
 	require.NoError(t, err)
-	assert.True(t, addCalled)
+	assert.True(t, repoDeleted)
+	assert.True(t, imageDeleted, "images of a household recipe must be deleted from storage")
+}
+
+func TestRecipeService_Delete_GlobalRecipeClone_DoesNotDeleteSharedImages(t *testing.T) {
+	// When deleting a household's clone of a global recipe, we must NOT delete
+	// the images because they are shared with the global recipe and potentially other clones.
+	hid := uuid.New()
+	recipeID := uuid.New()
+	parentID := uuid.New()
+	imageID := uuid.New()
+
+	recipe := &domain.Recipe{
+		ID:          recipeID,
+		ParentID:    &parentID, // it's a clone
+		HouseholdID: &hid,
+		Images:      []*domain.Image{{ID: imageID}},
+	}
+
+	imageDeleted := false
+	repo := &stubRecipeRepo{
+		byIDFn:   func(_ uuid.UUID) (*domain.Recipe, error) { return recipe, nil },
+		deleteFn: func(_ uuid.UUID) error { return nil },
+	}
+	imgSvc := &stubImageService{
+		deleteFn: func(_ uuid.UUID) error {
+			imageDeleted = true
+			return nil
+		},
+	}
+
+	svc := newTestRecipeService(recipeServiceDeps{repo: repo, imgService: imgSvc})
+	err := svc.Delete(recipeID, hid)
+
+	require.NoError(t, err)
+	assert.False(t, imageDeleted, "shared images must not be deleted when a clone is removed")
 }

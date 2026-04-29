@@ -19,6 +19,7 @@ type stubRecipeService struct {
 	searchFn                  func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
 	userSaveFn                func(uuid.UUID, uuid.UUID, uuid.UUID) error
 	importFn                  func(*domain.Recipe) error
+	setFeedIDFn               func(uuid.UUID, uuid.UUID) error
 }
 
 func (s *stubRecipeService) ByID(id, householdID uuid.UUID) (*domain.Recipe, error) {
@@ -63,10 +64,30 @@ func (s *stubRecipeService) Import(recipe *domain.Recipe) error {
 	return nil
 }
 
+func (s *stubRecipeService) SetFeedID(recipeID, feedID uuid.UUID) error {
+	if s.setFeedIDFn != nil {
+		return s.setFeedIDFn(recipeID, feedID)
+	}
+	return nil
+}
+
+type stubRecipeIngestService struct {
+	domain.RecipeIngestService
+	importRecipeFn func(context.Context, *domain.Recipe) (*domain.Recipe, error)
+}
+
+func (s *stubRecipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.Recipe) (*domain.Recipe, error) {
+	if s.importRecipeFn != nil {
+		return s.importRecipeFn(ctx, recipe)
+	}
+	return recipe, nil
+}
+
 type stubRecipeRepo struct {
 	domain.RecipeRepository
 
 	byIDFn                    func(uuid.UUID) (*domain.Recipe, error)
+	byIDPreloadFn             func(uuid.UUID, uuid.UUID, uuid.UUID, types.PreloadOptions) (*domain.Recipe, error)
 	byUrlFn                   func(string) (*domain.Recipe, error)
 	byParentIDsAndHouseholdFn func([]uuid.UUID, uuid.UUID, types.PreloadOptions) ([]domain.Recipe, error)
 	searchFn                  func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
@@ -87,7 +108,10 @@ type stubRecipeRepo struct {
 }
 
 func (s *stubRecipeRepo) ByID(id uuid.UUID) (*domain.Recipe, error) { return s.byIDFn(id) }
-func (s *stubRecipeRepo) ByUrl(url string) (*domain.Recipe, error)  { return s.byUrlFn(url) }
+func (s *stubRecipeRepo) ByIDPreload(id, uid, hid uuid.UUID, p types.PreloadOptions) (*domain.Recipe, error) {
+	return s.byIDPreloadFn(id, uid, hid, p)
+}
+func (s *stubRecipeRepo) ByUrl(url string) (*domain.Recipe, error) { return s.byUrlFn(url) }
 func (s *stubRecipeRepo) ByParentIDsAndHousehold(ids []uuid.UUID, hid uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
 	return s.byParentIDsAndHouseholdFn(ids, hid, preload)
 }
@@ -254,6 +278,7 @@ type stubFoodService struct {
 
 	findOrCreateFn func(context.Context, *domain.Food) error
 	updateFn       func(*domain.Food) error
+	latestPricesFn func(uuid.UUID, []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error)
 }
 
 func (s *stubFoodService) FindOrCreate(ctx context.Context, f *domain.Food) error {
@@ -271,11 +296,18 @@ func (s *stubFoodService) Update(f *domain.Food) error {
 	}
 	return nil
 }
+func (s *stubFoodService) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error) {
+	if s.latestPricesFn != nil {
+		return s.latestPricesFn(householdID, foodIDs)
+	}
+	return nil, nil
+}
 
 type stubUnitService struct {
 	domain.UnitService
 
 	findOrCreateFn func(*domain.Unit) error
+	convertFn      func(float64, uuid.UUID, uuid.UUID) (float64, error)
 }
 
 func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
@@ -283,6 +315,12 @@ func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
 		return s.findOrCreateFn(u)
 	}
 	return nil
+}
+func (s *stubUnitService) Convert(amount float64, from, to uuid.UUID) (float64, error) {
+	if s.convertFn != nil {
+		return s.convertFn(amount, from, to)
+	}
+	return amount, nil
 }
 
 type stubTaxonomyRepo struct {
@@ -314,12 +352,22 @@ func (s *stubEquipmentService) FindOrCreate(ctx context.Context, e *domain.Equip
 type stubScraperService struct {
 	domain.ScraperService
 
+	scrapeUrlFn    func(context.Context, string) (*domain.ScrapeResult, error)
 	scrapeRecipeFn func(context.Context, string) (*domain.Recipe, error)
 	scrapeFeedFn   func(context.Context, *domain.Feed, krip.FeedOptions) ([]*domain.Recipe, error)
 }
 
+func (s *stubScraperService) ScrapeUrl(ctx context.Context, url string) (*domain.ScrapeResult, error) {
+	if s.scrapeUrlFn != nil {
+		return s.scrapeUrlFn(ctx, url)
+	}
+	return nil, nil
+}
 func (s *stubScraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
-	return s.scrapeRecipeFn(ctx, url)
+	if s.scrapeRecipeFn != nil {
+		return s.scrapeRecipeFn(ctx, url)
+	}
+	return nil, nil
 }
 func (m *stubScraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
 	if m.scrapeFeedFn != nil {
@@ -338,17 +386,29 @@ type stubFeedRepo struct {
 func (s *stubFeedRepo) ListActive() ([]domain.Feed, error) { return s.listActiveFn() }
 func (s *stubFeedRepo) Update(f *domain.Feed) error        { return s.updateFn(f) }
 
-type stubImportService struct {
-	domain.ImportService
+type stubFeedService struct {
+	domain.FeedService
 
-	importRecipeFn func(context.Context, *domain.Recipe) (*domain.Recipe, error)
+	subscribeFn func(context.Context, uuid.UUID, string, *domain.Feed) (*domain.Feed, error)
 }
 
-func (s *stubImportService) ImportRecipe(ctx context.Context, r *domain.Recipe) (*domain.Recipe, error) {
-	if s.importRecipeFn != nil {
-		return s.importRecipeFn(ctx, r)
+func (s *stubFeedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string, scraped *domain.Feed) (*domain.Feed, error) {
+	if s.subscribeFn != nil {
+		return s.subscribeFn(ctx, householdID, url, scraped)
 	}
-	return r, nil
+	return nil, nil
+}
+
+type stubTaxonomyService struct {
+	domain.TaxonomyService
+	findOrCreateFn func(*domain.Taxonomy) error
+}
+
+func (s *stubTaxonomyService) FindOrCreate(t *domain.Taxonomy) error {
+	if s.findOrCreateFn != nil {
+		return s.findOrCreateFn(t)
+	}
+	return nil
 }
 
 func ptr[T any](v T) *T { return &v }

@@ -8,7 +8,7 @@ import (
 
 func Getenv(key, fallback string) string {
 	value := os.Getenv(key)
-	if len(value) == 0 {
+	if value == "" {
 		return fallback
 	}
 	return value
@@ -16,7 +16,7 @@ func Getenv(key, fallback string) string {
 
 func GetenvInt(key string, fallback int) int {
 	value := os.Getenv(key)
-	if len(value) != 0 {
+	if value != "" {
 		if val, err := strconv.Atoi(value); err == nil {
 			return val
 		}
@@ -26,7 +26,7 @@ func GetenvInt(key string, fallback int) int {
 
 func GetenvBool(key string, fallback bool) bool {
 	value := os.Getenv(key)
-	if len(value) != 0 {
+	if value != "" {
 		if val, err := strconv.ParseBool(value); err == nil {
 			return val
 		}

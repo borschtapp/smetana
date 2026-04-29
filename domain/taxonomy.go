@@ -9,6 +9,13 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
+const (
+	TaxonomyTypeDiet     = "diet"
+	TaxonomyTypeCategory = "category"
+	TaxonomyTypeCuisine  = "cuisine"
+	TaxonomyTypeKeyword  = "keyword"
+)
+
 type Taxonomy struct {
 	ID          uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	Type        string     `gorm:"index" json:"type"` // diet, category, cuisine, keyword

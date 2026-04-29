@@ -85,6 +85,10 @@ func (s *recipeService) Import(recipe *domain.Recipe) error {
 	return s.repo.Import(recipe)
 }
 
+func (s *recipeService) SetFeedID(recipeID, feedID uuid.UUID) error {
+	return s.repo.Update(&domain.Recipe{ID: recipeID, FeedID: &feedID})
+}
+
 func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(recipe.ID)
 	if err != nil {
