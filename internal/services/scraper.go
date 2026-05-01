@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"borscht.app/smetana/internal/utils"
 )
@@ -32,7 +32,7 @@ func defaultRequestOptions(ctx context.Context) krip.RequestOptions {
 	}
 }
 
-func (s *scraperService) ScrapeUrl(ctx context.Context, url string) (*domain.ScrapeResult, error) {
+func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedType string) (*domain.ScrapeResult, error) {
 	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -48,25 +48,56 @@ func (s *scraperService) ScrapeUrl(ctx context.Context, url string) (*domain.Scr
 	}
 
 	kripRecipe := &krip.Recipe{}
-	if err := scraper.Scrape(data, kripRecipe, options.ScrapeOptions); err != nil {
-		log.Infow("failed to scrape", "url", url, "error", err.Error())
+	if requestedType == "" || requestedType == domain.ImportTypeAuto || requestedType == domain.ImportTypeRecipe {
+		if err := scraper.Scrape(data, kripRecipe, options.ScrapeOptions); err != nil {
+			log.Infow("failed to scrape", "url", url, "error", err.Error())
+		}
 	}
 
-	if kripRecipe.IsValid() {
+	// 1. If explicit recipe requested, return it if valid.
+	if requestedType == domain.ImportTypeRecipe {
+		if kripRecipe.IsValid() {
+			return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
+		}
+		if kripRecipe.Name != "" {
+			return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
+		}
+		return nil, sentinels.BadRequest("recipe: no valid recipe found at URL")
+	}
+
+	// 2. If explicit feed requested, return it if found.
+	if requestedType == domain.ImportTypeFeed {
+		kripFeed := &model.Feed{}
+		if err := scraper.ScrapeFeed(data, kripFeed, options); err == nil && len(kripFeed.Entries) > 0 {
+			return &domain.ScrapeResult{Type: domain.PageTypeFeed, Feed: s.kripToFeed(kripFeed)}, nil
+		}
+		return nil, sentinels.BadRequest("feed: no valid feed found at URL")
+	}
+
+	// 3. Auto-detection logic:
+	// A "strong" recipe has both ingredients and instructions.
+	isStrongRecipe := kripRecipe.IsValid() && len(kripRecipe.Ingredients) > 0 && len(kripRecipe.Instructions) > 0
+	if isStrongRecipe {
 		return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
 	}
 
+	// Try feed detection before falling back to weak recipe.
 	kripFeed := &model.Feed{}
 	if err := scraper.ScrapeFeed(data, kripFeed, options); err == nil && len(kripFeed.Entries) > 0 {
 		return &domain.ScrapeResult{Type: domain.PageTypeFeed, Feed: s.kripToFeed(kripFeed)}, nil
 	}
 
-	// fallback to weak recipe
+	// Fallback to weak recipe if valid.
+	if kripRecipe.IsValid() {
+		return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
+	}
+
+	// Final fallback to any recipe with a name.
 	if kripRecipe.Name != "" {
 		return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.kripToRecipe(kripRecipe)}, nil
 	}
 
-	return nil, errors.New("auto: page type could not be determined")
+	return nil, sentinels.BadRequest("scraper: no valid content found at URL")
 }
 
 func (s *scraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {

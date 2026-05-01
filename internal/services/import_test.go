@@ -167,7 +167,7 @@ func TestImportService_DetectAndImport_SameURL_DifferentHouseholds_OneCopyStored
 
 	scrapeCallCount := 0
 	scraper := &stubScraperService{
-		scrapeUrlFn: func(_ context.Context, _ string) (*domain.ScrapeResult, error) {
+		scrapeUrlFn: func(_ context.Context, _ string, _ string) (*domain.ScrapeResult, error) {
 			scrapeCallCount++
 			return &domain.ScrapeResult{
 				Type:   domain.PageTypeRecipe,
@@ -202,12 +202,12 @@ func TestImportService_DetectAndImport_SameURL_DifferentHouseholds_OneCopyStored
 
 	svc := newTestImportService(importServiceDeps{recipeService: recipeSvc, recipeIngest: recipeIngest, scraper: scraper})
 
-	res1, err := svc.DetectAndImport(context.Background(), testURL, false, uid1, hid1)
+	res1, err := svc.DetectAndImport(context.Background(), testURL, domain.ImportTypeAuto, false, uid1, hid1)
 	require.NoError(t, err)
 	require.NotNil(t, res1.Recipe)
 	assert.Equal(t, importedID, res1.Recipe.ID)
 
-	res2, err := svc.DetectAndImport(context.Background(), testURL, false, uid2, hid2)
+	res2, err := svc.DetectAndImport(context.Background(), testURL, domain.ImportTypeAuto, false, uid2, hid2)
 	require.NoError(t, err)
 	require.NotNil(t, res2.Recipe)
 	assert.Equal(t, importedID, res2.Recipe.ID)
@@ -224,7 +224,7 @@ func TestImportService_DetectAndImport_FeedURL_SubscribesAndReturnsFeed(t *testi
 	feedID := uuid.New()
 
 	scraper := &stubScraperService{
-		scrapeUrlFn: func(_ context.Context, _ string) (*domain.ScrapeResult, error) {
+		scrapeUrlFn: func(_ context.Context, _ string, _ string) (*domain.ScrapeResult, error) {
 			return &domain.ScrapeResult{
 				Type: domain.PageTypeFeed,
 				Feed: &domain.Feed{ID: feedID, Url: testURL},
@@ -246,7 +246,7 @@ func TestImportService_DetectAndImport_FeedURL_SubscribesAndReturnsFeed(t *testi
 	}
 
 	svc := newTestImportService(importServiceDeps{recipeService: recipeSvc, feedService: feedSvc, scraper: scraper})
-	result, err := svc.DetectAndImport(context.Background(), testURL, false, uid, hid)
+	result, err := svc.DetectAndImport(context.Background(), testURL, domain.ImportTypeAuto, false, uid, hid)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -267,7 +267,7 @@ func TestImportService_DetectAndImport_ForceUpdate(t *testing.T) {
 
 	scrapeCallCount := 0
 	scraper := &stubScraperService{
-		scrapeUrlFn: func(_ context.Context, _ string) (*domain.ScrapeResult, error) {
+		scrapeUrlFn: func(_ context.Context, _ string, _ string) (*domain.ScrapeResult, error) {
 			scrapeCallCount++
 			return &domain.ScrapeResult{
 				Type:   domain.PageTypeRecipe,
@@ -295,7 +295,7 @@ func TestImportService_DetectAndImport_ForceUpdate(t *testing.T) {
 	svc := newTestImportService(importServiceDeps{recipeService: recipeSvc, recipeIngest: recipeIngest, scraper: scraper})
 
 	// forceUpdate = true
-	res, err := svc.DetectAndImport(context.Background(), testURL, true, uid, hid)
+	res, err := svc.DetectAndImport(context.Background(), testURL, domain.ImportTypeAuto, true, uid, hid)
 
 	require.NoError(t, err)
 	require.NotNil(t, res.Recipe)

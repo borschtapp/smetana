@@ -6,6 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	ImportTypeAuto   = "auto"
+	ImportTypeRecipe = "recipe"
+	ImportTypeFeed   = "feed"
+)
+
 type ImportResult struct {
 	Created bool    `json:"created"`
 	Recipe  *Recipe `json:"recipe,omitempty"`
@@ -16,7 +22,7 @@ type ImportService interface {
 	// ImportFromURL scrapes the URL and imports it as a recipe. Returns an error if the URL points to a feed.
 	ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	// DetectAndImport scrapes the URL and auto-detects whether it is a recipe or a feed, importing accordingly.
-	DetectAndImport(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*ImportResult, error)
+	DetectAndImport(ctx context.Context, url string, requestedType string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*ImportResult, error)
 }
 
 type RecipeIngestService interface {

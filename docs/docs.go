@@ -2038,7 +2038,7 @@ const docTemplate = `{
                 "summary": "Import a recipe or subscribe to a feed from a URL.",
                 "parameters": [
                     {
-                        "description": "Import request",
+                        "description": "Import request (type can be auto, recipe, or feed)",
                         "name": "import",
                         "in": "body",
                         "required": true,
@@ -4193,6 +4193,15 @@ const docTemplate = `{
                 "url"
             ],
             "properties": {
+                "type": {
+                    "description": "\"auto\", \"recipe\", \"feed\"",
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "recipe",
+                        "feed"
+                    ]
+                },
                 "update": {
                     "type": "boolean"
                 },

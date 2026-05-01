@@ -21,6 +21,7 @@ func NewImportHandler(importService domain.ImportService) *ImportHandler {
 type ImportRequest struct {
 	URL    string `json:"url" validate:"required"`
 	Update bool   `json:"update"`
+	Type   string `json:"type" validate:"omitempty,oneof=auto recipe feed"` // "auto", "recipe", "feed"
 }
 
 // FIXME: this method is deprecated and should be removed in the future
@@ -62,7 +63,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 // @Tags import
 // @Accept json
 // @Produce json
-// @Param import body ImportRequest true "Import request"
+// @Param import body ImportRequest true "Import request (type can be auto, recipe, or feed)"
 // @Success 201 {object} domain.ImportResult
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
@@ -79,7 +80,7 @@ func (h *ImportHandler) DetectAndImport(c fiber.Ctx) error {
 		return err
 	}
 
-	result, err := h.importService.DetectAndImport(c.Context(), request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
+	result, err := h.importService.DetectAndImport(c.Context(), request.URL, request.Type, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
 	}

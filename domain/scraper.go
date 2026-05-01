@@ -21,7 +21,7 @@ type ScrapeResult struct {
 
 // ScraperService fetches and converts external recipe data into domain objects.
 type ScraperService interface {
-	ScrapeUrl(ctx context.Context, url string) (*ScrapeResult, error)
+	ScrapeUrl(ctx context.Context, url string, requestedType string) (*ScrapeResult, error)
 	ScrapeRecipe(ctx context.Context, url string) (*Recipe, error)
 	ScrapeFeed(ctx context.Context, feed *Feed, opts krip.FeedOptions) ([]*Recipe, error)
 }

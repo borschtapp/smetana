@@ -353,14 +353,14 @@ func (s *stubEquipmentService) FindOrCreate(ctx context.Context, e *domain.Equip
 type stubScraperService struct {
 	domain.ScraperService
 
-	scrapeUrlFn    func(context.Context, string) (*domain.ScrapeResult, error)
+	scrapeUrlFn    func(context.Context, string, string) (*domain.ScrapeResult, error)
 	scrapeRecipeFn func(context.Context, string) (*domain.Recipe, error)
 	scrapeFeedFn   func(context.Context, *domain.Feed, krip.FeedOptions) ([]*domain.Recipe, error)
 }
 
-func (s *stubScraperService) ScrapeUrl(ctx context.Context, url string) (*domain.ScrapeResult, error) {
+func (s *stubScraperService) ScrapeUrl(ctx context.Context, url string, requestedType string) (*domain.ScrapeResult, error) {
 	if s.scrapeUrlFn != nil {
-		return s.scrapeUrlFn(ctx, url)
+		return s.scrapeUrlFn(ctx, url, requestedType)
 	}
 	return nil, nil
 }

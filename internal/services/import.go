@@ -60,7 +60,7 @@ func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpda
 }
 
 // DetectAndImport scrapes the given URL and imports it as either a recipe or a feed subscription.
-func (s *importService) DetectAndImport(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.ImportResult, error) {
+func (s *importService) DetectAndImport(ctx context.Context, url string, requestedType string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*domain.ImportResult, error) {
 	url = utils.NormalizeURL(url)
 
 	if !forceUpdate {
@@ -78,7 +78,7 @@ func (s *importService) DetectAndImport(ctx context.Context, url string, forceUp
 	}
 
 	// Unknown URL — must scrape to determine whether it's a recipe or a feed.
-	scraped, err := s.scraperService.ScrapeUrl(ctx, url)
+	scraped, err := s.scraperService.ScrapeUrl(ctx, url, requestedType)
 	if err != nil {
 		return nil, err
 	}
