@@ -158,6 +158,12 @@ func (s *shoppingListService) parseItemText(ctx context.Context, item *domain.Sh
 			item.Unit = unit
 		}
 	}
+	if parsed.Name != "" {
+		item.Text = parsed.Name
+		if parsed.Description != "" {
+			item.Text += ", " + parsed.Description
+		}
+	}
 }
 
 func (s *shoppingListService) GetItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingItem, error) {

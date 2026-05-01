@@ -87,13 +87,16 @@ func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 		return existing, nil
 	}
 
+	// Validation: ensure we found something (recipes or at least a feed name).
+	// New feeds might have 0 recipes during initial shallow scrape but will sync in background.
+	if len(feed.Recipes) == 0 && feed.Name == "" {
+		return nil, sentinels.Unprocessable("feed has no importable recipes")
+	}
+
 	if err := s.repo.AddFeed(householdID, feed); err != nil {
 		return nil, err
 	}
 
-	if len(feed.Recipes) == 0 {
-		return nil, sentinels.Unprocessable("feed has no importable recipes")
-	}
 	return feed, nil
 }
 

@@ -307,3 +307,71 @@ func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, importCalled, "recipe without URL must be skipped")
 }
+
+func TestFeedService_Subscribe_NoRecipesButHasName_Succeeds(t *testing.T) {
+	householdID := uuid.New()
+	url := "https://example.com/feed"
+	
+	feedRepo := &stubFeedRepo{
+		byUrlFn: func(u string) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		byIDForHouseholdFn: func(id, hid uuid.UUID) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		createFn: func(f *domain.Feed) error {
+			f.ID = uuid.New()
+			return nil
+		},
+		addFeedFn: func(hid uuid.UUID, f *domain.Feed) error {
+			assert.Equal(t, householdID, hid)
+			return nil
+		},
+	}
+	
+	scraper := &stubScraperService{
+		scrapeFeedFn: func(ctx context.Context, f *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
+			f.Name = "Test Feed" // Discovery found a name
+			return []*domain.Recipe{}, nil // But 0 recipes found (shallow)
+		},
+	}
+	
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
+	feed, err := svc.Subscribe(context.Background(), householdID, url, nil)
+	
+	require.NoError(t, err)
+	assert.NotNil(t, feed)
+	assert.Equal(t, "Test Feed", feed.Name)
+	assert.Empty(t, feed.Recipes)
+}
+
+func TestFeedService_Subscribe_NoRecipesNoName_Fails(t *testing.T) {
+	householdID := uuid.New()
+	url := "https://example.com/not-a-feed"
+	
+	feedRepo := &stubFeedRepo{
+		byUrlFn: func(u string) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		byIDForHouseholdFn: func(id, hid uuid.UUID) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		createFn: func(f *domain.Feed) error {
+			f.ID = uuid.New()
+			return nil
+		},
+	}
+	
+	scraper := &stubScraperService{
+		scrapeFeedFn: func(ctx context.Context, f *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
+			return []*domain.Recipe{}, nil // 0 recipes, no name
+		},
+	}
+	
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
+	feed, err := svc.Subscribe(context.Background(), householdID, url, nil)
+	
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "feed has no importable recipes")
+	assert.Nil(t, feed)
+}

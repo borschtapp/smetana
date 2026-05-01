@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type stubRecipeService struct {
@@ -379,12 +380,50 @@ func (m *stubScraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, 
 type stubFeedRepo struct {
 	domain.FeedRepository
 
-	listActiveFn func() ([]domain.Feed, error)
-	updateFn     func(*domain.Feed) error
+	listActiveFn       func() ([]domain.Feed, error)
+	updateFn           func(*domain.Feed) error
+	byUrlFn            func(string) (*domain.Feed, error)
+	byIDForHouseholdFn func(uuid.UUID, uuid.UUID) (*domain.Feed, error)
+	addFeedFn          func(uuid.UUID, *domain.Feed) error
+	createFn           func(*domain.Feed) error
 }
 
-func (s *stubFeedRepo) ListActive() ([]domain.Feed, error) { return s.listActiveFn() }
-func (s *stubFeedRepo) Update(f *domain.Feed) error        { return s.updateFn(f) }
+func (s *stubFeedRepo) ListActive() ([]domain.Feed, error) {
+	if s.listActiveFn != nil {
+		return s.listActiveFn()
+	}
+	return nil, nil
+}
+func (s *stubFeedRepo) Update(f *domain.Feed) error {
+	if s.updateFn != nil {
+		return s.updateFn(f)
+	}
+	return nil
+}
+func (s *stubFeedRepo) ByUrl(url string) (*domain.Feed, error) {
+	if s.byUrlFn != nil {
+		return s.byUrlFn(url)
+	}
+	return nil, sentinels.ErrNotFound
+}
+func (s *stubFeedRepo) ByIDForHousehold(id, hid uuid.UUID) (*domain.Feed, error) {
+	if s.byIDForHouseholdFn != nil {
+		return s.byIDForHouseholdFn(id, hid)
+	}
+	return nil, sentinels.ErrNotFound
+}
+func (s *stubFeedRepo) AddFeed(hid uuid.UUID, f *domain.Feed) error {
+	if s.addFeedFn != nil {
+		return s.addFeedFn(hid, f)
+	}
+	return nil
+}
+func (s *stubFeedRepo) Create(f *domain.Feed) error {
+	if s.createFn != nil {
+		return s.createFn(f)
+	}
+	return nil
+}
 
 type stubFeedService struct {
 	domain.FeedService
