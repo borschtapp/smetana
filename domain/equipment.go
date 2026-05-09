@@ -12,9 +12,9 @@ import (
 
 type Equipment struct {
 	ID          uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	Slug        string        `gorm:"uniqueIndex" json:"slug"`
-	Name        string        `json:"name"`
-	Description *string       `json:"description,omitempty"`
+	Slug        string        `gorm:"uniqueIndex" json:"slug" validate:"required,min=1,max=255"`
+	Name        string        `json:"name" validate:"required,min=1,max=255"`
+	Description *string       `json:"description,omitempty" validate:"omitempty,max=1000"`
 	ImagePath   *storage.Path `json:"image_url,omitempty"`
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`

@@ -14,8 +14,8 @@ const TokenTypePasswordReset = "password_reset"
 type UserToken struct {
 	ID      uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	UserID  uuid.UUID `gorm:"type:char(36);index" json:"user_id"`
-	Type    string    `gorm:"index:idx_token_type" json:"type"`
-	Token   string    `gorm:"index:idx_token_type" json:"token"`
+	Type    string    `gorm:"index:idx_token_type" json:"type" validate:"required,oneof=refresh household_invite password_reset"`
+	Token   string    `gorm:"index:idx_token_type" json:"token" validate:"required"`
 	Expires time.Time `json:"expires"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 

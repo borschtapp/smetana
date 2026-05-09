@@ -10,8 +10,8 @@ import (
 
 type Unit struct {
 	ID         uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
-	Slug       string     `gorm:"uniqueIndex:idx_unit_slug,sort:desc" json:"slug"`
-	Name       string     `json:"name"`
+	Slug       string     `gorm:"uniqueIndex:idx_unit_slug,sort:desc" json:"slug" validate:"required,min=1,max=255"`
+	Name       string     `json:"name" validate:"required,min=1,max=255"`
 	Imperial   bool       `json:"imperial"`
 	BaseUnitID *uuid.UUID `gorm:"type:char(36);index" json:"base_unit_id,omitempty"`
 	// BaseFactor is the multiplier to convert amounts to the base unit.

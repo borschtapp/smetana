@@ -18,9 +18,9 @@ const (
 
 type Taxonomy struct {
 	ID          uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
-	Type        string     `gorm:"index" json:"type"` // diet, category, cuisine, keyword
-	Slug        string     `gorm:"uniqueIndex" json:"slug"`
-	Label       string     `json:"label"`
+	Type        string     `gorm:"index" json:"type" validate:"required,oneof=diet category cuisine keyword"` // diet, category, cuisine, keyword
+	Slug        string     `gorm:"uniqueIndex" json:"slug" validate:"required,min=1,max=255"`
+	Label       string     `json:"label" validate:"required,min=1,max=255"`
 	ParentID    *uuid.UUID `gorm:"type:char(36);index" json:"parent_id,omitempty"`
 	CanonicalID *uuid.UUID `gorm:"type:char(36);index" json:"canonical_id,omitempty"` // For merging/aliases
 	Updated     time.Time  `gorm:"autoUpdateTime" json:"-"`

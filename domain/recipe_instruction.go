@@ -12,12 +12,12 @@ type RecipeInstruction struct {
 	ID        uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	RecipeID  uuid.UUID     `gorm:"type:char(36);index:idx_recipe_order" json:"-"`
 	ParentID  *uuid.UUID    `gorm:"type:char(36);index" json:"parent_id,omitempty"`
-	Order     uint8         `gorm:"index:idx_recipe_order" json:"order"`
-	Title     *string       `json:"title,omitempty"`
-	Text      string        `json:"text"`
-	Url       *string       `json:"url,omitempty"`
+	Order     uint8         `gorm:"index:idx_recipe_order" json:"order" validate:"min=0"`
+	Title     *string       `json:"title,omitempty" validate:"omitempty,max=255"`
+	Text      string        `json:"text" validate:"required"`
+	Url       *string       `json:"url,omitempty" validate:"omitempty,url"`
 	ImagePath *storage.Path `json:"image_url,omitempty"`
-	VideoUrl  *string       `json:"video_url,omitempty"`
+	VideoUrl  *string       `json:"video_url,omitempty" validate:"omitempty,url"`
 	Updated   time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created   time.Time     `gorm:"autoCreateTime" json:"-"`
 

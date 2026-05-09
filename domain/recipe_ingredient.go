@@ -10,19 +10,19 @@ import (
 type RecipeIngredient struct {
 	ID        uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	RecipeID  uuid.UUID  `gorm:"type:char(36);index" json:"-"`
-	Amount    *float64   `json:"amount,omitempty"`     // nil when unquantified (e.g. "to taste", "a pinch of")
-	MaxAmount *float64   `json:"max_amount,omitempty"` // upper bound for range quantities (e.g. "1–2 cups")
+	Amount    *float64   `json:"amount,omitempty" validate:"omitempty,gt=0"`     // nil when unquantified (e.g. "to taste", "a pinch of")
+	MaxAmount *float64   `json:"max_amount,omitempty" validate:"omitempty,gt=0"` // upper bound for range quantities (e.g. "1–2 cups")
 	UnitID    *uuid.UUID `gorm:"type:char(36);index" json:"unit_id,omitempty"`
 	FoodID    *uuid.UUID `gorm:"type:char(36);index" json:"food_id,omitempty"`
 	// Name is the ingredient name as written in this recipe (e.g. "carrots", "all-purpose flour").
 	// May differ from Food.Name, which holds the deduplicated canonical form (e.g. "carrot").
-	Name *string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
 	// Description holds preparation notes extracted from the ingredient string (e.g. "finely diced", "at room temperature").
-	Description *string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
 	// Category groups ingredients into named sections within a recipe (e.g. "For the sauce", "For the dough").
-	Category *string `json:"category,omitempty"`
+	Category *string `json:"category,omitempty" validate:"omitempty,max=255"`
 	// RawText is the original unparsed ingredient string from the source (e.g. "2 large carrots, diced").
-	RawText string    `json:"raw_text"`
+	RawText string    `json:"raw_text" validate:"required"`
 	Updated time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created time.Time `gorm:"autoCreateTime" json:"-"`
 

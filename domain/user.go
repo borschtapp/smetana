@@ -11,10 +11,10 @@ import (
 type User struct {
 	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID   uuid.UUID     `gorm:"type:char(36);index" json:"household_id"`
-	Name          string        `json:"name"`
-	Email         string        `gorm:"uniqueIndex;not null" json:"email"`
+	Name          string        `json:"name" validate:"required,min=2"`
+	Email         string        `gorm:"uniqueIndex;not null" json:"email" validate:"required,email"`
 	EmailVerified bool          `gorm:"default:false" json:"-"`
-	Password      string        `json:"-"`
+	Password      string        `json:"-" validate:"omitempty,min=8"`
 	ImagePath     *storage.Path `json:"image_url,omitempty"`
 	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created       time.Time     `gorm:"autoCreateTime" json:"-"`

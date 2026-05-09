@@ -15,8 +15,8 @@ type FoodPrice struct {
 	HouseholdID uuid.UUID `gorm:"type:char(36);index:idx_food_price_lookup" json:"household_id"`
 	FoodID      uuid.UUID `gorm:"type:char(36);index:idx_food_price_lookup" json:"food_id"`
 	UnitID      uuid.UUID `gorm:"type:char(36)" json:"unit_id"`
-	Price       float64   `gorm:"not null" json:"price"`
-	Amount      float64   `gorm:"not null;default:1" json:"amount"`
+	Price       float64   `gorm:"not null" json:"price" validate:"required,gt=0"`
+	Amount      float64   `gorm:"not null;default:1" json:"amount" validate:"required,gt=0"`
 	Created     time.Time `gorm:"index:idx_food_price_lookup,sort:desc;not null;autoCreateTime" json:"created"`
 
 	Household *Household `gorm:"foreignKey:HouseholdID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`

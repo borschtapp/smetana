@@ -15,21 +15,21 @@ type Recipe struct {
 	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
 	UserID      *uuid.UUID      `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Url         *string         `gorm:"-" json:"url,omitempty"`
-	SourceUrl   *string         `gorm:"index" json:"source_url,omitempty"`
-	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara"`
+	SourceUrl   *string         `gorm:"index" json:"source_url,omitempty" validate:"omitempty,url"`
+	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara" validate:"required,min=2,max=255"`
 	ImagePath   *storage.Path   `json:"image_url,omitempty"`
-	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."`
-	Language    *string         `json:"language,omitempty" example:"en"`
+	Description *string         `json:"description,omitempty" example:"A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper." validate:"omitempty,max=10000"`
+	Language    *string         `json:"language,omitempty" example:"en" validate:"omitempty,len=2"`
 	AuthorID    *uuid.UUID      `gorm:"type:char(36);index" json:"author_id,omitempty"`
 	PublisherID *uuid.UUID      `gorm:"type:char(36);index" json:"publisher_id,omitempty"`
 	FeedID      *uuid.UUID      `gorm:"type:char(36);index" json:"feed_id,omitempty"`
 	Text        *string         `json:"text,omitempty"`
-	PrepTime    *types.Duration `json:"prep_time,omitempty" swaggertype:"integer" example:"900"`
-	CookTime    *types.Duration `json:"cook_time,omitempty" swaggertype:"integer" example:"1200"`
-	TotalTime   *types.Duration `json:"total_time,omitempty" swaggertype:"integer" example:"2100"`
+	PrepTime    *types.Duration `json:"prep_time,omitempty" swaggertype:"integer" example:"900" validate:"omitempty,gt=0"`
+	CookTime    *types.Duration `json:"cook_time,omitempty" swaggertype:"integer" example:"1200" validate:"omitempty,gt=0"`
+	TotalTime   *types.Duration `json:"total_time,omitempty" swaggertype:"integer" example:"2100" validate:"omitempty,gt=0"`
 	Difficulty  *string         `json:"difficulty,omitempty" example:"Medium"`
 	Method      *string         `json:"method,omitempty" example:"Stovetop"`
-	Yield       *int            `json:"yield,omitempty" example:"4"`
+	Yield       *int            `json:"yield,omitempty" example:"4" validate:"omitempty,gt=0"`
 	Rating      *Rating         `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
 	Video       *Video          `gorm:"serializer:json" json:"video,omitempty"`
 	Published   *time.Time      `json:"published,omitempty" swaggertype:"string" format:"date-time"`
@@ -51,17 +51,17 @@ type Recipe struct {
 }
 
 type Rating struct {
-	Reviews *int     `json:"reviews,omitempty"`
-	Count   *int     `json:"count,omitempty"`
-	Value   *float64 `json:"value,omitempty"`
+	Reviews *int     `json:"reviews,omitempty" validate:"omitempty,min=0"`
+	Count   *int     `json:"count,omitempty" validate:"omitempty,min=0"`
+	Value   *float64 `json:"value,omitempty" validate:"omitempty,min=0,max=5"`
 }
 
 type Video struct {
-	Name         *string `json:"name,omitempty"`
-	Description  *string `json:"description,omitempty"`
-	EmbedUrl     *string `json:"embed_url,omitempty"`
-	ContentUrl   *string `json:"content_url,omitempty"`
-	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=2"`
+	Description  *string `json:"description,omitempty" validate:"omitempty,max=2000"`
+	EmbedUrl     *string `json:"embed_url,omitempty" validate:"omitempty,url"`
+	ContentUrl   *string `json:"content_url,omitempty" validate:"omitempty,url"`
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty" validate:"omitempty,url"`
 }
 
 func (r *Recipe) BeforeCreate(_ *gorm.DB) error {

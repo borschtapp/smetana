@@ -19,7 +19,7 @@ func NewImportHandler(importService domain.ImportService) *ImportHandler {
 }
 
 type ImportRequest struct {
-	URL    string `json:"url" validate:"required"`
+	URL    string `json:"url" validate:"required,url"`
 	Update bool   `json:"update"`
 	Type   string `json:"type" validate:"omitempty,oneof=auto recipe feed"` // "auto", "recipe", "feed"
 }

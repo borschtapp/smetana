@@ -12,8 +12,8 @@ import (
 type Household struct {
 	ID       uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	OwnerID  uuid.UUID `gorm:"type:char(36)" json:"owner_id"`
-	Name     string    `json:"name"`
-	Currency string    `gorm:"not null;default:'EUR'" json:"currency"`
+	Name     string    `json:"name" validate:"required,min=2,max=255"`
+	Currency string    `gorm:"not null;default:'EUR'" json:"currency" validate:"required,len=3"`
 	Updated  time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created  time.Time `gorm:"autoCreateTime" json:"-"`
 

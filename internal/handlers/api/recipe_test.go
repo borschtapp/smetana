@@ -280,7 +280,7 @@ func TestRecipeHandler_Search_EmptyResult_ReturnsZeroTotal(t *testing.T) {
 	assert.Equal(t, 0, body.Meta.Total)
 }
 
-func TestRecipeHandler_CreateRecipe_Returns201WithRecipe(t *testing.T) {
+func TestRecipeHandler_CreateRecipe(t *testing.T) {
 	hid := uuid.New()
 	uid := uuid.New()
 	newID := uuid.New()
@@ -294,18 +294,44 @@ func TestRecipeHandler_CreateRecipe_Returns201WithRecipe(t *testing.T) {
 	}
 	app := buildApp(t, svc)
 
-	body, _ := json.Marshal(domain.Recipe{Name: new("Varenyky")})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", makeToken(t, uid, hid))
-	resp, err := app.Test(req)
+	t.Run("ValidRequest_Returns201", func(t *testing.T) {
+		name := "Varenyky"
+		body, _ := json.Marshal(domain.Recipe{Name: &name})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", makeToken(t, uid, hid))
+		resp, err := app.Test(req)
 
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	var got domain.Recipe
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
-	assert.Equal(t, newID, got.ID)
+		var got domain.Recipe
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
+		assert.Equal(t, newID, got.ID)
+	})
+
+	t.Run("MissingName_Returns400", func(t *testing.T) {
+		body, _ := json.Marshal(domain.Recipe{})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", makeToken(t, uid, hid))
+		resp, err := app.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("ShortName_Returns400", func(t *testing.T) {
+		name := "A"
+		body, _ := json.Marshal(domain.Recipe{Name: &name})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/recipes", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", makeToken(t, uid, hid))
+		resp, err := app.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 }
 
 func TestRecipeHandler_UpdateRecipe_Returns200WithUpdatedRecipe(t *testing.T) {

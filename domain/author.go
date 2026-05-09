@@ -12,9 +12,9 @@ import (
 
 type Author struct {
 	ID          uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	Name        string        `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"name"`
-	Description *string       `json:"description,omitempty"`
-	Url         *string       `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"url,omitempty"`
+	Name        string        `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"name" validate:"required,min=2,max=255"`
+	Description *string       `json:"description,omitempty" validate:"omitempty,max=1000"`
+	Url         *string       `gorm:"uniqueIndex:idx_recipe_author_url,sort:desc" json:"url,omitempty" validate:"omitempty,url"`
 	ImagePath   *storage.Path `json:"image_url,omitempty"`
 	Updated     time.Time     `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time     `gorm:"autoCreateTime" json:"-"`

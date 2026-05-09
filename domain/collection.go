@@ -13,8 +13,8 @@ type Collection struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"-"`
 	UserID      uuid.UUID `gorm:"type:char(36);index" json:"user_id,omitempty"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
+	Name        string    `json:"name" validate:"required,min=2,max=255"`
+	Description string    `json:"description,omitempty" validate:"omitempty,max=1000"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
 

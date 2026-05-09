@@ -15,9 +15,9 @@ type Feed struct {
 	ID              uuid.UUID            `gorm:"type:char(36);primaryKey" json:"id"`
 	Active          bool                 `json:"active"`
 	PublisherID     uuid.UUID            `gorm:"type:char(36);index" json:"publisher_id"`
-	Url             string               `gorm:"uniqueIndex" json:"url"`
-	Name            string               `json:"name"`
-	Description     *string              `json:"description,omitempty"`
+	Url             string               `gorm:"uniqueIndex" json:"url" validate:"required,url"`
+	Name            string               `json:"name" validate:"required,min=2,max=255"`
+	Description     *string              `json:"description,omitempty" validate:"omitempty,max=1000"`
 	ErrorCount      int                  `json:"-"`
 	LastSyncAt      time.Time            `json:"last_sync_at"`
 	LastSyncSuccess bool                 `json:"last_sync_success"`

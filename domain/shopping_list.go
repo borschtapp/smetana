@@ -11,7 +11,7 @@ import (
 type ShoppingList struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID uuid.UUID `gorm:"type:char(36);index" json:"-"`
-	Name        string    `json:"name"`
+	Name        string    `json:"name" validate:"required,min=2,max=255"`
 	IsDefault   bool      `gorm:"default:false;uniqueIndex:idx_household_default,where:is_default = true" json:"is_default"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
@@ -32,8 +32,8 @@ func (s *ShoppingList) BeforeCreate(_ *gorm.DB) error {
 type ShoppingItem struct {
 	ID             uuid.UUID  `gorm:"type:char(36);primaryKey" json:"id"`
 	ShoppingListID uuid.UUID  `gorm:"type:char(36);index" json:"-"`
-	Amount         *float64   `json:"amount,omitempty"`
-	Text           string     `json:"text"` // raw user input
+	Amount         *float64   `json:"amount,omitempty" validate:"omitempty,gt=0"`
+	Text           string     `json:"text" validate:"required,min=1,max=255"` // raw user input
 	UnitID         *uuid.UUID `gorm:"type:char(36);index" json:"unit_id,omitempty"`
 	FoodID         *uuid.UUID `gorm:"type:char(36);index" json:"food_id,omitempty"`
 	IsBought       bool       `gorm:"default:false" json:"is_bought"`

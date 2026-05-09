@@ -143,7 +143,7 @@ func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
 
 type ShoppingItemForm struct {
 	Text   string     `validate:"required_without=FoodID" json:"text" example:"2 cups of milk"`
-	Amount *float64   `validate:"omitempty" json:"amount" example:"2"`
+	Amount *float64   `json:"amount" example:"2"`
 	FoodID *uuid.UUID `json:"food_id"`
 	UnitID *uuid.UUID `json:"unit_id"`
 }
