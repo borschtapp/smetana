@@ -22,7 +22,7 @@ func seedTaxonomy(t *testing.T, db *gorm.DB, label, taxType string) *domain.Taxo
 
 func linkRecipeTaxonomy(t *testing.T, db *gorm.DB, recipeID, taxonomyID uuid.UUID) {
 	t.Helper()
-	require.NoError(t, db.Table("recipe_taxonomies").Create(map[string]any{
+	require.NoError(t, db.Model(&recipeTaxonomy{}).Create(map[string]any{
 		"recipe_id": recipeID, "taxonomy_id": taxonomyID,
 	}).Error)
 }

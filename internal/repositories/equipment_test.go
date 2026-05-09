@@ -15,7 +15,7 @@ import (
 
 func linkRecipeEquipment(t *testing.T, db *gorm.DB, recipeID, equipmentID uuid.UUID) {
 	t.Helper()
-	require.NoError(t, db.Table("recipe_equipment").Create(map[string]any{
+	require.NoError(t, db.Model(&recipeEquipment{}).Create(map[string]any{
 		"recipe_id": recipeID, "equipment_id": equipmentID,
 	}).Error)
 }

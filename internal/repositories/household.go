@@ -97,7 +97,7 @@ func (r *householdRepository) MoveUserToNewHousehold(user *domain.User, currency
 }
 
 func (r *householdRepository) Members(householdID uuid.UUID, offset, limit int) ([]domain.User, int64, error) {
-	query := r.db.Where("household_id = ?", householdID)
+	query := r.db.Scopes(HouseholdOwned(householdID))
 
 	var total int64
 	if err := query.Model(&domain.User{}).Count(&total).Error; err != nil {

@@ -16,6 +16,13 @@ type feedRepository struct {
 	db *gorm.DB
 }
 
+// junction table for feeds and households
+type feedSubscription struct{}
+
+func (feedSubscription) TableName() string {
+	return "feed_subscriptions"
+}
+
 func NewFeedRepository(db *gorm.DB) domain.FeedRepository {
 	return &feedRepository{db: db}
 }
@@ -24,7 +31,7 @@ func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (
 	var feed domain.Feed
 	if err := r.db.
 		Select("feeds.*").
-		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id AND feed_subscriptions.household_id = ?", householdID).
+		Scopes(FeedSubscribedByHousehold(householdID)).
 		First(&feed, id).Error; err != nil {
 		return nil, fmt.Errorf("feed by id %s for household %s: %w", id, householdID, mapErr(err))
 	}
@@ -41,7 +48,7 @@ func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 
 func (r *feedRepository) ListActive() ([]domain.Feed, error) {
 	var feeds []domain.Feed
-	if err := r.db.Select("feeds.*").Where("active = ?", true).Find(&feeds).Error; err != nil {
+	if err := r.db.Select("feeds.*").Scopes(ActiveFeed).Find(&feeds).Error; err != nil {
 		return nil, fmt.Errorf("list active feeds: %w", mapErr(err))
 	}
 	return feeds, nil
@@ -51,8 +58,7 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	var feeds []domain.Feed
 
 	q := r.db.Model(&domain.Feed{}).
-		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
-		Where("feed_subscriptions.household_id = ?", householdID)
+		Scopes(FeedSubscribedByHousehold(householdID))
 
 	if opts.SearchQuery != "" {
 		q = q.Where("feeds.name LIKE ?", "%"+opts.SearchQuery+"%")
@@ -124,7 +130,7 @@ func (r *feedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) err
 	}
 
 	var count int64
-	if err := r.db.Table("feed_subscriptions").Where("feed_id = ?", feedID).Count(&count).Error; err != nil {
+	if err := r.db.Model(&feedSubscription{}).Where("feed_id = ?", feedID).Count(&count).Error; err != nil {
 		return fmt.Errorf("count subscriptions for feed %s: %w", feedID, mapErr(err))
 	}
 	if count == 0 {

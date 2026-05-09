@@ -16,7 +16,7 @@ import (
 
 func seedFeedSubscription(t *testing.T, db *gorm.DB, householdID, feedID uuid.UUID) {
 	t.Helper()
-	require.NoError(t, db.Table("feed_subscriptions").Create(map[string]any{
+	require.NoError(t, db.Model(&feedSubscription{}).Create(map[string]any{
 		"household_id": householdID, "feed_id": feedID,
 	}).Error)
 }
@@ -162,7 +162,7 @@ func TestFeedRepository_AddFeed_CreatesSubscription(t *testing.T) {
 	require.NoError(t, repo.AddFeed(hid, feed))
 
 	var count int64
-	db.Table("feed_subscriptions").Where("household_id = ? AND feed_id = ?", hid, feed.ID).Count(&count)
+	db.Model(&feedSubscription{}).Where("household_id = ? AND feed_id = ?", hid, feed.ID).Count(&count)
 	assert.EqualValues(t, 1, count)
 }
 
@@ -193,7 +193,7 @@ func TestFeedRepository_DeleteFeed_RemovesSubscription(t *testing.T) {
 	require.NoError(t, repo.DeleteFeed(hid, feed.ID))
 
 	var count int64
-	db.Table("feed_subscriptions").Where("household_id = ? AND feed_id = ?", hid, feed.ID).Count(&count)
+	db.Model(&feedSubscription{}).Where("household_id = ? AND feed_id = ?", hid, feed.ID).Count(&count)
 	assert.EqualValues(t, 0, count)
 }
 

@@ -21,7 +21,7 @@ func TestFoodRepository_FindOrCreate_CreatesNewFood(t *testing.T) {
 	assert.Equal(t, "potato", f.Slug, "CreateTag lowercases and strips diacritics")
 
 	var count int64
-	db.Table("food").Where("slug = ?", "potato").Count(&count)
+	db.Model(&domain.Food{}).Where("slug = ?", "potato").Count(&count)
 	assert.EqualValues(t, 1, count)
 }
 
@@ -38,7 +38,7 @@ func TestFoodRepository_FindOrCreate_ExistingFood_ReturnsExistingID(t *testing.T
 	assert.Equal(t, first.ID, second.ID, "same food name must resolve to the same ID")
 
 	var count int64
-	db.Table("food").Where("slug = ?", "carrot").Count(&count)
+	db.Model(&domain.Food{}).Where("slug = ?", "carrot").Count(&count)
 	assert.EqualValues(t, 1, count, "slug uniqueness: only one row must exist after two FindOrCreate calls")
 }
 
@@ -55,7 +55,7 @@ func TestFoodRepository_FindOrCreate_CaseInsensitiveName_ReturnsExisting(t *test
 	assert.Equal(t, original.ID, lookup.ID)
 
 	var count int64
-	db.Table("food").Where("lower(name) = 'salt'").Count(&count)
+	db.Model(&domain.Food{}).Where("lower(name) = 'salt'").Count(&count)
 	assert.EqualValues(t, 1, count, "case-insensitive name fallback must not create a duplicate row")
 }
 
@@ -74,6 +74,6 @@ func TestFoodRepository_FindOrCreate_DiacriticName_NormalisedSlug(t *testing.T) 
 	assert.Equal(t, first.ID, second.ID)
 
 	var count int64
-	db.Table("food").Where("slug = ?", "creme").Count(&count)
+	db.Model(&domain.Food{}).Where("slug = ?", "creme").Count(&count)
 	assert.EqualValues(t, 1, count, "normalised slug must deduplicate the same accented name")
 }

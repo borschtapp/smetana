@@ -27,15 +27,11 @@ func (r *equipmentRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 		q = q.Where("name LIKE ? OR slug LIKE ?", "%"+opts.SearchQuery+"%", "%"+opts.SearchQuery+"%")
 	}
 
-	if householdID != uuid.Nil && opts.Scope != "" {
-		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
-		q = q.Where(`EXISTS (
-			SELECT 1 FROM recipe_equipment
-			JOIN recipes ON recipes.id = recipe_equipment.recipe_id
-			WHERE recipe_equipment.equipment_id = equipment.id
-			AND `+scopeWhere+`
-		)`, scopeArgs...)
-	}
+	q = q.Scopes(RecipeScopeExistsFilter(`
+		SELECT 1 FROM recipe_equipment
+		JOIN recipes ON recipes.id = recipe_equipment.recipe_id
+		WHERE recipe_equipment.equipment_id = equipment.id
+	`, opts.Scope, householdID))
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {

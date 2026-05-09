@@ -26,15 +26,11 @@ func (r *taxonomyRepository) Search(taxonomyType string, householdID uuid.UUID, 
 		q = q.Where("type = ?", taxonomyType)
 	}
 
-	if householdID != uuid.Nil && opts.Scope != "" {
-		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
-		q = q.Where(`EXISTS (
-			SELECT 1 FROM recipe_taxonomies
-			JOIN recipes ON recipes.id = recipe_taxonomies.recipe_id
-			WHERE recipe_taxonomies.taxonomy_id = taxonomies.id
-			AND `+scopeWhere+`
-		)`, scopeArgs...)
-	}
+	q = q.Scopes(RecipeScopeExistsFilter(`
+		SELECT 1 FROM recipe_taxonomies
+		JOIN recipes ON recipes.id = recipe_taxonomies.recipe_id
+		WHERE recipe_taxonomies.taxonomy_id = taxonomies.id
+	`, opts.Scope, householdID))
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {

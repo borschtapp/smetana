@@ -26,7 +26,7 @@ func (r *shoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error
 }
 
 func (r *shoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
-	query := r.db.Where("household_id = ?", householdID)
+	query := r.db.Scopes(HouseholdOwned(householdID))
 
 	var total int64
 	if err := query.Model(&domain.ShoppingList{}).Count(&total).Error; err != nil {
@@ -42,7 +42,7 @@ func (r *shoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, 
 
 func (r *shoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*domain.ShoppingList, error) {
 	var list domain.ShoppingList
-	err := r.db.Where("household_id = ? AND is_default = ?", householdID, true).First(&list).Error
+	err := r.db.Scopes(HouseholdOwned(householdID)).Where("is_default = ?", true).First(&list).Error
 	if err != nil {
 		return nil, fmt.Errorf("default list for household %s: %w", householdID, mapErr(err)) // ErrNotFound if absent — service interprets as "not yet created"
 	}

@@ -62,14 +62,10 @@ func (r *authorRepository) Search(householdID uuid.UUID, opts types.SearchOption
 		q = q.Where("name LIKE ?", "%"+opts.SearchQuery+"%")
 	}
 
-	if householdID != uuid.Nil && opts.Scope != "" {
-		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
-		q = q.Where(`EXISTS (
-			SELECT 1 FROM recipes
-			WHERE recipes.author_id = authors.id
-			AND `+scopeWhere+`
-		)`, scopeArgs...)
-	}
+	q = q.Scopes(RecipeScopeExistsFilter(`
+		SELECT 1 FROM recipes
+		WHERE recipes.author_id = authors.id
+	`, opts.Scope, householdID))
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {

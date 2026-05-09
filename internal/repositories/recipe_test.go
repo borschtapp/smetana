@@ -197,7 +197,7 @@ func TestRecipeRepository_UserSave_Idempotent(t *testing.T) {
 	require.NoError(t, repo.UserSave(r.ID, u.ID, hid), "ON CONFLICT DO NOTHING must make duplicate saves a no-op")
 
 	var count int64
-	db.Table("recipes_saved").Where("recipe_id = ? AND user_id = ?", r.ID, u.ID).Count(&count)
+	db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND user_id = ?", r.ID, u.ID).Count(&count)
 	assert.EqualValues(t, 1, count, "exactly one row must exist after duplicate saves")
 }
 
@@ -223,10 +223,10 @@ func TestRecipeRepository_ReplaceRecipePointers_UpdatesRecipesSaved(t *testing.T
 	require.NoError(t, err)
 
 	var count int64
-	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", newRecipe.ID, hid).Count(&count)
+	db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND household_id = ?", newRecipe.ID, hid).Count(&count)
 	assert.EqualValues(t, 1, count, "recipes_saved must point to the new recipe ID after replacement")
 
-	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipe.ID, hid).Count(&count)
+	db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND household_id = ?", oldRecipe.ID, hid).Count(&count)
 	assert.EqualValues(t, 0, count, "old recipe ID must no longer appear in recipes_saved")
 }
 
@@ -252,10 +252,10 @@ func TestRecipeRepository_ReplaceRecipePointers_OtherHouseholdNotAffected(t *tes
 	require.NoError(t, err)
 
 	var count int64
-	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", newRecipe.ID, hid1).Count(&count)
+	db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND household_id = ?", newRecipe.ID, hid1).Count(&count)
 	assert.EqualValues(t, 1, count, "hid1 must point to newRecipe after replacement")
 
-	db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipe.ID, hid2).Count(&count)
+	db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND household_id = ?", oldRecipe.ID, hid2).Count(&count)
 	assert.EqualValues(t, 1, count, "hid2 must remain untouched — ReplaceRecipePointers is scoped to one household")
 }
 
@@ -349,7 +349,7 @@ func TestRecipeRepository_AddEquipment_CreatesJunctionRow(t *testing.T) {
 	require.NoError(t, repo.AddEquipment(r.ID, e.ID))
 
 	var count int64
-	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	db.Model(&recipeEquipment{}).Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
 	assert.EqualValues(t, 1, count, "junction row must exist after AddEquipment")
 }
 
@@ -364,7 +364,7 @@ func TestRecipeRepository_AddEquipment_Idempotent(t *testing.T) {
 	require.NoError(t, repo.AddEquipment(r.ID, e.ID), "ON CONFLICT DO NOTHING must make duplicate associations a no-op")
 
 	var count int64
-	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	db.Model(&recipeEquipment{}).Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
 	assert.EqualValues(t, 1, count)
 }
 
@@ -379,7 +379,7 @@ func TestRecipeRepository_RemoveEquipment_DeletesJunctionRow(t *testing.T) {
 	require.NoError(t, repo.RemoveEquipment(r.ID, e.ID))
 
 	var count int64
-	db.Table("recipe_equipment").Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
+	db.Model(&recipeEquipment{}).Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
 	assert.EqualValues(t, 0, count, "junction row must be gone after RemoveEquipment")
 }
 

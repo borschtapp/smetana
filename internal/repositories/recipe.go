@@ -16,6 +16,13 @@ type recipeRepository struct {
 	db *gorm.DB
 }
 
+// junction table for recipes and collections
+type collectionRecipe struct{}
+
+func (collectionRecipe) TableName() string {
+	return "collection_recipes"
+}
+
 func NewRecipeRepository(db *gorm.DB) domain.RecipeRepository {
 	return &recipeRepository{db: db}
 }
@@ -27,9 +34,7 @@ func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID
 	}
 
 	if preload.HasAny("ingredients", "all") {
-		q = q.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
-			return db.Joins("Food").Joins("Unit")
-		})
+		q = q.Scopes(WithPreloadIngredients)
 	}
 
 	if preload.HasAny("collections", "all") && householdID != uuid.Nil {
@@ -70,9 +75,7 @@ func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID
 	}
 
 	if preload.Has("instructions") {
-		q = q.Preload("Instructions", func(db *gorm.DB) *gorm.DB {
-			return db.Order("recipe_instructions.order ASC")
-		})
+		q = q.Scopes(WithPreloadInstructions)
 	}
 
 	if preload.Has("nutrition") {
@@ -211,21 +214,8 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 		err := tx.First(&existing, "id = ?", recipe.ID).Error
 		isUpdate := err == nil
 
-		omitFields := []string{
-			"Parent",
-			"Author",
-			"Publisher",
-			"Feed",
-			"Images",
-			"Ingredients",
-			"Instructions",
-			"Equipment.*",
-			"Taxonomies.*",
-			"Collection.*",
-		}
-
 		if isUpdate {
-			if err := tx.Omit(omitFields...).Updates(recipe).Error; err != nil {
+			if err := tx.Omit(clause.Associations).Updates(recipe).Error; err != nil {
 				return fmt.Errorf("import update: %w", mapErr(err))
 			}
 			// Clean up associations that will be re-added
@@ -236,8 +226,25 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 				return fmt.Errorf("import cleanup instructions: %w", mapErr(err))
 			}
 		} else {
-			if err := tx.Omit(omitFields...).Create(recipe).Error; err != nil {
+			if err := tx.Omit(clause.Associations).Create(recipe).Error; err != nil {
 				return fmt.Errorf("import create: %w", mapErr(err))
+			}
+		}
+
+		// Explicitly sync associations that should be persisted on import
+		if recipe.Nutrition != nil {
+			if err := tx.Model(recipe).Association("Nutrition").Replace(recipe.Nutrition); err != nil {
+				return fmt.Errorf("import replace nutrition: %w", mapErr(err))
+			}
+		}
+		if len(recipe.Equipment) > 0 {
+			if err := tx.Model(recipe).Association("Equipment").Replace(recipe.Equipment); err != nil {
+				return fmt.Errorf("import replace equipment: %w", mapErr(err))
+			}
+		}
+		if len(recipe.Taxonomies) > 0 {
+			if err := tx.Model(recipe).Association("Taxonomies").Replace(recipe.Taxonomies); err != nil {
+				return fmt.Errorf("import replace taxonomies: %w", mapErr(err))
 			}
 		}
 
@@ -375,15 +382,15 @@ func (r *recipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) e
 
 func (r *recipeRepository) ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error {
 	// 1. RecipeSaved
-	if err := r.db.Table("recipes_saved").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
+	if err := r.db.Model(&domain.RecipeSaved{}).Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
 		return fmt.Errorf("replace recipe pointers (RecipeSaved): %w", mapErr(err))
 	}
 	// 2. MealPlan
-	if err := r.db.Table("meal_plans").Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
+	if err := r.db.Model(&domain.MealPlan{}).Where("recipe_id = ? AND household_id = ?", oldRecipeID, householdID).Update("recipe_id", newRecipeID).Error; err != nil {
 		return fmt.Errorf("replace recipe pointers (MealPlan): %w", mapErr(err))
 	}
 	// 3. CollectionRecipes
-	if err := r.db.Table("collection_recipes").
+	if err := r.db.Model(&collectionRecipe{}).
 		Where("recipe_id = ? AND collection_id IN (SELECT id FROM collections WHERE household_id = ?)", oldRecipeID, householdID).
 		Update("recipe_id", newRecipeID).Error; err != nil {
 		return fmt.Errorf("replace recipe pointers (CollectionRecipes): %w", mapErr(err))
