@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -20,7 +22,7 @@ func NewUnitRepository(db *gorm.DB) domain.UnitRepository {
 func (r *unitRepository) ByID(id uuid.UUID) (*domain.Unit, error) {
 	var unit domain.Unit
 	if err := r.db.First(&unit, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("unit by id %s: %w", id, mapErr(err))
 	}
 	return &unit, nil
 }
@@ -40,11 +42,11 @@ func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(unit)
 	if result.Error != nil {
-		return mapErr(result.Error)
+		return fmt.Errorf("create unit: %w", mapErr(result.Error))
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return mapErr(r.db.First(unit, "slug = ?", unit.Slug).Error)
+		return fmt.Errorf("find unit after conflict: %w", mapErr(r.db.First(unit, "slug = ?", unit.Slug).Error))
 	}
 
 	return nil
@@ -61,24 +63,34 @@ func (r *unitRepository) Search(query string, imperial *bool, offset, limit int)
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count units: %w", mapErr(err))
 	}
 
 	var units []domain.Unit
-	err := db.Offset(offset).Limit(limit).Find(&units).Error
-	return units, total, mapErr(err)
+	if err := db.Offset(offset).Limit(limit).Find(&units).Error; err != nil {
+		return nil, 0, fmt.Errorf("search find units: %w", mapErr(err))
+	}
+	return units, total, nil
 }
 
 func (r *unitRepository) Update(unit *domain.Unit) error {
-	return mapErr(r.db.Model(unit).Select("name").Updates(unit).Error)
+	if err := r.db.Model(unit).Select("name").Updates(unit).Error; err != nil {
+		return fmt.Errorf("update unit %s: %w", unit.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *unitRepository) ByBase(baseUnitID uuid.UUID, imperial bool) ([]domain.Unit, error) {
 	var units []domain.Unit
-	err := r.db.Where("(id = ? OR base_unit_id = ?) AND imperial = ?", baseUnitID, baseUnitID, imperial).Find(&units).Error
-	return units, mapErr(err)
+	if err := r.db.Where("(id = ? OR base_unit_id = ?) AND imperial = ?", baseUnitID, baseUnitID, imperial).Find(&units).Error; err != nil {
+		return nil, fmt.Errorf("find units by base %s: %w", baseUnitID, mapErr(err))
+	}
+	return units, nil
 }
 
 func (r *unitRepository) AddTaxonomy(unitID uuid.UUID, taxonomy *domain.Taxonomy) error {
-	return mapErr(r.db.Model(&domain.Unit{ID: unitID}).Association("Taxonomies").Append(taxonomy))
+	if err := r.db.Model(&domain.Unit{ID: unitID}).Association("Taxonomies").Append(taxonomy); err != nil {
+		return fmt.Errorf("add taxonomy %s to unit %s: %w", taxonomy.ID, unitID, mapErr(err))
+	}
+	return nil
 }

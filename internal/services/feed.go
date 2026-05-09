@@ -37,13 +37,20 @@ func NewFeedService(repo domain.FeedRepository, publisherService domain.Publishe
 }
 
 func (s *feedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([]domain.Feed, int64, error) {
-	return s.repo.Search(householdID, opts)
+	feeds, total, err := s.repo.Search(householdID, opts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search: %w", err)
+	}
+	return feeds, total, nil
 }
 
 func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
 	recipes, total, err := s.recipeService.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
-	if err != nil || len(recipes) == 0 {
-		return recipes, total, err
+	if err != nil {
+		return nil, 0, fmt.Errorf("stream (recipe search): %w", err)
+	}
+	if len(recipes) == 0 {
+		return recipes, total, nil
 	}
 
 	// Copy-on-write override: replace global recipes with household copies where they exist.
@@ -79,7 +86,7 @@ func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types
 func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url string, scraped *domain.Feed) (*domain.Feed, error) {
 	feed, err := s.findOrCreate(ctx, url, scraped)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscribe (find or create): %w", err)
 	}
 
 	// Already subscribed — return existing subscription idempotently.
@@ -94,14 +101,17 @@ func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	}
 
 	if err := s.repo.AddFeed(householdID, feed); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscribe (persist subscription): %w", err)
 	}
 
 	return feed, nil
 }
 
 func (s *feedService) Unsubscribe(householdID uuid.UUID, feedID uuid.UUID) error {
-	return s.repo.DeleteFeed(householdID, feedID)
+	if err := s.repo.DeleteFeed(householdID, feedID); err != nil {
+		return fmt.Errorf("unsubscribe: %w", err)
+	}
+	return nil
 }
 
 func (s *feedService) findOrCreate(ctx context.Context, url string, scraped *domain.Feed) (*domain.Feed, error) {
@@ -111,7 +121,7 @@ func (s *feedService) findOrCreate(ctx context.Context, url string, scraped *dom
 		return feed, nil
 	}
 	if !errors.Is(err, sentinels.ErrNotFound) {
-		return nil, err
+		return nil, fmt.Errorf("find or create (lookup by url): %w", err)
 	}
 
 	if scraped != nil {
@@ -140,7 +150,7 @@ func (s *feedService) findOrCreate(ctx context.Context, url string, scraped *dom
 	}
 
 	if err := s.repo.Create(feed); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find or create (persist feed): %w", err)
 	}
 
 	// Submit background task to fetch recipes
@@ -168,7 +178,7 @@ func (s *feedService) findOrCreate(ctx context.Context, url string, scraped *dom
 func (s *feedService) Sync(ctx context.Context, householdID uuid.UUID, feedID uuid.UUID) (int, int, error) {
 	feed, err := s.repo.ByIDForHousehold(feedID, householdID)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("sync (fetch feed): %w", err)
 	}
 
 	return s.FetchFeed(context.WithoutCancel(ctx), feed)

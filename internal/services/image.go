@@ -75,10 +75,10 @@ func (s *imageService) PersistRemoteAsDefault(ctx context.Context, img *domain.I
 	img.EntityType = entityType
 	img.EntityID = entityID
 	if err := s.PersistRemote(ctx, img, pathPrefix); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("persist remote as default (persist): %w", err)
 	}
 	if err := s.SetDefault(img); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("persist remote as default (set default): %w", err)
 	}
 	return img.Path, nil
 }
@@ -119,7 +119,7 @@ func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pa
 func (s *imageService) PersistUploaded(_ context.Context, data []byte, contentType string) (*domain.UploadedImage, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("persist uploaded (generate uuid): %w", err)
 	}
 
 	ext := utils.ExtensionByType(contentType)
@@ -129,7 +129,7 @@ func (s *imageService) PersistUploaded(_ context.Context, data []byte, contentTy
 	fullPath := "uploads/" + id.String() + ext
 
 	if err := s.storage.Save(fullPath, bytes.NewBuffer(data), int64(len(data)), contentType); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("persist uploaded (save to storage): %w", err)
 	}
 
 	w, h := decodeImageDimensions(data)
@@ -143,13 +143,16 @@ func (s *imageService) PersistUploaded(_ context.Context, data []byte, contentTy
 }
 
 func (s *imageService) SetDefault(image *domain.Image) error {
-	return s.repo.SetDefault(image)
+	if err := s.repo.SetDefault(image); err != nil {
+		return fmt.Errorf("set default: %w", err)
+	}
+	return nil
 }
 
 func (s *imageService) Delete(imageID uuid.UUID) error {
 	img, err := s.repo.FindByID(imageID)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete (fetch existing): %w", err)
 	}
 
 	// Best-effort: log storage failure but still remove the DB record.
@@ -157,7 +160,10 @@ func (s *imageService) Delete(imageID uuid.UUID) error {
 		_ = s.storage.Delete(string(*img.Path))
 	}
 
-	return s.repo.Delete(imageID)
+	if err := s.repo.Delete(imageID); err != nil {
+		return fmt.Errorf("delete (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, string, error) {
@@ -166,13 +172,13 @@ func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, 
 
 	req, err := http.NewRequestWithContext(dlCtx, http.MethodGet, remoteURL, nil)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("create download request: %w", err)
 	}
 	req.Header.Set("User-Agent", s.userAgent)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("execute download request: %w", err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, resp.Body)

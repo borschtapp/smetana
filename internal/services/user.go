@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"borscht.app/smetana/domain"
@@ -21,7 +23,11 @@ func (s *userService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
-	return s.repo.ByID(id)
+	user, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("by id: %w", err)
+	}
+	return user, nil
 }
 
 // Update fetches the user, applies the non-nil patches, and persists the result.
@@ -31,7 +37,7 @@ func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	}
 	user, err := s.repo.ByID(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update (fetch user): %w", err)
 	}
 	if email != nil || newPassword != nil {
 		if currentPassword == nil || !utils.ValidatePassword(user.Password, *currentPassword) {
@@ -44,14 +50,17 @@ func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	if newPassword != nil {
 		hash, err := utils.HashPassword(*newPassword)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("update (hash password): %w", err)
 		}
 		user.Password = hash
 	}
 	if name != nil {
 		user.Name = *name
 	}
-	return user, s.repo.Update(user)
+	if err := s.repo.Update(user); err != nil {
+		return nil, fmt.Errorf("update (persist): %w", err)
+	}
+	return user, nil
 }
 
 func (s *userService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
@@ -60,18 +69,20 @@ func (s *userService) Delete(id uuid.UUID, requesterID uuid.UUID) error {
 	}
 	user, err := s.repo.ByID(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete (fetch user): %w", err)
 	}
 	householdID := user.HouseholdID
 	if err := s.repo.Delete(id); err != nil {
-		return err
+		return fmt.Errorf("delete (persist): %w", err)
 	}
 	_, total, err := s.householdRepo.Members(householdID, 0, 1)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete (check remaining members): %w", err)
 	}
 	if total == 0 {
-		return s.householdRepo.Delete(householdID)
+		if err := s.householdRepo.Delete(householdID); err != nil {
+			return fmt.Errorf("delete (cleanup empty household): %w", err)
+		}
 	}
 	return nil
 }

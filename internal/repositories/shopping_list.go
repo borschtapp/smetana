@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -18,7 +20,7 @@ func NewShoppingListRepository(db *gorm.DB) domain.ShoppingListRepository {
 func (r *shoppingListRepository) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
 	var list domain.ShoppingList
 	if err := r.db.First(&list, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("shopping list by id %s: %w", id, mapErr(err))
 	}
 	return &list, nil
 }
@@ -28,12 +30,12 @@ func (r *shoppingListRepository) ListByHousehold(householdID uuid.UUID, offset, 
 
 	var total int64
 	if err := query.Model(&domain.ShoppingList{}).Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("list count for household %s: %w", householdID, mapErr(err))
 	}
 
 	var lists []domain.ShoppingList
 	if err := query.Offset(offset).Limit(limit).Find(&lists).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("list find for household %s: %w", householdID, mapErr(err))
 	}
 	return lists, total, nil
 }
@@ -42,23 +44,29 @@ func (r *shoppingListRepository) DefaultForHousehold(householdID uuid.UUID) (*do
 	var list domain.ShoppingList
 	err := r.db.Where("household_id = ? AND is_default = ?", householdID, true).First(&list).Error
 	if err != nil {
-		return nil, mapErr(err) // ErrNotFound if absent — service interprets as "not yet created"
+		return nil, fmt.Errorf("default list for household %s: %w", householdID, mapErr(err)) // ErrNotFound if absent — service interprets as "not yet created"
 	}
 	return &list, nil
 }
 
 func (r *shoppingListRepository) CreateList(list *domain.ShoppingList) error {
-	return mapErr(r.db.Create(list).Error)
+	if err := r.db.Create(list).Error; err != nil {
+		return fmt.Errorf("create shopping list: %w", mapErr(err))
+	}
+	return nil
 }
 
 func (r *shoppingListRepository) DeleteList(id uuid.UUID) error {
-	return mapErr(r.db.Delete(&domain.ShoppingList{}, id).Error)
+	if err := r.db.Delete(&domain.ShoppingList{}, id).Error; err != nil {
+		return fmt.Errorf("delete shopping list %s: %w", id, mapErr(err))
+	}
+	return nil
 }
 
 func (r *shoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, error) {
 	var item domain.ShoppingItem
 	if err := r.db.Preload("Unit").Preload("Food").First(&item, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("shopping item by id %s: %w", id, mapErr(err))
 	}
 	return &item, nil
 }
@@ -70,12 +78,12 @@ func (r *shoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) 
 
 	var total int64
 	if err := query.Model(&domain.ShoppingItem{}).Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("item count for list %s: %w", listID, mapErr(err))
 	}
 
 	var items []domain.ShoppingItem
 	if err := query.Offset(offset).Limit(limit).Find(&items).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("item find for list %s: %w", listID, mapErr(err))
 	}
 	return items, total, nil
 }
@@ -89,18 +97,21 @@ func (r *shoppingListRepository) FindItemsByFoodIDs(listID uuid.UUID, foodIDs []
 	err := r.db.Preload("Unit").Preload("Food").
 		Where("shopping_list_id = ? AND food_id IN ?", listID, foodIDs).
 		Find(&items).Error
-	return items, mapErr(err)
+	if err != nil {
+		return nil, fmt.Errorf("find items by food ids for list %s: %w", listID, mapErr(err))
+	}
+	return items, nil
 }
 
 func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error {
 	if err := r.db.Create(&items).Error; err != nil {
-		return mapErr(err)
+		return fmt.Errorf("create shopping items: %w", mapErr(err))
 	}
 
 	for _, item := range items {
 		if item.UnitID != nil || item.FoodID != nil {
 			if err := r.db.Preload("Unit").Preload("Food").First(item, item.ID).Error; err != nil {
-				return mapErr(err)
+				return fmt.Errorf("reload shopping item %s: %w", item.ID, mapErr(err))
 			}
 		}
 	}
@@ -108,9 +119,15 @@ func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error
 }
 
 func (r *shoppingListRepository) UpdateItem(item *domain.ShoppingItem) error {
-	return mapErr(r.db.Model(item).Select("amount", "text", "is_bought", "unit_id", "food_id").Updates(item).Error)
+	if err := r.db.Model(item).Select("amount", "text", "is_bought", "unit_id", "food_id").Updates(item).Error; err != nil {
+		return fmt.Errorf("update shopping item %s: %w", item.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *shoppingListRepository) DeleteItem(id uuid.UUID) error {
-	return mapErr(r.db.Delete(&domain.ShoppingItem{}, id).Error)
+	if err := r.db.Delete(&domain.ShoppingItem{}, id).Error; err != nil {
+		return fmt.Errorf("delete shopping item %s: %w", id, mapErr(err))
+	}
+	return nil
 }

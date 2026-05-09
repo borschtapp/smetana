@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ func (r *equipmentRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count equipment: %w", mapErr(err))
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -79,7 +80,7 @@ func (r *equipmentRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 
 	var equipment []domain.Equipment
 	if err := q.Offset(opts.Offset).Limit(opts.Limit).Find(&equipment).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search find equipment: %w", mapErr(err))
 	}
 	return equipment, total, nil
 }
@@ -99,11 +100,13 @@ func (r *equipmentRepository) FindOrCreate(equipment *domain.Equipment) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(equipment)
 	if result.Error != nil {
-		return mapErr(result.Error)
+		return fmt.Errorf("create equipment: %w", mapErr(result.Error))
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return mapErr(r.db.First(equipment, "slug = ?", equipment.Slug).Error)
+		if err := r.db.First(equipment, "slug = ?", equipment.Slug).Error; err != nil {
+			return fmt.Errorf("find equipment after conflict: %w", mapErr(err))
+		}
 	}
 
 	return nil

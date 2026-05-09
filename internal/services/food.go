@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/types"
@@ -20,7 +21,7 @@ func NewFoodService(repo domain.FoodRepository, imageService domain.ImageService
 
 func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error {
 	if err := s.repo.FindOrCreate(food); err != nil {
-		return err
+		return fmt.Errorf("find or create: %w", err)
 	}
 
 	if food != nil && food.ImagePath == nil && len(food.Images) > 0 {
@@ -34,26 +35,46 @@ func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error
 }
 
 func (s *foodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
-	return s.repo.AddTaxonomy(foodID, taxonomy)
+	if err := s.repo.AddTaxonomy(foodID, taxonomy); err != nil {
+		return fmt.Errorf("add taxonomy: %w", err)
+	}
+	return nil
 }
 
 func (s *foodService) Update(food *domain.Food) error {
-	return s.repo.Update(food)
+	if err := s.repo.Update(food); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+	return nil
 }
 
 func (s *foodService) RecordPrice(householdID uuid.UUID, price *domain.FoodPrice) error {
 	price.HouseholdID = householdID
-	return s.repo.CreatePrice(price)
+	if err := s.repo.CreatePrice(price); err != nil {
+		return fmt.Errorf("record price: %w", err)
+	}
+	return nil
 }
 
 func (s *foodService) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error) {
-	return s.repo.LatestPrices(householdID, foodIDs)
+	prices, err := s.repo.LatestPrices(householdID, foodIDs)
+	if err != nil {
+		return nil, fmt.Errorf("latest prices: %w", err)
+	}
+	return prices, nil
 }
 
 func (s *foodService) ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]domain.FoodPrice, int64, error) {
-	return s.repo.ListPrices(householdID, foodID, opts)
+	prices, total, err := s.repo.ListPrices(householdID, foodID, opts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list prices: %w", err)
+	}
+	return prices, total, nil
 }
 
 func (s *foodService) DeletePrice(householdID, id uuid.UUID) error {
-	return s.repo.DeletePrice(householdID, id)
+	if err := s.repo.DeletePrice(householdID, id); err != nil {
+		return fmt.Errorf("delete price: %w", err)
+	}
+	return nil
 }

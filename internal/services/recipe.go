@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 
@@ -31,7 +33,7 @@ func NewRecipeService(repo domain.RecipeRepository, userRepo domain.UserReposito
 func (s *recipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recipe, error) {
 	recipe, err := s.repo.ByID(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("by id: %w", err)
 	}
 	// Only anonymous and household-owned recipes are readable
 	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
@@ -43,7 +45,7 @@ func (s *recipeService) ByID(id uuid.UUID, householdID uuid.UUID) (*domain.Recip
 func (s *recipeService) ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
 	recipe, err := s.repo.ByIDPreload(id, userID, householdID, preload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("by id preload: %w", err)
 	}
 	// Only anonymous and household-owned recipes are readable
 	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
@@ -55,7 +57,7 @@ func (s *recipeService) ByIDPreload(id, userID, householdID uuid.UUID, preload t
 func (s *recipeService) ByUrl(url string, householdID uuid.UUID) (*domain.Recipe, error) {
 	recipe, err := s.repo.ByUrl(utils.NormalizeURL(url))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("by url: %w", err)
 	}
 	// Only anonymous and household-owned recipes are readable
 	if recipe.HouseholdID != nil && *recipe.HouseholdID != householdID {
@@ -65,41 +67,58 @@ func (s *recipeService) ByUrl(url string, householdID uuid.UUID) (*domain.Recipe
 }
 
 func (s *recipeService) ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]domain.Recipe, error) {
-	return s.repo.ByParentIDsAndHousehold(parentIDs, householdID, preload)
+	recipes, err := s.repo.ByParentIDsAndHousehold(parentIDs, householdID, preload)
+	if err != nil {
+		return nil, fmt.Errorf("by parent ids and household: %w", err)
+	}
+	return recipes, nil
 }
 
 func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
-	return s.repo.Search(userID, householdID, opts)
+	recipes, total, err := s.repo.Search(userID, householdID, opts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search: %w", err)
+	}
+	return recipes, total, nil
 }
 
 func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	recipe.HouseholdID = &householdID
 	recipe.UserID = &userID
 	if err := s.repo.Create(recipe); err != nil {
-		return err
+		return fmt.Errorf("create: %w", err)
 	}
-	return s.UserSave(recipe.ID, userID, householdID)
+	if err := s.UserSave(recipe.ID, userID, householdID); err != nil {
+		return fmt.Errorf("auto-save after create: %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) Import(recipe *domain.Recipe) error {
-	return s.repo.Import(recipe)
+	if err := s.repo.Import(recipe); err != nil {
+		return fmt.Errorf("import: %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) SetFeedID(recipeID, feedID uuid.UUID) error {
-	return s.repo.Update(&domain.Recipe{ID: recipeID, FeedID: &feedID})
+	if err := s.repo.Update(&domain.Recipe{ID: recipeID, FeedID: &feedID}); err != nil {
+		return fmt.Errorf("set feed id: %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(recipe.ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("update (fetch existing): %w", err)
 	}
 
 	// Copy-on-write: if it doesn't belong to household yet, clone it into the household first
 	if existing.HouseholdID == nil {
 		cloned, err := s.cloneToHousehold(existing, userID, householdID)
 		if err != nil {
-			return err
+			return fmt.Errorf("update (clone to household): %w", err)
 		}
 
 		// Apply the incoming patch fields onto the clone
@@ -108,7 +127,10 @@ func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, househol
 		recipe.ParentID = cloned.ParentID
 		recipe.UserID = cloned.UserID
 	}
-	return s.repo.Update(recipe)
+	if err := s.repo.Update(recipe); err != nil {
+		return fmt.Errorf("update (persist): %w", err)
+	}
+	return nil
 }
 
 // cloneToHousehold clones a global recipe into the given household. Make sure to preload all relevant associations
@@ -162,7 +184,7 @@ func (s *recipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("clone to household transaction: %w", err)
 	}
 	return newRecipe, nil
 }
@@ -170,7 +192,7 @@ func (s *recipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 func (s *recipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 	existing, err := s.repo.ByID(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete (fetch existing): %w", err)
 	}
 	if existing.HouseholdID == nil || *existing.HouseholdID != householdID {
 		return sentinels.ErrForbidden
@@ -180,7 +202,10 @@ func (s *recipeService) Delete(id uuid.UUID, householdID uuid.UUID) error {
 		s.deleteImages(existing.Images)
 	}
 
-	return s.repo.Delete(id)
+	if err := s.repo.Delete(id); err != nil {
+		return fmt.Errorf("delete (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) deleteImages(images []*domain.Image) {
@@ -195,73 +220,103 @@ func (s *recipeService) deleteImages(images []*domain.Image) {
 }
 
 func (s *recipeService) UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error {
-	return s.repo.UserSave(recipeID, userID, householdID)
+	if err := s.repo.UserSave(recipeID, userID, householdID); err != nil {
+		return fmt.Errorf("user save: %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
-	return s.repo.UserUnsave(recipeID, userID)
+	if err := s.repo.UserUnsave(recipeID, userID); err != nil {
+		return fmt.Errorf("user unsave: %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("create ingredient (auth check): %w", err)
 	}
-	return s.repo.CreateIngredient(ingredient)
+	if err := s.repo.CreateIngredient(ingredient); err != nil {
+		return fmt.Errorf("create ingredient (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("update ingredient (auth check): %w", err)
 	}
-	return s.repo.UpdateIngredient(ingredient)
+	if err := s.repo.UpdateIngredient(ingredient); err != nil {
+		return fmt.Errorf("update ingredient (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("delete ingredient (auth check): %w", err)
 	}
-	return s.repo.DeleteIngredient(id, recipeID)
+	if err := s.repo.DeleteIngredient(id, recipeID); err != nil {
+		return fmt.Errorf("delete ingredient (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("add equipment (auth check): %w", err)
 	}
-	return s.repo.AddEquipment(recipeID, equipmentID)
+	if err := s.repo.AddEquipment(recipeID, equipmentID); err != nil {
+		return fmt.Errorf("add equipment (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("remove equipment (auth check): %w", err)
 	}
-	return s.repo.RemoveEquipment(recipeID, equipmentID)
+	if err := s.repo.RemoveEquipment(recipeID, equipmentID); err != nil {
+		return fmt.Errorf("remove equipment (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) CreateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("create instruction (auth check): %w", err)
 	}
-	return s.repo.CreateInstruction(instruction)
+	if err := s.repo.CreateInstruction(instruction); err != nil {
+		return fmt.Errorf("create instruction (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) UpdateInstruction(instruction *domain.RecipeInstruction, householdID uuid.UUID) error {
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("update instruction (auth check): %w", err)
 	}
-	return s.repo.UpdateInstruction(instruction)
+	if err := s.repo.UpdateInstruction(instruction); err != nil {
+		return fmt.Errorf("update instruction (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ByID(recipeID, householdID); err != nil {
-		return err
+		return fmt.Errorf("delete instruction (auth check): %w", err)
 	}
-	return s.repo.DeleteInstruction(id, recipeID)
+	if err := s.repo.DeleteInstruction(id, recipeID); err != nil {
+		return fmt.Errorf("delete instruction (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*domain.RecipePriceEstimate, error) {
 	recipe, err := s.ByIDPreload(recipeID, uuid.Nil, householdID, types.Preload("ingredients"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("estimate price (fetch recipe): %w", err)
 	}
 
 	foodIDs := make([]uuid.UUID, 0, len(recipe.Ingredients))
@@ -273,7 +328,7 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 
 	latestPrices, err := s.foodService.LatestPrices(householdID, foodIDs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("estimate price (fetch food prices): %w", err)
 	}
 
 	estimate := &domain.RecipePriceEstimate{

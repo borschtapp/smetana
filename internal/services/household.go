@@ -28,13 +28,13 @@ func (s *householdService) ByID(id uuid.UUID, requesterHouseholdID uuid.UUID, op
 	}
 	household, err := s.repo.ByIDWithPreload(id, opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("by id with preload: %w", err)
 	}
 
 	if opts.Has("invites") {
 		household.Invites, err = s.userRepo.FindTokensByHousehold(id, domain.TokenTypeHouseholdInvite)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("by id (fetch invites): %w", err)
 		}
 	}
 	return household, nil
@@ -47,7 +47,7 @@ func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, requester
 
 	household, err := s.repo.ByID(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update (fetch existing): %w", err)
 	}
 
 	if household.OwnerID != requesterID {
@@ -59,7 +59,7 @@ func (s *householdService) Update(id uuid.UUID, requesterID uuid.UUID, requester
 		household.Currency = *currency
 	}
 	if err := s.repo.Update(household); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update (persist): %w", err)
 	}
 
 	return household, nil
@@ -69,7 +69,11 @@ func (s *householdService) Members(householdID uuid.UUID, requesterHouseholdID u
 	if householdID != requesterHouseholdID {
 		return nil, 0, sentinels.ErrForbidden
 	}
-	return s.repo.Members(householdID, offset, limit)
+	members, total, err := s.repo.Members(householdID, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("members: %w", err)
+	}
+	return members, total, nil
 }
 
 func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.UUID, requesterHouseholdID uuid.UUID, email string) (*domain.UserToken, error) {
@@ -88,7 +92,7 @@ func (s *householdService) CreateInvite(householdID uuid.UUID, requesterID uuid.
 		Expires: time.Now().Add(7 * 24 * time.Hour),
 	}
 	if err := s.userRepo.CreateToken(token); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create invite (persist token): %w", err)
 	}
 
 	if email != "" && s.emailService != nil {
@@ -103,7 +107,11 @@ func (s *householdService) ListInvites(householdID uuid.UUID, requesterID uuid.U
 	if householdID != requesterHouseholdID {
 		return nil, sentinels.ErrForbidden
 	}
-	return s.userRepo.FindTokensByHousehold(householdID, domain.TokenTypeHouseholdInvite)
+	invites, err := s.userRepo.FindTokensByHousehold(householdID, domain.TokenTypeHouseholdInvite)
+	if err != nil {
+		return nil, fmt.Errorf("list invites: %w", err)
+	}
+	return invites, nil
 }
 
 func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*domain.User, error) {
@@ -112,7 +120,7 @@ func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*
 	}
 	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join by invite (fetch token): %w", err)
 	}
 	if time.Now().After(token.Expires) {
 		return nil, sentinels.Unauthorized("invite code has expired")
@@ -120,16 +128,16 @@ func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*
 
 	joiningUser, err := s.userRepo.ByID(joiningUserID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join by invite (fetch user): %w", err)
 	}
 
 	oldHouseholdID := joiningUser.HouseholdID
 	joiningUser.HouseholdID = token.User.HouseholdID
 	if err := s.userRepo.Update(joiningUser); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join by invite (update user household): %w", err)
 	}
 	if _, err = s.userRepo.DeleteToken(code); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("join by invite (consume token): %w", err)
 	}
 	return joiningUser, s.deleteIfEmpty(oldHouseholdID)
 }
@@ -140,7 +148,7 @@ func (s *householdService) InviteInfo(code string) (*domain.InviteInfo, error) {
 	}
 	token, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invite info (fetch token): %w", err)
 	}
 	if time.Now().After(token.Expires) {
 		return nil, sentinels.Unauthorized("invite code has expired")
@@ -148,7 +156,7 @@ func (s *householdService) InviteInfo(code string) (*domain.InviteInfo, error) {
 
 	household, err := s.repo.ByID(token.User.HouseholdID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invite info (fetch household): %w", err)
 	}
 
 	return &domain.InviteInfo{
@@ -164,10 +172,12 @@ func (s *householdService) RevokeInvite(code string) error {
 
 	_, err := s.userRepo.FindToken(code, domain.TokenTypeHouseholdInvite)
 	if err != nil {
-		return err
+		return fmt.Errorf("revoke invite (fetch token): %w", err)
 	}
-	_, err = s.userRepo.DeleteToken(code)
-	return err
+	if _, err = s.userRepo.DeleteToken(code); err != nil {
+		return fmt.Errorf("revoke invite (consume token): %w", err)
+	}
+	return nil
 }
 
 // RemoveMember removes targetUserID from householdID.
@@ -180,7 +190,7 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 
 	household, err := s.repo.ByID(householdID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("remove member (fetch household): %w", err)
 	}
 
 	if requesterID != targetUserID && household.OwnerID != requesterID {
@@ -189,7 +199,7 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 
 	target, err := s.userRepo.ByID(targetUserID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("remove member (fetch target user): %w", err)
 	}
 	if target.HouseholdID != householdID {
 		return nil, sentinels.ErrForbidden
@@ -199,18 +209,18 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 	if household.OwnerID == targetUserID {
 		next, err := s.repo.FirstOtherMember(householdID, targetUserID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("remove member (find next owner): %w", err)
 		}
 		if next != nil {
 			household.OwnerID = next.ID
 			if err := s.repo.Update(household); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("remove member (persist owner update): %w", err)
 			}
 		}
 	}
 
 	if _, err := s.repo.MoveUserToNewHousehold(target, household.Currency); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("remove member (move to new household): %w", err)
 	}
 
 	return target, s.deleteIfEmpty(householdID)
@@ -219,10 +229,12 @@ func (s *householdService) RemoveMember(householdID uuid.UUID, requesterID uuid.
 func (s *householdService) deleteIfEmpty(householdID uuid.UUID) error {
 	_, total, err := s.repo.Members(householdID, 0, 1)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete if empty (check members): %w", err)
 	}
 	if total == 0 {
-		return s.repo.Delete(householdID)
+		if err := s.repo.Delete(householdID); err != nil {
+			return fmt.Errorf("delete if empty (persist delete): %w", err)
+		}
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/borschtapp/kapusta"
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ func NewShoppingListService(repo domain.ShoppingListRepository, foodService doma
 func (s *shoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
 	list, err := s.repo.ByID(listID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ensure owned (fetch list): %w", err)
 	}
 	if list.HouseholdID != householdID {
 		return nil, sentinels.ErrForbidden
@@ -35,7 +36,11 @@ func (s *shoppingListService) ensureOwned(listID uuid.UUID, householdID uuid.UUI
 }
 
 func (s *shoppingListService) Lists(householdID uuid.UUID, offset, limit int) ([]domain.ShoppingList, int64, error) {
-	return s.repo.ListByHousehold(householdID, offset, limit)
+	lists, total, err := s.repo.ListByHousehold(householdID, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("lists: %w", err)
+	}
+	return lists, total, nil
 }
 
 func (s *shoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingList, error) {
@@ -45,12 +50,15 @@ func (s *shoppingListService) GetList(listID uuid.UUID, householdID uuid.UUID) (
 func (s *shoppingListService) CreateList(list *domain.ShoppingList, householdID uuid.UUID) error {
 	defaultList, err := s.repo.DefaultForHousehold(householdID)
 	if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
-		return err
+		return fmt.Errorf("create list (check default): %w", err)
 	}
 
 	list.HouseholdID = householdID
 	list.IsDefault = defaultList == nil // first list for the household becomes the default
-	return s.repo.CreateList(list)
+	if err := s.repo.CreateList(list); err != nil {
+		return fmt.Errorf("create list (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *shoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID) error {
@@ -61,19 +69,26 @@ func (s *shoppingListService) DeleteList(listID uuid.UUID, householdID uuid.UUID
 	if list.IsDefault {
 		return sentinels.Unprocessable("cannot delete the default shopping list")
 	}
-	return s.repo.DeleteList(listID)
+	if err := s.repo.DeleteList(listID); err != nil {
+		return fmt.Errorf("delete list (persist): %w", err)
+	}
+	return nil
 }
 
 func (s *shoppingListService) Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("items (check permission): %w", err)
 	}
-	return s.repo.ListItems(listID, offset, limit)
+	items, total, err := s.repo.ListItems(listID, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("items (fetch): %w", err)
+	}
+	return items, total, nil
 }
 
 func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.ensureOwned(listID, householdID); err != nil {
-		return err
+		return fmt.Errorf("add items (check permission): %w", err)
 	}
 
 	// Pre-resolve text items so we know all food IDs before querying the DB.
@@ -92,7 +107,7 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 
 	existingItems, err := s.repo.FindItemsByFoodIDs(listID, foodIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("add items (fetch existing): %w", err)
 	}
 
 	byFood := make(map[uuid.UUID]*domain.ShoppingItem, len(existingItems))
@@ -119,7 +134,7 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 					}
 				}
 				if err := s.repo.UpdateItem(match); err != nil {
-					return err
+					return fmt.Errorf("add items (update match %s): %w", match.ID, err)
 				}
 				*item = *match
 				continue
@@ -131,7 +146,10 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 	if len(toCreate) == 0 {
 		return nil
 	}
-	return s.repo.CreateItems(toCreate)
+	if err := s.repo.CreateItems(toCreate); err != nil {
+		return fmt.Errorf("add items (persist new): %w", err)
+	}
+	return nil
 }
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.
@@ -172,7 +190,7 @@ func (s *shoppingListService) GetItem(itemID uuid.UUID, listID uuid.UUID, househ
 	}
 	item, err := s.repo.ItemByID(itemID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get item (fetch): %w", err)
 	}
 	if item.ShoppingListID != listID {
 		return nil, sentinels.ErrForbidden
@@ -185,14 +203,21 @@ func (s *shoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.
 		return nil, err
 	}
 	if err := s.repo.UpdateItem(item); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("update item (persist): %w", err)
 	}
-	return s.repo.ItemByID(item.ID)
+	item, err := s.repo.ItemByID(item.ID)
+	if err != nil {
+		return nil, fmt.Errorf("update item (refetch): %w", err)
+	}
+	return item, nil
 }
 
 func (s *shoppingListService) DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error {
 	if _, err := s.GetItem(itemID, listID, householdID); err != nil {
-		return err
+		return fmt.Errorf("delete item (check permission): %w", err)
 	}
-	return s.repo.DeleteItem(itemID)
+	if err := s.repo.DeleteItem(itemID); err != nil {
+		return fmt.Errorf("delete item (persist): %w", err)
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/google/uuid"
@@ -18,11 +19,18 @@ func NewUnitService(repo domain.UnitRepository) domain.UnitService {
 }
 
 func (s *unitService) FindOrCreate(unit *domain.Unit) error {
-	return s.repo.FindOrCreate(unit)
+	if err := s.repo.FindOrCreate(unit); err != nil {
+		return fmt.Errorf("find or create: %w", err)
+	}
+	return nil
 }
 
 func (s *unitService) Search(query string, imperial *bool, offset, limit int) ([]domain.Unit, int64, error) {
-	return s.repo.Search(query, imperial, offset, limit)
+	units, total, err := s.repo.Search(query, imperial, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search: %w", err)
+	}
+	return units, total, nil
 }
 
 func (s *unitService) Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (float64, error) {
@@ -32,11 +40,11 @@ func (s *unitService) Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (f
 
 	from, err := s.repo.ByID(fromUnitID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("convert (fetch from-unit): %w", err)
 	}
 	to, err := s.repo.ByID(toUnitID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("convert (fetch to-unit): %w", err)
 	}
 
 	if from.BaseID() != to.BaseID() {
@@ -58,12 +66,12 @@ func (s *unitService) Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (f
 func (s *unitService) BestUnit(amount float64, fromUnitID uuid.UUID, imperial bool) (*domain.Unit, error) {
 	from, err := s.repo.ByID(fromUnitID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("best unit (fetch from-unit): %w", err)
 	}
 
 	candidates, err := s.repo.ByBase(from.BaseID(), imperial)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("best unit (fetch candidates): %w", err)
 	}
 	if len(candidates) == 0 {
 		return nil, sentinels.Unprocessable("no units found with the same base unit")

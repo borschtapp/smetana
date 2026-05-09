@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"borscht.app/smetana/internal/sentinels"
@@ -38,7 +39,7 @@ func (r *publisherRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count publishers: %w", mapErr(err))
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -87,7 +88,7 @@ func (r *publisherRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 
 	var publishers []domain.Publisher
 	if err := q.Find(&publishers).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search find publishers: %w", mapErr(err))
 	}
 
 	if opts.Has("last3_recipes") {
@@ -97,7 +98,7 @@ func (r *publisherRepository) Search(householdID uuid.UUID, opts types.SearchOpt
 				Order("created DESC").
 				Limit(3).
 				Find(&publishers[i].Recipes).Error; err != nil {
-				return nil, 0, mapErr(err)
+				return nil, 0, fmt.Errorf("find last 3 recipes for publisher %s: %w", publishers[i].ID, mapErr(err))
 			}
 		}
 	}
@@ -112,7 +113,7 @@ func (r *publisherRepository) FindOrCreate(pub *domain.Publisher) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(pub)
 	if result.Error != nil {
-		return mapErr(result.Error)
+		return fmt.Errorf("create publisher: %w", mapErr(result.Error))
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID

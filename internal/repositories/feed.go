@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (
 		Select("feeds.*").
 		Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id AND feed_subscriptions.household_id = ?", householdID).
 		First(&feed, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("feed by id %s for household %s: %w", id, householdID, mapErr(err))
 	}
 	return &feed, nil
 }
@@ -33,7 +34,7 @@ func (r *feedRepository) ByIDForHousehold(id uuid.UUID, householdID uuid.UUID) (
 func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 	var feed domain.Feed
 	if err := r.db.Select("feeds.*").Where("url = ?", url).First(&feed).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("feed by url %s: %w", url, mapErr(err))
 	}
 	return &feed, nil
 }
@@ -41,7 +42,7 @@ func (r *feedRepository) ByUrl(url string) (*domain.Feed, error) {
 func (r *feedRepository) ListActive() ([]domain.Feed, error) {
 	var feeds []domain.Feed
 	if err := r.db.Select("feeds.*").Where("active = ?", true).Find(&feeds).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("list active feeds: %w", mapErr(err))
 	}
 	return feeds, nil
 }
@@ -59,7 +60,7 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("count feeds for household %s: %w", householdID, mapErr(err))
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -86,7 +87,7 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 	})
 
 	if err := q.Find(&feeds).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("find feeds for household %s: %w", householdID, mapErr(err))
 	}
 
 	if opts.Has("last3_recipes") {
@@ -96,7 +97,7 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 				Order("created DESC").
 				Limit(3).
 				Find(&feeds[i].Recipes).Error; err != nil {
-				return nil, 0, mapErr(err)
+				return nil, 0, fmt.Errorf("find last 3 recipes for feed %s: %w", feeds[i].ID, mapErr(err))
 			}
 		}
 	}
@@ -106,37 +107,44 @@ func (r *feedRepository) Search(householdID uuid.UUID, opts types.SearchOptions)
 
 func (r *feedRepository) AddFeed(householdID uuid.UUID, feed *domain.Feed) error {
 	wasActive := feed.Active // snapshot before Append triggers BeforeCreate and mutates the struct
-	if err := mapErr(r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed)); err != nil {
-		return err
+	if err := r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Append(feed); err != nil {
+		return fmt.Errorf("add feed %s to household %s: %w", feed.ID, householdID, mapErr(err))
 	}
 	if !wasActive {
-		return mapErr(r.db.Model(feed).Update("active", true).Error)
+		if err := r.db.Model(feed).Update("active", true).Error; err != nil {
+			return fmt.Errorf("activate feed %s: %w", feed.ID, mapErr(err))
+		}
 	}
 	return nil
 }
 
 func (r *feedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) error {
 	if err := r.db.Model(&domain.Household{ID: householdID}).Association("Feeds").Delete(&domain.Feed{ID: feedID}); err != nil {
-		return mapErr(err)
+		return fmt.Errorf("delete feed association %s for household %s: %w", feedID, householdID, mapErr(err))
 	}
 
 	var count int64
 	if err := r.db.Table("feed_subscriptions").Where("feed_id = ?", feedID).Count(&count).Error; err != nil {
-		return mapErr(err)
+		return fmt.Errorf("count subscriptions for feed %s: %w", feedID, mapErr(err))
 	}
 	if count == 0 {
-		return mapErr(r.db.Model(&domain.Feed{}).Where("id = ?", feedID).Update("active", false).Error)
+		if err := r.db.Model(&domain.Feed{}).Where("id = ?", feedID).Update("active", false).Error; err != nil {
+			return fmt.Errorf("deactivate feed %s: %w", feedID, mapErr(err))
+		}
 	}
 	return nil
 }
 
 func (r *feedRepository) Create(feed *domain.Feed) error {
-	return mapErr(r.db.Create(feed).Error)
+	if err := r.db.Create(feed).Error; err != nil {
+		return fmt.Errorf("create feed: %w", mapErr(err))
+	}
+	return nil
 }
 
 func (r *feedRepository) Update(feed *domain.Feed) error {
 	// Explicitly select mutable columns so that zero-value fields like are persisted correctly
-	return mapErr(r.db.Model(feed).Select(
+	if err := r.db.Model(feed).Select(
 		"name",
 		"description",
 		"url",
@@ -145,9 +153,15 @@ func (r *feedRepository) Update(feed *domain.Feed) error {
 		"last_sync_at",
 		"last_sync_success",
 		"discovered",
-	).Updates(feed).Error)
+	).Updates(feed).Error; err != nil {
+		return fmt.Errorf("update feed %s: %w", feed.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *feedRepository) Delete(id uuid.UUID) error {
-	return mapErr(r.db.Delete(&domain.Feed{}, id).Error)
+	if err := r.db.Delete(&domain.Feed{}, id).Error; err != nil {
+		return fmt.Errorf("delete feed %s: %w", id, mapErr(err))
+	}
+	return nil
 }

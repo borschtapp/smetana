@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func NewHouseholdRepository(db *gorm.DB) domain.HouseholdRepository {
 func (r *householdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("household by id %s: %w", id, mapErr(err))
 	}
 	return &household, nil
 }
@@ -38,21 +39,30 @@ func (r *householdRepository) ByIDWithPreload(id uuid.UUID, opts types.PreloadOp
 
 	var household domain.Household
 	if err := q.First(&household, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("household by id %s with preload: %w", id, mapErr(err))
 	}
 	return &household, nil
 }
 
 func (r *householdRepository) Create(household *domain.Household) error {
-	return mapErr(r.db.Model(household).Omit(clause.Associations).Create(household).Error)
+	if err := r.db.Model(household).Omit(clause.Associations).Create(household).Error; err != nil {
+		return fmt.Errorf("create household: %w", mapErr(err))
+	}
+	return nil
 }
 
 func (r *householdRepository) Update(household *domain.Household) error {
-	return mapErr(r.db.Model(household).Updates(household).Error)
+	if err := r.db.Model(household).Updates(household).Error; err != nil {
+		return fmt.Errorf("update household %s: %w", household.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *householdRepository) Delete(id uuid.UUID) error {
-	return mapErr(r.db.Delete(&domain.Household{}, id).Error)
+	if err := r.db.Delete(&domain.Household{}, id).Error; err != nil {
+		return fmt.Errorf("delete household %s: %w", id, mapErr(err))
+	}
+	return nil
 }
 
 func (r *householdRepository) FirstOtherMember(householdID uuid.UUID, excludeUserID uuid.UUID) (*domain.User, error) {
@@ -64,7 +74,7 @@ func (r *householdRepository) FirstOtherMember(householdID uuid.UUID, excludeUse
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("first other member of household %s excluding %s: %w", householdID, excludeUserID, mapErr(err))
 	}
 	return &user, nil
 }
@@ -79,7 +89,7 @@ func (r *householdRepository) MoveUserToNewHousehold(user *domain.User, currency
 		return tx.Model(user).Update("household_id", newHousehold.ID).Error
 	})
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("move user to new household transaction: %w", mapErr(err))
 	}
 
 	user.HouseholdID = newHousehold.ID
@@ -91,12 +101,12 @@ func (r *householdRepository) Members(householdID uuid.UUID, offset, limit int) 
 
 	var total int64
 	if err := query.Model(&domain.User{}).Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("members count for household %s: %w", householdID, mapErr(err))
 	}
 
 	var members []domain.User
 	if err := query.Offset(offset).Limit(limit).Find(&members).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("members find for household %s: %w", householdID, mapErr(err))
 	}
 	return members, total, nil
 }

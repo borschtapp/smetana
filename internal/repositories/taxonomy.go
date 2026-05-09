@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func (r *taxonomyRepository) Search(taxonomyType string, householdID uuid.UUID, 
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count taxonomies type %s: %w", taxonomyType, mapErr(err))
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -78,7 +79,7 @@ func (r *taxonomyRepository) Search(taxonomyType string, householdID uuid.UUID, 
 
 	var taxonomies []domain.Taxonomy
 	if err := q.Offset(opts.Offset).Limit(opts.Limit).Find(&taxonomies).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search find taxonomies type %s: %w", taxonomyType, mapErr(err))
 	}
 	return taxonomies, total, nil
 }
@@ -90,11 +91,13 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(taxonomy)
 	if result.Error != nil {
-		return mapErr(result.Error)
+		return fmt.Errorf("create taxonomy: %w", mapErr(result.Error))
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
-		return mapErr(r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error)
+		if err := r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error; err != nil {
+			return fmt.Errorf("find taxonomy after conflict: %w", mapErr(err))
+		}
 	}
 
 	return nil

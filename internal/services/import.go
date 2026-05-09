@@ -9,6 +9,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
+	"fmt"
 )
 
 type importService struct {
@@ -34,11 +35,11 @@ func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpda
 	if !forceUpdate {
 		existing, err := s.recipeService.ByUrl(url, householdID)
 		if err != nil && !errors.Is(err, sentinels.ErrNotFound) && !errors.Is(err, sentinels.ErrForbidden) {
-			return nil, err
+			return nil, fmt.Errorf("from url (lookup cache): %w", err)
 		}
 		if existing != nil {
 			if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("from url (save existing): %w", err)
 			}
 			return existing, nil
 		}
@@ -46,15 +47,15 @@ func (s *importService) ImportFromURL(ctx context.Context, url string, forceUpda
 
 	scraped, err := s.scraperService.ScrapeRecipe(ctx, url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("from url (scrape): %w", err)
 	}
 
 	recipe, err := s.recipeIngest.ImportRecipe(ctx, scraped)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("from url (ingest): %w", err)
 	}
 	if err := s.recipeService.UserSave(recipe.ID, userID, householdID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("from url (save new): %w", err)
 	}
 	return recipe, nil
 }
@@ -67,11 +68,11 @@ func (s *importService) DetectAndImport(ctx context.Context, url string, request
 		// Check recipe cache before paying the cost of a network scrape.
 		existing, err := s.recipeService.ByUrl(url, householdID)
 		if err != nil && !errors.Is(err, sentinels.ErrNotFound) && !errors.Is(err, sentinels.ErrForbidden) {
-			return nil, err
+			return nil, fmt.Errorf("detect (lookup cache): %w", err)
 		}
 		if existing != nil {
 			if err := s.recipeService.UserSave(existing.ID, userID, householdID); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("detect (save existing): %w", err)
 			}
 			return &domain.ImportResult{Recipe: existing}, nil
 		}
@@ -80,23 +81,23 @@ func (s *importService) DetectAndImport(ctx context.Context, url string, request
 	// Unknown URL — must scrape to determine whether it's a recipe or a feed.
 	scraped, err := s.scraperService.ScrapeUrl(ctx, url, requestedType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("detect (scrape): %w", err)
 	}
 
 	if scraped.Type == domain.PageTypeFeed {
 		feed, err := s.feedService.Subscribe(ctx, householdID, url, scraped.Feed)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("detect (subscribe): %w", err)
 		}
 		return &domain.ImportResult{Created: true, Feed: feed}, nil
 	}
 
 	recipe, err := s.recipeIngest.ImportRecipe(ctx, scraped.Recipe)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("detect (ingest): %w", err)
 	}
 	if err := s.recipeService.UserSave(recipe.ID, userID, householdID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("detect (save new): %w", err)
 	}
 	return &domain.ImportResult{Created: true, Recipe: recipe}, nil
 }

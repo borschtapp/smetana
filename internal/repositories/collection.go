@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ func NewCollectionRepository(db *gorm.DB) domain.CollectionRepository {
 func (r *collectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.First(&collection, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("collection by id %s: %w", id, mapErr(err))
 	}
 	return &collection, nil
 }
@@ -30,7 +31,7 @@ func (r *collectionRepository) ByID(id uuid.UUID) (*domain.Collection, error) {
 func (r *collectionRepository) ByIdWithRecipes(id uuid.UUID) (*domain.Collection, error) {
 	var collection domain.Collection
 	if err := r.db.Preload("Recipes").First(&collection, id).Error; err != nil {
-		return nil, mapErr(err)
+		return nil, fmt.Errorf("collection by id %s with recipes: %w", id, mapErr(err))
 	}
 	return &collection, nil
 }
@@ -47,7 +48,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count collections: %w", mapErr(err))
 	} else if total == 0 {
 		return collections, 0, nil
 	}
@@ -68,7 +69,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 	})
 
 	if err := q.Find(&collections).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search find collections: %w", mapErr(err))
 	}
 
 	if opts.Has("last3_recipes") {
@@ -79,7 +80,7 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 				Order("recipes.created DESC").
 				Limit(3).
 				Find(&collections[i].Recipes).Error; err != nil {
-				return nil, 0, mapErr(err)
+				return nil, 0, fmt.Errorf("find last 3 recipes for collection %s: %w", collections[i].ID, mapErr(err))
 			}
 		}
 	}
@@ -88,21 +89,36 @@ func (r *collectionRepository) Search(householdID uuid.UUID, opts types.SearchOp
 }
 
 func (r *collectionRepository) Create(collection *domain.Collection) error {
-	return mapErr(r.db.Create(collection).Error)
+	if err := r.db.Create(collection).Error; err != nil {
+		return fmt.Errorf("create collection: %w", mapErr(err))
+	}
+	return nil
 }
 
 func (r *collectionRepository) Update(collection *domain.Collection) error {
-	return mapErr(r.db.Model(collection).Select("name", "description").Updates(collection).Error)
+	if err := r.db.Model(collection).Select("name", "description").Updates(collection).Error; err != nil {
+		return fmt.Errorf("update collection %s: %w", collection.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *collectionRepository) Delete(id uuid.UUID) error {
-	return mapErr(r.db.Delete(&domain.Collection{}, id).Error)
+	if err := r.db.Delete(&domain.Collection{}, id).Error; err != nil {
+		return fmt.Errorf("delete collection %s: %w", id, mapErr(err))
+	}
+	return nil
 }
 
 func (r *collectionRepository) AddRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
-	return mapErr(r.db.Model(collection).Association("Recipes").Append(&domain.Recipe{ID: recipeID}))
+	if err := r.db.Model(collection).Association("Recipes").Append(&domain.Recipe{ID: recipeID}); err != nil {
+		return fmt.Errorf("add recipe %s to collection %s: %w", recipeID, collection.ID, mapErr(err))
+	}
+	return nil
 }
 
 func (r *collectionRepository) RemoveRecipe(collection *domain.Collection, recipeID uuid.UUID) error {
-	return mapErr(r.db.Model(collection).Association("Recipes").Delete(&domain.Recipe{ID: recipeID}))
+	if err := r.db.Model(collection).Association("Recipes").Delete(&domain.Recipe{ID: recipeID}); err != nil {
+		return fmt.Errorf("remove recipe %s from collection %s: %w", recipeID, collection.ID, mapErr(err))
+	}
+	return nil
 }

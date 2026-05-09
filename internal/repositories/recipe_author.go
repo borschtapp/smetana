@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -27,7 +28,7 @@ func (r *authorRepository) FindOrCreate(author *domain.Author) error {
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(author)
 	if result.Error != nil {
-		return mapErr(result.Error)
+		return fmt.Errorf("create author: %w", mapErr(result.Error))
 	}
 
 	if result.RowsAffected == 0 { // DoNothing triggered: conflict; BeforeCreate already assigned a stale ID
@@ -72,7 +73,7 @@ func (r *authorRepository) Search(householdID uuid.UUID, opts types.SearchOption
 
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search count authors: %w", mapErr(err))
 	} else if total == 0 {
 		return nil, 0, nil
 	}
@@ -112,7 +113,7 @@ func (r *authorRepository) Search(householdID uuid.UUID, opts types.SearchOption
 
 	var authors []domain.Author
 	if err := q.Offset(opts.Offset).Limit(opts.Limit).Find(&authors).Error; err != nil {
-		return nil, 0, mapErr(err)
+		return nil, 0, fmt.Errorf("search find authors: %w", mapErr(err))
 	}
 	return authors, total, nil
 }
