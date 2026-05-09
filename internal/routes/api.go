@@ -45,7 +45,8 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 		log.Warnw("Email service not initialized", "error", err.Error())
 	}
 
-	scraperService := services.NewScraperService()
+	scraperProvider := services.NewKripProvider()
+	scraperService := services.NewScraperService(scraperProvider, scraperProvider)
 	taxonomyService := services.NewTaxonomyService(taxonomyRepo)
 	imageService := services.NewImageService(fileStorage, imageRepo)
 	equipmentService := services.NewEquipmentService(equipmentRepo, imageService)

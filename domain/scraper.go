@@ -23,5 +23,7 @@ type ScrapeResult struct {
 type ScraperService interface {
 	ScrapeUrl(ctx context.Context, url string, requestedType string) (*ScrapeResult, error)
 	ScrapeRecipe(ctx context.Context, url string) (*Recipe, error)
+	// ScrapeFeed scrapes all recipe entries from the feed URL and back-populates
+	// feed metadata fields (Name, Url, Publisher, Description, Discovered) in-place.
 	ScrapeFeed(ctx context.Context, feed *Feed, opts krip.FeedOptions) ([]*Recipe, error)
 }

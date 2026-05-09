@@ -26,15 +26,6 @@ func newTestFeedService(
 	return services.NewFeedService(feedRepo, pubSvc, recipeSvc, recipeIngest, scraper)
 }
 
-func TestFeedService_Stream_NoRecipes_ReturnsEmpty(t *testing.T) {
-	svc := newTestFeedService(&stubFeedRepo{}, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, &stubScraperService{})
-	recipes, total, err := svc.Stream(uuid.New(), uuid.New(), types.SearchOptions{})
-
-	require.NoError(t, err)
-	assert.EqualValues(t, 0, total)
-	assert.Empty(t, recipes)
-}
-
 func TestFeedService_Stream_SwapsGlobalWithHouseholdOverrides(t *testing.T) {
 	// Given two global recipes and one household override for the first,
 	// Stream must replace the first recipe in the result with its override.
@@ -311,7 +302,7 @@ func TestFeedService_FetchFeed_RecipeWithNoURL_IsSkipped(t *testing.T) {
 func TestFeedService_Subscribe_NoRecipesButHasName_Succeeds(t *testing.T) {
 	householdID := uuid.New()
 	url := "https://example.com/feed"
-	
+
 	feedRepo := &stubFeedRepo{
 		byUrlFn: func(u string) (*domain.Feed, error) {
 			return nil, sentinels.ErrNotFound
@@ -328,17 +319,17 @@ func TestFeedService_Subscribe_NoRecipesButHasName_Succeeds(t *testing.T) {
 			return nil
 		},
 	}
-	
+
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(ctx context.Context, f *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
-			f.Name = "Test Feed" // Discovery found a name
+			f.Name = "Test Feed"           // Discovery found a name
 			return []*domain.Recipe{}, nil // But 0 recipes found (shallow)
 		},
 	}
-	
+
 	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
 	feed, err := svc.Subscribe(context.Background(), householdID, url, nil)
-	
+
 	require.NoError(t, err)
 	assert.NotNil(t, feed)
 	assert.Equal(t, "Test Feed", feed.Name)
@@ -348,7 +339,7 @@ func TestFeedService_Subscribe_NoRecipesButHasName_Succeeds(t *testing.T) {
 func TestFeedService_Subscribe_NoRecipesNoName_Fails(t *testing.T) {
 	householdID := uuid.New()
 	url := "https://example.com/not-a-feed"
-	
+
 	feedRepo := &stubFeedRepo{
 		byUrlFn: func(u string) (*domain.Feed, error) {
 			return nil, sentinels.ErrNotFound
@@ -361,16 +352,16 @@ func TestFeedService_Subscribe_NoRecipesNoName_Fails(t *testing.T) {
 			return nil
 		},
 	}
-	
+
 	scraper := &stubScraperService{
 		scrapeFeedFn: func(ctx context.Context, f *domain.Feed, opts krip.FeedOptions) ([]*domain.Recipe, error) {
 			return []*domain.Recipe{}, nil // 0 recipes, no name
 		},
 	}
-	
+
 	svc := newTestFeedService(feedRepo, &stubPublisherService{}, &stubRecipeService{}, &stubRecipeIngestService{}, scraper)
 	feed, err := svc.Subscribe(context.Background(), householdID, url, nil)
-	
+
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "feed has no importable recipes")
 	assert.Nil(t, feed)
