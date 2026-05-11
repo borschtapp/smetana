@@ -20,9 +20,3 @@ type feedSubscription struct{}
 func (feedSubscription) TableName() string {
 	return "feed_subscriptions"
 }
-
-type collectionRecipe struct{}
-
-func (collectionRecipe) TableName() string {
-	return "collection_recipes"
-}

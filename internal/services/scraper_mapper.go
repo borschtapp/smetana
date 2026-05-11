@@ -145,7 +145,7 @@ func (m *scraperMapper) toRecipe(kripRecipe *krip.Recipe) *domain.Recipe {
 		recipe.Equipment = append(recipe.Equipment, eq)
 	}
 	for _, item := range kripRecipe.Instructions {
-		if item.HowToStep.Text != "" || item.HowToStep.Name != "" {
+		if item.Text != "" || item.Name != "" {
 			recipe.Instructions = append(recipe.Instructions, m.toInstruction(&item.HowToStep))
 		}
 		for _, step := range item.Steps {
