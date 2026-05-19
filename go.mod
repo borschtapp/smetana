@@ -10,7 +10,7 @@ require (
 	github.com/borschtapp/krip v0.18.0
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/doyensec/safeurl v0.2.2
-	github.com/go-co-op/gocron/v2 v2.21.1
+	github.com/go-co-op/gocron/v2 v2.21.2
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/gofiber/contrib/v3/jwt v1.1.4
 	github.com/gofiber/contrib/v3/swaggo v1.0.5
