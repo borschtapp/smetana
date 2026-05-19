@@ -3,7 +3,7 @@ module borscht.app/smetana
 go 1.26.0
 
 require (
-	github.com/PuerkitoBio/purell v1.2.1
+	github.com/PuerkitoBio/purell v1.2.2
 	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/borschtapp/kapusta v0.4.1
