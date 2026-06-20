@@ -62,7 +62,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	collectionService := services.NewCollectionService(collectionRepo, recipeService)
 	mealPlanService := services.NewMealPlanService(mealPlanRepo)
 	householdService := services.NewHouseholdService(householdRepo, userRepo, emailService)
-	shoppingListService := services.NewShoppingListService(shoppingListRepo, foodService, unitService)
+	shoppingListService := services.NewShoppingListService(shoppingListRepo, scraperProvider, foodService, unitService)
 
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
@@ -84,7 +84,8 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	oidcGroup.Get("/callback", authHandler.OIDCCallback)
 
 	uploadHandler := api.NewUploadHandler(imageService)
-	router.Post("/uploads", middlewares.Protected(), uploadHandler.Upload)
+	uploadsGroup := router.Group("/uploads", middlewares.Protected())
+	uploadsGroup.Post("/", uploadHandler.Upload)
 
 	userHandler := api.NewUserHandler(userService)
 	usersGroup := router.Group("/users", middlewares.Protected())
@@ -102,6 +103,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	householdsGroup.Get("/:id/invites", householdHandler.ListHouseholdInvites)
 	householdsGroup.Post("/leave", householdHandler.LeaveHousehold)
 	householdsGroup.Post("/invites/:code/join", householdHandler.JoinHousehold)
+	// Intentionally unprotected — anyone may look up or revoke an invite code.
 	router.Get("/households/invites/:code/info", householdHandler.GetInviteInfo, limiter.New(limiter.Config{Max: 3}))
 	router.Delete("/households/invites/:code", householdHandler.RevokeHouseholdInvite)
 
@@ -143,7 +145,8 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	foodGroup.Delete("/:id/price/:priceId", foodHandler.DeletePrice)
 
 	importHandler := api.NewImportHandler(importService)
-	router.Post("/import", middlewares.Protected(), importHandler.DetectAndImport)
+	importGroup := router.Group("/import", middlewares.Protected())
+	importGroup.Post("/", importHandler.DetectAndImport)
 
 	recipeHandler := api.NewRecipeHandler(recipeService)
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
@@ -169,14 +172,16 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup.Delete("/:id/instructions/:instructionId", recipeHandler.DeleteInstruction)
 
 	authorHandler := api.NewAuthorHandler(authorService)
-	router.Get("/authors", middlewares.Protected(), authorHandler.GetAuthors)
+	authorsGroup := router.Group("/authors", middlewares.Protected())
+	authorsGroup.Get("/", authorHandler.GetAuthors)
 
 	publisherHandler := api.NewPublisherHandler(publisherService)
 	publishersGroup := router.Group("/publishers", middlewares.Protected())
 	publishersGroup.Get("/", publisherHandler.GetPublishers)
 
 	taxonomyHandler := api.NewTaxonomyHandler(taxonomyService)
-	router.Get("/taxonomies", middlewares.Protected(), taxonomyHandler.GetTaxonomies)
+	taxonomiesGroup := router.Group("/taxonomies", middlewares.Protected())
+	taxonomiesGroup.Get("/", taxonomyHandler.GetTaxonomies)
 
 	unitHandler := api.NewUnitHandler(unitService)
 	unitGroup := router.Group("/units", middlewares.Protected())
@@ -185,7 +190,8 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	unitGroup.Post("/:id/merge", unitHandler.MergeUnit)
 
 	equipmentHandler := api.NewEquipmentHandler(equipmentService)
-	router.Get("/equipment", middlewares.Protected(), equipmentHandler.GetEquipment)
+	equipmentGroup := router.Group("/equipment", middlewares.Protected())
+	equipmentGroup.Get("/", equipmentHandler.GetEquipment)
 
 	feedHandler := api.NewFeedHandler(feedService)
 	feedsGroup := router.Group("/feeds", middlewares.Protected())

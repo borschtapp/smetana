@@ -45,6 +45,7 @@ func EmailToName(email string) string {
 	return strings.Split(email, "@")[0]
 }
 
+// EnsureSuffix ensures that a string ends with a specific suffix.
 func EnsureSuffix(s, suffix string) string {
 	if strings.HasSuffix(s, suffix) {
 		return s

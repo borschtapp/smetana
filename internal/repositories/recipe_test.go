@@ -327,10 +327,12 @@ func TestRecipeRepository_Search_FromFeeds_NoComputedColumnError(t *testing.T) {
 	r := &domain.Recipe{FeedID: &feed.ID}
 	seedRecipe(t, db, r)
 
+	searchOpts := defaultSearchOpts()
+	searchOpts.Scope = "feeds"
+
 	repo := repositories.NewRecipeRepository(db)
 	results, total, err := repo.Search(u.ID, hid, domain.RecipeSearchOptions{
-		SearchOptions: defaultSearchOpts(),
-		FromFeeds:     true,
+		SearchOptions: searchOpts,
 	})
 
 	require.NoError(t, err)

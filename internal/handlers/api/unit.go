@@ -24,7 +24,7 @@ func NewUnitHandler(service domain.UnitService) *UnitHandler {
 // @Param q query string false "Search query (matches name or slug)"
 // @Param imperial query bool false "Filter by system: true=imperial, false=metric"
 // @Param offset query int false "Number of records to skip (default: 0)"
-// @Param limit query int false "Maximum number of records to return (default: 20)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Unit]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth

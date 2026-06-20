@@ -117,19 +117,15 @@ func (r *recipeRepository) ByUrl(url string) (*domain.Recipe, error) {
 func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts domain.RecipeSearchOptions) ([]domain.Recipe, int64, error) {
 	var recipes []domain.Recipe
 
-	// base filter, only show recipes saved by someone from the household
+	// base filter: collection path short-circuits; all other scopes use the shared visibility model.
 	q := r.db.Model(&domain.Recipe{})
 
 	if opts.CollectionID != uuid.Nil {
 		q = q.Joins("JOIN collection_recipes ON collection_recipes.recipe_id = recipes.id").
 			Where("collection_recipes.collection_id = ?", opts.CollectionID)
-	} else if opts.FromFeeds {
-		q = q.Joins("JOIN feeds ON feeds.id = recipes.feed_id").
-			Joins("JOIN feed_subscriptions ON feed_subscriptions.feed_id = feeds.id").
-			Where("feed_subscriptions.household_id = ?", householdID)
 	} else {
-		q = q.Joins("JOIN recipes_saved ON recipes_saved.recipe_id = recipes.id").
-			Where("recipes_saved.household_id = ?", householdID)
+		scopeWhere, scopeArgs := scopeWhereArgs(opts.Scope, householdID)
+		q = q.Where(scopeWhere, scopeArgs...)
 	}
 
 	// apply filters/search options

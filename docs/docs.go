@@ -992,7 +992,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Maximum number of records to return (default: 20)",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1349,6 +1349,182 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/food": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Search canonical foods by name or slug with pagination.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Search foods by name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query (matches name or slug)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of records to skip (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of records to return (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_Food"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/food/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update name, description, default unit, or pantry status of a food. Only provided fields are changed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Update a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "food",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.updateFoodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Food"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/food/{id}/merge": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Reassigns all ingredients, shopping items, and prices from the food at {id} to merge_into, then marks {id} as an alias so future imports resolve correctly.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Merge two food items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID to merge away (becomes alias)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target food to keep",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.mergeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/food/{id}/price": {
             "get": {
                 "security": [
@@ -1517,6 +1693,7 @@ const docTemplate = `{
         },
         "/api/v1/households/invites/{code}": {
             "delete": {
+                "description": "By design, this method is unprotected to allow anyone to delete leaked codes.",
                 "tags": [
                     "households"
                 ],
@@ -3889,7 +4066,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Maximum number of records to return (default: 20)",
+                        "description": "Maximum number of records to return (default: 10)",
                         "name": "limit",
                         "in": "query"
                     }
@@ -3903,6 +4080,131 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/units/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update the name of a unit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "Update a unit",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unit UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "unit",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.updateUnitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Unit"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/units/{id}/merge": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "units"
+                ],
+                "summary": "Merge two units",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unit UUID to merge away (becomes alias)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target unit to keep",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.mergeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
@@ -4123,6 +4425,10 @@ const docTemplate = `{
     "definitions": {
         "api.AuthResponse": {
             "type": "object",
+            "required": [
+                "email",
+                "name"
+            ],
             "properties": {
                 "access_token": {
                     "type": "string"
@@ -4140,7 +4446,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 2
                 },
                 "recipes": {
                     "type": "array",
@@ -4437,6 +4744,17 @@ const docTemplate = `{
                 }
             }
         },
+        "api.mergeRequest": {
+            "type": "object",
+            "required": [
+                "merge_into"
+            ],
+            "properties": {
+                "merge_into": {
+                    "type": "string"
+                }
+            }
+        },
         "api.recordPriceRequest": {
             "type": "object",
             "required": [
@@ -4456,6 +4774,26 @@ const docTemplate = `{
                 }
             }
         },
+        "api.updateFoodRequest": {
+            "type": "object",
+            "properties": {
+                "default_unit_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "pantry": {
+                    "type": "boolean"
+                }
+            }
+        },
         "api.updateHouseholdForm": {
             "type": "object",
             "required": [
@@ -4471,11 +4809,25 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Author": {
+        "api.updateUnitRequest": {
             "type": "object",
             "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "domain.Author": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "id": {
                     "type": "string"
@@ -4484,7 +4836,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "recipes": {
                     "type": "array",
@@ -4502,15 +4856,21 @@ const docTemplate = `{
         },
         "domain.Collection": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "recipes": {
                     "type": "array",
@@ -4528,9 +4888,14 @@ const docTemplate = `{
         },
         "domain.Equipment": {
             "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "id": {
                     "type": "string"
@@ -4545,10 +4910,14 @@ const docTemplate = `{
                     }
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "total_recipes": {
                     "type": "integer"
@@ -4557,12 +4926,17 @@ const docTemplate = `{
         },
         "domain.Feed": {
             "type": "object",
+            "required": [
+                "name",
+                "url"
+            ],
             "properties": {
                 "active": {
                     "type": "boolean"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "id": {
                     "type": "string"
@@ -4574,7 +4948,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "publisher": {
                     "$ref": "#/definitions/domain.Publisher"
@@ -4598,7 +4974,14 @@ const docTemplate = `{
         },
         "domain.Food": {
             "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
             "properties": {
+                "canonical_food_id": {
+                    "type": "string"
+                },
                 "default_unit": {
                     "$ref": "#/definitions/domain.Unit"
                 },
@@ -4606,7 +4989,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "id": {
                     "type": "string"
@@ -4615,14 +4999,18 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "pantry": {
                     "description": "Whether this food is always available (e.g. salt, oil) and should be excluded from shopping lists",
                     "type": "boolean"
                 },
                 "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "taxonomies": {
                     "type": "array",
@@ -4634,6 +5022,10 @@ const docTemplate = `{
         },
         "domain.FoodPrice": {
             "type": "object",
+            "required": [
+                "amount",
+                "price"
+            ],
             "properties": {
                 "amount": {
                     "type": "number"
@@ -4666,6 +5058,10 @@ const docTemplate = `{
         },
         "domain.Household": {
             "type": "object",
+            "required": [
+                "currency",
+                "name"
+            ],
             "properties": {
                 "collections": {
                     "type": "array",
@@ -4698,7 +5094,9 @@ const docTemplate = `{
                     }
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "owner_id": {
                     "type": "string"
@@ -4794,9 +5192,13 @@ const docTemplate = `{
         },
         "domain.Publisher": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "feeds": {
                     "type": "array",
@@ -4811,7 +5213,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 },
                 "recipes": {
                     "type": "array",
@@ -4831,18 +5235,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "count": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "reviews": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "value": {
-                    "type": "number"
+                    "type": "number",
+                    "maximum": 5,
+                    "minimum": 0
                 }
             }
         },
         "domain.Recipe": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "author": {
                     "$ref": "#/definitions/domain.Author"
@@ -4862,6 +5273,7 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string",
+                    "maxLength": 10000,
                     "example": "A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper."
                 },
                 "difficulty": {
@@ -4914,6 +5326,8 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2,
                     "example": "Spaghetti Carbonara"
                 },
                 "nutrition": {
@@ -4952,9 +5366,6 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2100
                 },
-                "url": {
-                    "type": "string"
-                },
                 "user_id": {
                     "type": "string"
                 },
@@ -4969,6 +5380,9 @@ const docTemplate = `{
         },
         "domain.RecipeIngredient": {
             "type": "object",
+            "required": [
+                "raw_text"
+            ],
             "properties": {
                 "amount": {
                     "description": "nil when unquantified (e.g. \"to taste\", \"a pinch of\")",
@@ -4976,11 +5390,13 @@ const docTemplate = `{
                 },
                 "category": {
                     "description": "Category groups ingredients into named sections within a recipe (e.g. \"For the sauce\", \"For the dough\").",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "description": {
                     "description": "Description holds preparation notes extracted from the ingredient string (e.g. \"finely diced\", \"at room temperature\").",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "food": {
                     "$ref": "#/definitions/domain.Food"
@@ -4997,7 +5413,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "description": "Name is the ingredient name as written in this recipe (e.g. \"carrots\", \"all-purpose flour\").\nMay differ from Food.Name, which holds the deduplicated canonical form (e.g. \"carrot\").",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "raw_text": {
                     "description": "RawText is the original unparsed ingredient string from the source (e.g. \"2 large carrots, diced\").",
@@ -5013,6 +5431,9 @@ const docTemplate = `{
         },
         "domain.RecipeInstruction": {
             "type": "object",
+            "required": [
+                "text"
+            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -5027,7 +5448,8 @@ const docTemplate = `{
                     }
                 },
                 "order": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "parent": {
                     "$ref": "#/definitions/domain.RecipeInstruction"
@@ -5039,7 +5461,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "url": {
                     "type": "string"
@@ -5054,98 +5477,119 @@ const docTemplate = `{
             "properties": {
                 "calcium": {
                     "description": "The number of milligrams of calcium.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "calories": {
                     "description": "The number of calories.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 450.5
                 },
                 "carbs": {
                     "description": "The number of grams of carbohydrates.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 60
                 },
                 "carbs_fiber": {
                     "description": "The number of grams of fiber.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 4.5
                 },
                 "carbs_sugar": {
                     "description": "The number of grams of sugar.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 10
                 },
                 "cholesterol": {
                     "description": "The number of milligrams of cholesterol.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 35
                 },
                 "copper": {
                     "description": "The number of milligrams of copper.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "fat": {
                     "description": "The number of grams of fat.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 15.2
                 },
                 "fat_saturated": {
                     "description": "The number of grams of saturated fat.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 5.1
                 },
                 "fat_trans": {
                     "description": "The number of grams of trans fat.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 0.1
                 },
                 "iron": {
                     "description": "The number of milligrams of iron.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "magnesium": {
                     "description": "The number of milligrams of magnesium.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "manganese": {
                     "description": "The number of milligrams of manganese.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "phosphorus": {
                     "description": "The number of milligrams of phosphorus.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "potassium": {
                     "description": "The number of milligrams of potassium.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "protein": {
                     "description": "The number of grams of protein.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 22
                 },
                 "salt": {
                     "description": "The number of grams of salt.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "selenium": {
                     "description": "The number of micrograms of selenium.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "serving_size": {
                     "description": "The serving size, in terms of the number of volume or mass.",
                     "type": "string",
+                    "maxLength": 255,
                     "example": "1 plate"
                 },
                 "sodium": {
                     "description": "The number of milligrams of sodium.",
                     "type": "number",
+                    "minimum": 0,
                     "example": 250
                 },
                 "zinc": {
                     "description": "The number of milligrams of zinc.",
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 }
             }
         },
@@ -5170,6 +5614,9 @@ const docTemplate = `{
         },
         "domain.ShoppingItem": {
             "type": "object",
+            "required": [
+                "text"
+            ],
             "properties": {
                 "amount": {
                     "type": "number"
@@ -5188,7 +5635,9 @@ const docTemplate = `{
                 },
                 "text": {
                     "description": "raw user input",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "unit": {
                     "$ref": "#/definitions/domain.Unit"
@@ -5200,6 +5649,9 @@ const docTemplate = `{
         },
         "domain.ShoppingList": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -5214,12 +5666,19 @@ const docTemplate = `{
                     }
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2
                 }
             }
         },
         "domain.Taxonomy": {
             "type": "object",
+            "required": [
+                "label",
+                "slug",
+                "type"
+            ],
             "properties": {
                 "canonical": {
                     "$ref": "#/definitions/domain.Taxonomy"
@@ -5232,7 +5691,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "label": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "parent": {
                     "$ref": "#/definitions/domain.Taxonomy"
@@ -5241,19 +5702,31 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "total_recipes": {
                     "type": "integer"
                 },
                 "type": {
                     "description": "diet, category, cuisine, keyword",
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "diet",
+                        "category",
+                        "cuisine",
+                        "keyword"
+                    ]
                 }
             }
         },
         "domain.Unit": {
             "type": "object",
+            "required": [
+                "name",
+                "slug"
+            ],
             "properties": {
                 "base_factor": {
                     "description": "BaseFactor is the multiplier to convert amounts to the base unit.",
@@ -5265,6 +5738,9 @@ const docTemplate = `{
                 "base_unit_id": {
                     "type": "string"
                 },
+                "canonical_unit_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -5272,10 +5748,14 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 },
                 "taxonomies": {
                     "type": "array",
@@ -5307,6 +5787,10 @@ const docTemplate = `{
         },
         "domain.User": {
             "type": "object",
+            "required": [
+                "email",
+                "name"
+            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -5321,7 +5805,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 2
                 },
                 "recipes": {
                     "type": "array",
@@ -5333,6 +5818,10 @@ const docTemplate = `{
         },
         "domain.UserToken": {
             "type": "object",
+            "required": [
+                "token",
+                "type"
+            ],
             "properties": {
                 "expires": {
                     "type": "string"
@@ -5344,7 +5833,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "refresh",
+                        "household_invite",
+                        "password_reset"
+                    ]
                 },
                 "user_id": {
                     "type": "string"
@@ -5358,13 +5852,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2000
                 },
                 "embed_url": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 2
                 },
                 "thumbnail_url": {
                     "type": "string"
@@ -5456,6 +5952,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.Feed"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
+        "types.ListResponse-domain_Food": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Food"
                     }
                 },
                 "meta": {

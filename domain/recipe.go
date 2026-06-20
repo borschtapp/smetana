@@ -14,7 +14,6 @@ type Recipe struct {
 	ParentID    *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
 	HouseholdID *uuid.UUID      `gorm:"type:char(36);index" json:"-"`
 	UserID      *uuid.UUID      `gorm:"type:char(36);index" json:"user_id,omitempty"`
-	Url         *string         `gorm:"-" json:"url,omitempty"`
 	SourceUrl   *string         `gorm:"index" json:"source_url,omitempty" validate:"omitempty,url"`
 	Name        *string         `json:"name,omitempty" example:"Spaghetti Carbonara" validate:"required,min=2,max=255"`
 	ImagePath   *storage.Path   `json:"image_url,omitempty"`
@@ -76,11 +75,7 @@ func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
 type RecipeSearchOptions struct {
 	types.SearchOptions
 
-	// below are mutually exclusive options:
-	// - if FromFeeds is true, only search recipes from feeds the household is subscribed to
-	// - if CollectionID is provided, only search recipes from that collection (assume the caller has already validated access to the collection)
-	// - otherwise, search all recipes saved by the household
-	FromFeeds    bool
+	// CollectionID, when non-nil, restricts results to a specific collection.
 	CollectionID uuid.UUID
 }
 

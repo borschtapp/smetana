@@ -7,9 +7,9 @@ import (
 )
 
 type Error struct {
-	Status  int                `json:"status"`
-	Message string             `json:"message"`
-	Fields  *map[string]string `json:"fields,omitempty"`
+	Status  int               `json:"status"`
+	Message string            `json:"message"`
+	Fields  map[string]string `json:"fields,omitempty"`
 }
 
 func (e *Error) Error() string {

@@ -23,17 +23,13 @@ func BadRequestVal(err error) *Error {
 		fields[e.Field()] = fmt.Sprintf("Field '%s' validation failed: %v", e.Tag(), e.Error())
 	}
 
-	return &Error{Status: fiber.StatusBadRequest, Message: "Request validation failed", Fields: &fields}
+	return &Error{Status: fiber.StatusBadRequest, Message: "Request validation failed", Fields: fields}
 }
 
 func BadRequestField(field string, reason string) *Error {
-	// Define fields map.
 	fields := map[string]string{}
-
-	// Add field and reason to fail.
 	fields[field] = fmt.Sprintf("Field '%s' validation failed: %v", field, reason)
-
-	return &Error{Status: fiber.StatusBadRequest, Message: "Failed to validate request body", Fields: &fields}
+	return &Error{Status: fiber.StatusBadRequest, Message: "Failed to validate request body", Fields: fields}
 }
 
 func Forbidden(m string) *Error {

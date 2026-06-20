@@ -45,7 +45,8 @@ func (s *feedService) Search(householdID uuid.UUID, opts types.SearchOptions) ([
 }
 
 func (s *feedService) Stream(userID uuid.UUID, householdID uuid.UUID, opts types.SearchOptions) ([]domain.Recipe, int64, error) {
-	recipes, total, err := s.recipeService.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts, FromFeeds: true})
+	opts.Scope = "feeds"
+	recipes, total, err := s.recipeService.Search(userID, householdID, domain.RecipeSearchOptions{SearchOptions: opts})
 	if err != nil {
 		return nil, 0, fmt.Errorf("stream (recipe search): %w", err)
 	}

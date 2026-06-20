@@ -168,9 +168,7 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 		}
 	}
 
-	// Filter out failed taxonomies/equipment (though they are still in the slices, just might be un-persisted if it was a hard error, but FindOrCreate usually handles it)
-	// Actually, the original code filtered taxonomies. I'll stick to that if needed, but since we modify in place, it might be fine.
-	// Re-filtering for safety:
+	// drop taxonomies/equipment that failed to resolve, i.e. still have a nil ID:
 	var validTaxonomies []*domain.Taxonomy
 	for _, t := range recipe.Taxonomies {
 		if t.ID != uuid.Nil {

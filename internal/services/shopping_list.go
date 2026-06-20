@@ -15,12 +15,13 @@ import (
 
 type shoppingListService struct {
 	repo        domain.ShoppingListRepository
+	parser      IngredientParser
 	foodService domain.FoodService
 	unitService domain.UnitService
 }
 
-func NewShoppingListService(repo domain.ShoppingListRepository, foodService domain.FoodService, unitService domain.UnitService) domain.ShoppingListService {
-	return &shoppingListService{repo: repo, foodService: foodService, unitService: unitService}
+func NewShoppingListService(repo domain.ShoppingListRepository, parser IngredientParser, foodService domain.FoodService, unitService domain.UnitService) domain.ShoppingListService {
+	return &shoppingListService{repo: repo, parser: parser, foodService: foodService, unitService: unitService}
 }
 
 // ensureOwned fetches a list by ID and verifies household ownership.
@@ -154,7 +155,7 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.
 func (s *shoppingListService) parseItemText(ctx context.Context, item *domain.ShoppingItem) {
-	parsed, err := kapusta.ParseIngredient(item.Text)
+	parsed, err := s.parser.ParseIngredient(item.Text, kapusta.IngredientOptions{})
 	if err != nil {
 		return
 	}

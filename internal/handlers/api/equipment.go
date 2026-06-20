@@ -28,7 +28,7 @@ func NewEquipmentHandler(service domain.EquipmentService) *EquipmentHandler {
 // @Param sort query string false "Sort by field: id, name, created, total_recipes (default: id)"
 // @Param order query string false "Sort order: asc or desc (default: desc)"
 // @Param offset query int false "Number of records to skip (default: 0)"
-// @Param limit query int false "Maximum number of records to return (default: 20)"
+// @Param limit query int false "Maximum number of records to return (default: 10)"
 // @Success 200 {object} types.ListResponse[domain.Equipment]
 // @Failure 401 {object} sentinels.Error
 // @Security ApiKeyAuth

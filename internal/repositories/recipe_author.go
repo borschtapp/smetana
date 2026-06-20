@@ -48,7 +48,7 @@ func (r *authorRepository) find(author *domain.Author) error {
 	}
 	if author.Name != "" {
 		var existing domain.Author
-		if err := r.db.First(&existing, "name = ?", author.Name).Error; err == nil {
+		if err := r.db.First(&existing, "lower(name) = lower(?)", author.Name).Error; err == nil {
 			*author = existing
 			return nil
 		}
