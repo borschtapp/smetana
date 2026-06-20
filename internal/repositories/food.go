@@ -20,17 +20,25 @@ func NewFoodRepository(db *gorm.DB) domain.FoodRepository {
 	return &foodRepository{db: db}
 }
 
+func (r *foodRepository) ByID(id uuid.UUID) (*domain.Food, error) {
+	var food domain.Food
+	if err := r.db.First(&food, id).Error; err != nil {
+		return nil, fmt.Errorf("food by id %s: %w", id, mapErr(err))
+	}
+	return &food, nil
+}
+
 func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 	if food.Slug == "" {
 		food.Slug = utils.CreateTag(food.Name)
 	}
 
 	if err := r.db.First(food, "slug = ?", food.Slug).Error; err == nil {
-		return nil
+		return r.resolveAlias(food)
 	}
 
 	if err := r.db.First(food, "lower(name) = lower(?)", food.Name).Error; err == nil {
-		return nil
+		return r.resolveAlias(food)
 	}
 
 	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(food)
@@ -42,13 +50,89 @@ func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 		if err := r.db.First(food, "slug = ?", food.Slug).Error; err != nil {
 			return fmt.Errorf("find food after conflict: %w", mapErr(err))
 		}
+		return r.resolveAlias(food)
 	}
 
 	return nil
 }
 
+// resolveAlias replaces food with its canonical target when the row is an alias.
+func (r *foodRepository) resolveAlias(food *domain.Food) error {
+	if food.CanonicalFoodID == nil {
+		return nil
+	}
+	var canonical domain.Food
+	if err := r.db.First(&canonical, *food.CanonicalFoodID).Error; err != nil {
+		return fmt.Errorf("resolve food alias: %w", mapErr(err))
+	}
+	*food = canonical
+	return nil
+}
+
+func (r *foodRepository) Search(query string, offset, limit int) ([]domain.Food, int64, error) {
+	db := r.db.Model(&domain.Food{}).Scopes(IsCanonicalFood)
+	if query != "" {
+		db = db.Where("name LIKE ? OR slug LIKE ?", "%"+query+"%", "%"+query+"%")
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("search count foods: %w", mapErr(err))
+	}
+
+	var foods []domain.Food
+	if err := db.Offset(offset).Limit(limit).Find(&foods).Error; err != nil {
+		return nil, 0, fmt.Errorf("search find foods: %w", mapErr(err))
+	}
+	return foods, total, nil
+}
+
+func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var keep, merge domain.Food
+		if err := tx.Scopes(IsCanonicalFood).First(&keep, keepID).Error; err != nil {
+			return fmt.Errorf("keep food: %w", mapErr(err))
+		}
+		if err := tx.Scopes(IsCanonicalFood).First(&merge, mergeID).Error; err != nil {
+			return fmt.Errorf("merge food: %w", mapErr(err))
+		}
+
+		if err := tx.Model(&domain.RecipeIngredient{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
+			return fmt.Errorf("reassign ingredients: %w", mapErr(err))
+		}
+		if err := tx.Model(&domain.ShoppingItem{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
+			return fmt.Errorf("reassign shopping items: %w", mapErr(err))
+		}
+		if err := tx.Model(&domain.FoodPrice{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
+			return fmt.Errorf("reassign food prices: %w", mapErr(err))
+		}
+
+		// Preserve fields from the discarded food if the kept food lacks them.
+		inherited := map[string]any{}
+		if keep.ImagePath == nil && merge.ImagePath != nil {
+			inherited["image_path"] = merge.ImagePath
+		}
+		if keep.DefaultUnitID == nil && merge.DefaultUnitID != nil {
+			inherited["default_unit_id"] = merge.DefaultUnitID
+		}
+		if !keep.Pantry && merge.Pantry {
+			inherited["pantry"] = true
+		}
+		if len(inherited) > 0 {
+			if err := tx.Model(&domain.Food{}).Where("id = ?", keepID).Updates(inherited).Error; err != nil {
+				return fmt.Errorf("propagate fields to keep food: %w", mapErr(err))
+			}
+		}
+
+		if err := tx.Model(&domain.Food{}).Where("id = ?", mergeID).Update("canonical_food_id", keepID).Error; err != nil {
+			return fmt.Errorf("set food alias: %w", mapErr(err))
+		}
+		return nil
+	})
+}
+
 func (r *foodRepository) Update(food *domain.Food) error {
-	if err := r.db.Model(food).Select("name", "image_path", "default_unit_id").Updates(food).Error; err != nil {
+	if err := r.db.Model(food).Select("name", "description", "default_unit_id", "pantry").Updates(food).Error; err != nil {
 		return fmt.Errorf("update food %s: %w", food.ID, mapErr(err))
 	}
 	return nil

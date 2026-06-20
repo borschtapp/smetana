@@ -73,6 +73,9 @@ func (r *fakeUnitRepo) FindOrCreate(unit *domain.Unit) error {
 	return nil
 }
 
+func (r *fakeUnitRepo) Merge(_, _ uuid.UUID) error  { return nil }
+func (r *fakeUnitRepo) Update(_ *domain.Unit) error { return nil }
+
 var (
 	idG   = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	idKg  = uuid.MustParse("00000000-0000-0000-0000-000000000002")
@@ -237,4 +240,15 @@ func TestUnitService_Search_NoFilter_ReturnsAllUnits(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(len(all)), total, "unfiltered search must return all units")
+}
+
+func TestUnitService_Merge_SameID_ReturnsBadRequest(t *testing.T) {
+	svc := services.NewUnitService(newFakeUnitRepo())
+	id := uuid.New()
+
+	err := svc.Merge(id, id)
+
+	var se *sentinels.Error
+	require.ErrorAs(t, err, &se, "same-ID merge must return a typed sentinel error")
+	assert.Equal(t, 400, se.Status)
 }

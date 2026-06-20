@@ -135,6 +135,9 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 
 	foodHandler := api.NewFoodHandler(foodService)
 	foodGroup := router.Group("/food", middlewares.Protected())
+	foodGroup.Get("/", foodHandler.GetFoods)
+	foodGroup.Patch("/:id", foodHandler.UpdateFood)
+	foodGroup.Post("/:id/merge", foodHandler.MergeFood)
 	foodGroup.Get("/:id/price", foodHandler.GetPrice)
 	foodGroup.Post("/:id/price", foodHandler.RecordPrice)
 	foodGroup.Delete("/:id/price/:priceId", foodHandler.DeletePrice)
@@ -176,7 +179,10 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	router.Get("/taxonomies", middlewares.Protected(), taxonomyHandler.GetTaxonomies)
 
 	unitHandler := api.NewUnitHandler(unitService)
-	router.Get("/units", middlewares.Protected(), unitHandler.GetUnits)
+	unitGroup := router.Group("/units", middlewares.Protected())
+	unitGroup.Get("/", unitHandler.GetUnits)
+	unitGroup.Patch("/:id", unitHandler.UpdateUnit)
+	unitGroup.Post("/:id/merge", unitHandler.MergeUnit)
 
 	equipmentHandler := api.NewEquipmentHandler(equipmentService)
 	router.Get("/equipment", middlewares.Protected(), equipmentHandler.GetEquipment)

@@ -45,6 +45,16 @@ func RecipeScopeExistsFilter(entitySubquery, scope string, householdID uuid.UUID
 	}
 }
 
+// IsCanonicalFood restricts a foods query to canonical (non-alias) rows only.
+func IsCanonicalFood(db *gorm.DB) *gorm.DB {
+	return db.Where("canonical_food_id IS NULL")
+}
+
+// IsCanonicalUnit restricts a units query to canonical (non-alias) rows only.
+func IsCanonicalUnit(db *gorm.DB) *gorm.DB {
+	return db.Where("canonical_unit_id IS NULL")
+}
+
 // WithPreloadIngredients eagerly loads a recipe's Ingredients relation, joining Food and Unit.
 func WithPreloadIngredients(db *gorm.DB) *gorm.DB {
 	return db.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {

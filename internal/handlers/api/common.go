@@ -3,11 +3,16 @@ package api
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"borscht.app/smetana/internal/sentinels"
 )
 
 var validate = validator.New(validator.WithRequiredStructEnabled())
+
+type mergeRequest struct {
+	MergeInto uuid.UUID `json:"merge_into" validate:"required"`
+}
 
 // bindBody binds the request body to dst and validates it.
 func bindBody[T any](c fiber.Ctx, dst *T) error {

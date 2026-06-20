@@ -11,19 +11,21 @@ import (
 )
 
 type Food struct {
-	ID            uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
-	Slug          string        `gorm:"uniqueIndex:idx_food_slug,sort:desc" json:"slug" validate:"required,min=1,max=255"`
-	Name          string        `json:"name" validate:"required,min=1,max=255"`
-	Description   *string       `json:"description,omitempty" validate:"omitempty,max=1000"`
-	ImagePath     *storage.Path `json:"image_url,omitempty"`
-	DefaultUnitID *uuid.UUID    `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
-	Pantry        bool          `json:"pantry"` // Whether this food is always available (e.g. salt, oil) and should be excluded from shopping lists
-	Updated       time.Time     `gorm:"autoUpdateTime" json:"-"`
-	Created       time.Time     `gorm:"autoCreateTime" json:"-"`
+	ID              uuid.UUID     `gorm:"type:char(36);primaryKey" json:"id"`
+	Slug            string        `gorm:"uniqueIndex:idx_food_slug,sort:desc" json:"slug" validate:"required,min=1,max=255"`
+	Name            string        `json:"name" validate:"required,min=1,max=255"`
+	Description     *string       `json:"description,omitempty" validate:"omitempty,max=1000"`
+	ImagePath       *storage.Path `json:"image_url,omitempty"`
+	DefaultUnitID   *uuid.UUID    `gorm:"type:char(36);index" json:"default_unit_id,omitempty"`
+	Pantry          bool          `json:"pantry"` // Whether this food is always available (e.g. salt, oil) and should be excluded from shopping lists
+	CanonicalFoodID *uuid.UUID    `gorm:"type:char(36);index" json:"canonical_food_id,omitempty"`
+	Updated         time.Time     `gorm:"autoUpdateTime" json:"-"`
+	Created         time.Time     `gorm:"autoCreateTime" json:"-"`
 
-	DefaultUnit *Unit       `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
-	Taxonomies  []*Taxonomy `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
-	Images      []*Image    `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	CanonicalFood *Food       `gorm:"foreignKey:CanonicalFoodID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	DefaultUnit   *Unit       `gorm:"foreignKey:DefaultUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"default_unit,omitempty"`
+	Taxonomies    []*Taxonomy `gorm:"many2many:food_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
+	Images        []*Image    `gorm:"polymorphic:Entity;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (f Food) TableName() string {
@@ -40,7 +42,10 @@ func (f *Food) BeforeCreate(_ *gorm.DB) error {
 }
 
 type FoodRepository interface {
+	ByID(id uuid.UUID) (*Food, error)
 	FindOrCreate(food *Food) error
+	Search(query string, offset, limit int) ([]Food, int64, error)
+	Merge(keepID, mergeID uuid.UUID) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
 
@@ -51,7 +56,10 @@ type FoodRepository interface {
 }
 
 type FoodService interface {
+	ByID(id uuid.UUID) (*Food, error)
 	FindOrCreate(ctx context.Context, food *Food) error
+	Search(query string, offset, limit int) ([]Food, int64, error)
+	Merge(keepID, mergeID uuid.UUID) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
 

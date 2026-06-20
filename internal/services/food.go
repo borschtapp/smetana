@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
@@ -19,6 +20,14 @@ func NewFoodService(repo domain.FoodRepository, imageService domain.ImageService
 	return &foodService{repo: repo, imageService: imageService}
 }
 
+func (s *foodService) ByID(id uuid.UUID) (*domain.Food, error) {
+	food, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("by id: %w", err)
+	}
+	return food, nil
+}
+
 func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error {
 	if err := s.repo.FindOrCreate(food); err != nil {
 		return fmt.Errorf("find or create: %w", err)
@@ -30,6 +39,24 @@ func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error
 			log.Warnw("unable to process food image, skipping", "food_id", food.ID, "image", food.Images[0], "error", err.Error())
 		}
 		food.ImagePath = path
+	}
+	return nil
+}
+
+func (s *foodService) Search(query string, offset, limit int) ([]domain.Food, int64, error) {
+	foods, total, err := s.repo.Search(query, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search: %w", err)
+	}
+	return foods, total, nil
+}
+
+func (s *foodService) Merge(keepID, mergeID uuid.UUID) error {
+	if keepID == mergeID {
+		return sentinels.BadRequest("cannot merge a food into itself")
+	}
+	if err := s.repo.Merge(keepID, mergeID); err != nil {
+		return fmt.Errorf("merge: %w", err)
 	}
 	return nil
 }

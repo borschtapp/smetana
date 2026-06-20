@@ -51,3 +51,78 @@ func (h *UnitHandler) GetUnits(c fiber.Ctx) error {
 		},
 	})
 }
+
+type updateUnitRequest struct {
+	Name *string `json:"name" validate:"omitempty,min=1,max=255"`
+}
+
+// UpdateUnit godoc
+// @Summary Update a unit
+// @Description Update the name of a unit.
+// @Tags units
+// @Accept json
+// @Produce json
+// @Param id path string true "Unit UUID"
+// @Param unit body updateUnitRequest true "Fields to update"
+// @Success 200 {object} domain.Unit
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/units/{id} [patch]
+// @Security ApiKeyAuth
+func (h *UnitHandler) UpdateUnit(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	var req updateUnitRequest
+	if err := bindBody(c, &req); err != nil {
+		return err
+	}
+
+	unit, err := h.service.ByID(id)
+	if err != nil {
+		return err
+	}
+
+	if req.Name != nil {
+		unit.Name = *req.Name
+	}
+
+	if err := h.service.Update(unit); err != nil {
+		return err
+	}
+	return c.JSON(unit)
+}
+
+// MergeUnit godoc
+// @Summary Merge two units
+// @Description Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias.
+// @Tags units
+// @Accept json
+// @Produce json
+// @Param id path string true "Unit UUID to merge away (becomes alias)"
+// @Param body body mergeRequest true "Target unit to keep"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/units/{id}/merge [post]
+// @Security ApiKeyAuth
+func (h *UnitHandler) MergeUnit(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	var req mergeRequest
+	if err := bindBody(c, &req); err != nil {
+		return err
+	}
+
+	if err := h.service.Merge(req.MergeInto, id); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}

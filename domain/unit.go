@@ -15,12 +15,14 @@ type Unit struct {
 	Imperial   bool       `json:"imperial"`
 	BaseUnitID *uuid.UUID `gorm:"type:char(36);index" json:"base_unit_id,omitempty"`
 	// BaseFactor is the multiplier to convert amounts to the base unit.
-	BaseFactor float64   `gorm:"default:0" json:"base_factor,omitempty"`
-	Updated    time.Time `gorm:"autoUpdateTime" json:"-"`
-	Created    time.Time `gorm:"autoCreateTime" json:"-"`
+	BaseFactor      float64    `gorm:"default:0" json:"base_factor,omitempty"`
+	CanonicalUnitID *uuid.UUID `gorm:"type:char(36);index" json:"canonical_unit_id,omitempty"`
+	Updated         time.Time  `gorm:"autoUpdateTime" json:"-"`
+	Created         time.Time  `gorm:"autoCreateTime" json:"-"`
 
-	BaseUnit   *Unit       `gorm:"foreignKey:BaseUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"base_unit,omitempty"`
-	Taxonomies []*Taxonomy `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
+	CanonicalUnit *Unit       `gorm:"foreignKey:CanonicalUnitID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	BaseUnit      *Unit       `gorm:"foreignKey:BaseUnitID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"base_unit,omitempty"`
+	Taxonomies    []*Taxonomy `gorm:"many2many:unit_taxonomies;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"taxonomies,omitempty"`
 }
 
 func (u *Unit) BeforeCreate(_ *gorm.DB) error {
@@ -62,13 +64,17 @@ type UnitRepository interface {
 	ByID(id uuid.UUID) (*Unit, error)
 	ByBase(baseUnitID uuid.UUID, imperial bool) ([]Unit, error)
 	Search(query string, imperial *bool, offset, limit int) ([]Unit, int64, error)
+	Merge(keepID, mergeID uuid.UUID) error
 	AddTaxonomy(unitID uuid.UUID, taxonomy *Taxonomy) error
 	Update(unit *Unit) error
 }
 
 type UnitService interface {
+	ByID(id uuid.UUID) (*Unit, error)
 	FindOrCreate(unit *Unit) error
 	Search(query string, imperial *bool, offset, limit int) ([]Unit, int64, error)
+	Merge(keepID, mergeID uuid.UUID) error
+	Update(unit *Unit) error
 	// Convert scales amount from one unit to another using their shared base-unit chain.
 	Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (float64, error)
 	// BestUnit finds the most human-readable unit in the target system for the given amount.

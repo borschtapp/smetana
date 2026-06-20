@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/google/uuid"
-
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"github.com/google/uuid"
 )
 
 type unitService struct {
@@ -18,9 +17,34 @@ func NewUnitService(repo domain.UnitRepository) domain.UnitService {
 	return &unitService{repo: repo}
 }
 
+func (s *unitService) ByID(id uuid.UUID) (*domain.Unit, error) {
+	unit, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("by id: %w", err)
+	}
+	return unit, nil
+}
+
+func (s *unitService) Update(unit *domain.Unit) error {
+	if err := s.repo.Update(unit); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+	return nil
+}
+
 func (s *unitService) FindOrCreate(unit *domain.Unit) error {
 	if err := s.repo.FindOrCreate(unit); err != nil {
 		return fmt.Errorf("find or create: %w", err)
+	}
+	return nil
+}
+
+func (s *unitService) Merge(keepID, mergeID uuid.UUID) error {
+	if keepID == mergeID {
+		return sentinels.BadRequest("cannot merge a unit into itself")
+	}
+	if err := s.repo.Merge(keepID, mergeID); err != nil {
+		return fmt.Errorf("merge: %w", err)
 	}
 	return nil
 }
