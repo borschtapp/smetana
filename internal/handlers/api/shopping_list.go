@@ -187,6 +187,10 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 		forms = []ShoppingItemForm{form}
 	}
 
+	if len(forms) == 0 {
+		return sentinels.BadRequest("request body must contain at least one item")
+	}
+
 	items := make([]*domain.ShoppingItem, len(forms))
 	for i, form := range forms {
 		if err := validate.Struct(form); err != nil {

@@ -325,6 +325,7 @@ func (h *HouseholdHandler) GetInviteInfo(c fiber.Ctx) error {
 
 // RevokeHouseholdInvite godoc
 // @Summary Revoke an invite code.
+// @Description By design, this method is unprotected to allow anyone to delete leaked codes.
 // @Tags households
 // @Param code path string true "Invite code"
 // @Success 204

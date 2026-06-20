@@ -106,7 +106,7 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 }
 
 type RegisterForm struct {
-	Name       string `validate:"min=2" json:"name"`
+	Name       string `validate:"omitempty,min=2" json:"name"`
 	Email      string `validate:"required,email,min=6" json:"email"`
 	Password   string `validate:"required,min=8" json:"password"`
 	InviteCode string `validate:"omitempty,len=8" json:"invite_code"`
@@ -245,7 +245,7 @@ func (h *AuthHandler) OIDCCallback(c fiber.Ctx) error {
 		return sentinels.BadRequest("Missing code")
 	}
 
-	_, idToken, err := h.oidcService.Exchange(c.RequestCtx(), code)
+	_, idToken, err := h.oidcService.Exchange(c.Context(), code)
 	if err != nil {
 		log.Warnw("OIDC token exchange failed", "error", err.Error())
 		return sentinels.BadRequest("Failed to exchange token")
