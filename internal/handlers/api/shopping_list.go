@@ -29,10 +29,7 @@ func NewShoppingListHandler(service domain.ShoppingListService) *ShoppingListHan
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists [get]
 func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
+	tokenData := tokens.MustClaims(c)
 	p := types.GetPagination(c)
 
 	lists, total, err := h.service.Lists(tokenData.HouseholdID, p.Offset, p.Limit)
@@ -68,11 +65,7 @@ func (h *ShoppingListHandler) CreateShoppingList(c fiber.Ctx) error {
 	if err := bindBody(c, &form); err != nil {
 		return err
 	}
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	list := &domain.ShoppingList{Name: form.Name}
 	if err := h.service.CreateList(list, tokenData.HouseholdID); err != nil {
 		return err
@@ -97,10 +90,7 @@ func (h *ShoppingListHandler) GetShoppingListItems(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
+	tokenData := tokens.MustClaims(c)
 	p := types.GetPagination(c)
 
 	items, total, err := h.service.Items(id, tokenData.HouseholdID, p.Offset, p.Limit)
@@ -131,10 +121,7 @@ func (h *ShoppingListHandler) DeleteShoppingList(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
+	tokenData := tokens.MustClaims(c)
 	if err := h.service.DeleteList(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -166,10 +153,7 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
+	tokenData := tokens.MustClaims(c)
 
 	body := c.Body()
 	isArray := len(body) > 0 && body[0] == '['
@@ -238,10 +222,7 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	if err := bindBody(c, &form); err != nil {
 		return err
 	}
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
+	tokenData := tokens.MustClaims(c)
 	patch := &domain.ShoppingItem{ID: itemID}
 	if form.Text != nil {
 		patch.Text = *form.Text
@@ -275,11 +256,7 @@ func (h *ShoppingListHandler) DeleteShoppingItem(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.service.DeleteItem(itemID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}

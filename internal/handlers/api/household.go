@@ -35,11 +35,7 @@ func (h *HouseholdHandler) GetHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	preload := types.GetPreloadOptions(c)
 	if err := preload.Validate("members", "invites"); err != nil {
 		return err
@@ -83,11 +79,7 @@ func (h *HouseholdHandler) UpdateHousehold(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	household, err := h.householdService.Update(id, tokenData.ID, tokenData.HouseholdID, form.Name, form.Currency)
 	if err != nil {
 		return err
@@ -116,11 +108,7 @@ func (h *HouseholdHandler) GetHouseholdMembers(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	p := types.GetPagination(c)
 	members, total, err := h.householdService.Members(id, tokenData.HouseholdID, p.Offset, p.Limit)
 	if err != nil {
@@ -167,11 +155,7 @@ func (h *HouseholdHandler) CreateHouseholdInvite(c fiber.Ctx) error {
 		}
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	invite, err := h.householdService.CreateInvite(id, tokenData.ID, tokenData.HouseholdID, form.Email)
 	if err != nil {
 		return err
@@ -196,11 +180,7 @@ func (h *HouseholdHandler) ListHouseholdInvites(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	invites, err := h.householdService.ListInvites(id, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
@@ -230,11 +210,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if _, err := h.householdService.RemoveMember(id, tokenData.ID, tokenData.HouseholdID, targetUserID); err != nil {
 		return err
 	}
@@ -257,11 +233,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
 	code := c.Params("code")
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	user, err := h.householdService.JoinByInvite(tokenData.ID, code)
 	if err != nil {
 		return err
@@ -285,11 +257,7 @@ func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/households/leave [post]
 func (h *HouseholdHandler) LeaveHousehold(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	user, err := h.householdService.RemoveMember(tokenData.HouseholdID, tokenData.ID, tokenData.HouseholdID, tokenData.ID)
 	if err != nil {
 		return err

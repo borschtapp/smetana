@@ -147,11 +147,7 @@ func (h *FoodHandler) MergeFood(c fiber.Ctx) error {
 // @Router /api/v1/food/{id}/price [get]
 // @Security ApiKeyAuth
 func (h *FoodHandler) GetPrice(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	foodID, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
@@ -194,11 +190,7 @@ type recordPriceRequest struct {
 // @Router /api/v1/food/{id}/price [post]
 // @Security ApiKeyAuth
 func (h *FoodHandler) RecordPrice(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	foodID, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err
@@ -233,11 +225,7 @@ func (h *FoodHandler) RecordPrice(c fiber.Ctx) error {
 // @Router /api/v1/food/{id}/price/{priceId} [delete]
 // @Security ApiKeyAuth
 func (h *FoodHandler) DeletePrice(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	id, err := types.UuidParam(c, "priceId")
 	if err != nil {
 		return err

@@ -34,11 +34,7 @@ func NewCollectionHandler(collectionService domain.CollectionService) *Collectio
 // @Security ApiKeyAuth
 // @Router /api/v1/collections [get]
 func (h *CollectionHandler) GetCollections(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"last3_recipes", "total_recipes"},
 	})
@@ -83,11 +79,7 @@ func (h *CollectionHandler) CreateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	collection := &domain.Collection{
 		Name:        form.Name,
 		Description: form.Description,
@@ -118,11 +110,7 @@ func (h *CollectionHandler) GetCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	collection, err := h.collectionService.ByIDWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
@@ -162,11 +150,7 @@ func (h *CollectionHandler) UpdateCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	collection, err := h.collectionService.ByID(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
@@ -207,11 +191,7 @@ func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
 		return err
 	}
 
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"},
 	})
@@ -219,7 +199,7 @@ func (h *CollectionHandler) ListRecipes(c fiber.Ctx) error {
 		return err
 	}
 
-	recipes, total, err := h.collectionService.ListRecipes(id, claims.ID, claims.HouseholdID, opts)
+	recipes, total, err := h.collectionService.ListRecipes(id, tokenData.ID, tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
@@ -251,11 +231,7 @@ func (h *CollectionHandler) AddRecipeToCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.collectionService.AddRecipe(id, recipeID, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -281,11 +257,7 @@ func (h *CollectionHandler) RemoveRecipeFromCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.collectionService.RemoveRecipe(id, recipeID, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -312,11 +284,7 @@ func (h *CollectionHandler) DeleteCollection(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.collectionService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}

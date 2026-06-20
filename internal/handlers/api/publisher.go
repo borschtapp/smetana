@@ -42,11 +42,7 @@ func (h *PublisherHandler) GetPublishers(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	publishers, total, err := h.publisherService.Search(tokenData.HouseholdID, opts)
 	if err != nil {
 		return err

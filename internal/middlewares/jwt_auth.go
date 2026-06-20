@@ -10,6 +10,7 @@ import (
 
 	"borscht.app/smetana/internal/configs"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/tokens"
 )
 
 // Protected func for specify routes group with JWT authentication.
@@ -25,6 +26,14 @@ func Protected() fiber.Handler {
 		SigningKey:   jwtware.SigningKey{Key: secretKey},
 		Extractor:    extractors.FromAuthHeader("Bearer"),
 		ErrorHandler: jwtError,
+		SuccessHandler: func(c fiber.Ctx) error {
+			claims, err := tokens.ParseJwtClaims(c)
+			if err != nil {
+				return err
+			}
+			tokens.StashClaims(c, claims)
+			return c.Next()
+		},
 	})
 }
 

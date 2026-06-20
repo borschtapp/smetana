@@ -38,11 +38,7 @@ func NewRecipeHandler(recipeService domain.RecipeService) *RecipeHandler {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [get]
 func (h *RecipeHandler) GetRecipes(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"},
 	})
@@ -82,11 +78,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	recipe, err := h.recipeService.ByIDPreload(id, tokenData.ID, tokenData.HouseholdID, types.Preload("all"))
 	if err != nil {
 		return err
@@ -107,11 +99,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes [post]
 func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	recipe := new(domain.Recipe)
 	if err := bindBody(c, recipe); err != nil {
 		return err
@@ -145,11 +133,7 @@ func (h *RecipeHandler) UpdateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	var recipe domain.Recipe
 	if err := bindBody(c, &recipe); err != nil {
 		return err
@@ -187,11 +171,7 @@ func (h *RecipeHandler) DeleteRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -216,11 +196,7 @@ func (h *RecipeHandler) SaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.UserSave(id, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -245,11 +221,7 @@ func (h *RecipeHandler) UnsaveRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.UserUnsave(id, tokenData.ID); err != nil {
 		return err
 	}
@@ -276,11 +248,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	ingredient := new(domain.RecipeIngredient)
 	if err := bindBody(c, ingredient); err != nil {
 		return err
@@ -315,11 +283,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	ingredient := new(domain.RecipeIngredient)
 	if err := bindBody(c, ingredient); err != nil {
 		return err
@@ -353,11 +317,7 @@ func (h *RecipeHandler) DeleteIngredient(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.DeleteIngredient(ingredientID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -384,11 +344,7 @@ func (h *RecipeHandler) AddEquipment(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.AddEquipment(id, equipmentID, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -415,11 +371,7 @@ func (h *RecipeHandler) RemoveEquipment(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.RemoveEquipment(id, equipmentID, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -446,11 +398,7 @@ func (h *RecipeHandler) CreateInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	instruction := new(domain.RecipeInstruction)
 	if err := bindBody(c, instruction); err != nil {
 		return err
@@ -485,11 +433,7 @@ func (h *RecipeHandler) UpdateInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	instruction := new(domain.RecipeInstruction)
 	if err := bindBody(c, instruction); err != nil {
 		return err
@@ -523,11 +467,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.recipeService.DeleteInstruction(instructionID, id, tokenData.HouseholdID); err != nil {
 		return err
 	}
@@ -546,11 +486,7 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/recipes/{id}/price [get]
 func (h *RecipeHandler) GetRecipePrice(c fiber.Ctx) error {
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	id, err := types.UuidParam(c, "id")
 	if err != nil {
 		return err

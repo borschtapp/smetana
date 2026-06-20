@@ -44,11 +44,7 @@ func (h *ImportHandler) Import(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	recipe, err := h.importService.ImportFromURL(c.Context(), request.URL, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err
@@ -75,11 +71,7 @@ func (h *ImportHandler) DetectAndImport(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	result, err := h.importService.DetectAndImport(c.Context(), request.URL, request.Type, request.Update, tokenData.ID, tokenData.HouseholdID)
 	if err != nil {
 		return err

@@ -11,6 +11,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// localsKey is a private typed key used to store TokenMetadata in fiber.Ctx.Locals.
+// Using a named type (not a plain string) prevents accidental key collisions with
+// other middleware that also stores values in Locals.
+type localsKeyType struct{}
+
+var localsKey = localsKeyType{}
+
+// StashClaims stores parsed token metadata in the request context.
+// It is called once by middlewares.Protected() and must not be called from handlers.
+func StashClaims(c fiber.Ctx, claims *TokenMetadata) {
+	c.Locals(localsKey, claims)
+}
+
+// MustClaims retrieves token metadata that was stashed by the Protected() middleware.
+// It panics if called on a route that is not protected, which is a programming error.
+func MustClaims(c fiber.Ctx) *TokenMetadata {
+	claims, ok := c.Locals(localsKey).(*TokenMetadata)
+	if !ok || claims == nil {
+		panic("tokens.MustClaims called on unprotected route — use middlewares.Protected()")
+	}
+	return claims
+}
+
 // TokenMetadata struct to describe metadata in JWT.
 type TokenMetadata struct {
 	ID          uuid.UUID

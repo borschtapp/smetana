@@ -41,11 +41,7 @@ func (h *MealPlanHandler) GetMealPlan(c fiber.Ctx) error {
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	var from, to *time.Time
 	if fromStr != "" {
 		t, err := time.Parse(dateFmt, fromStr)
@@ -103,11 +99,7 @@ func (h *MealPlanHandler) CreateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	date, err := time.Parse(dateFmt, form.Date)
 	if err != nil {
 		return sentinels.BadRequest("invalid 'date' field, expected YYYY-MM-DD")
@@ -162,11 +154,7 @@ func (h *MealPlanHandler) UpdateMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	mealPlan, err := h.mealPlanService.ByIDWithRecipes(id, tokenData.HouseholdID)
 	if err != nil {
 		return err
@@ -219,11 +207,7 @@ func (h *MealPlanHandler) DeleteMealPlan(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.mealPlanService.Delete(id, tokenData.HouseholdID); err != nil {
 		return err
 	}

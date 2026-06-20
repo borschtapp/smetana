@@ -37,12 +37,8 @@ func (h *FeedHandler) Subscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
-	feed, err := h.feedService.Subscribe(c.Context(), claims.HouseholdID, req.Url, nil)
+	tokenData := tokens.MustClaims(c)
+	feed, err := h.feedService.Subscribe(c.Context(), tokenData.HouseholdID, req.Url, nil)
 	if err != nil {
 		return err
 	}
@@ -69,12 +65,8 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
-	if err := h.feedService.Unsubscribe(claims.HouseholdID, id); err != nil {
+	tokenData := tokens.MustClaims(c)
+	if err := h.feedService.Unsubscribe(tokenData.HouseholdID, id); err != nil {
 		return err
 	}
 
@@ -98,11 +90,7 @@ func (h *FeedHandler) Unsubscribe(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds [get]
 func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"publisher", "last3_recipes", "total_recipes"},
 	})
@@ -110,7 +98,7 @@ func (h *FeedHandler) ListSubscriptions(c fiber.Ctx) error {
 		return err
 	}
 
-	feeds, total, err := h.feedService.Search(claims.HouseholdID, opts)
+	feeds, total, err := h.feedService.Search(tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}
@@ -143,12 +131,8 @@ func (h *FeedHandler) Sync(c fiber.Ctx) error {
 		return err
 	}
 
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
-	found, imported, err := h.feedService.Sync(c.Context(), claims.HouseholdID, id)
+	tokenData := tokens.MustClaims(c)
+	found, imported, err := h.feedService.Sync(c.Context(), tokenData.HouseholdID, id)
 	if err != nil {
 		return err
 	}
@@ -181,11 +165,7 @@ func (h *FeedHandler) Sync(c fiber.Ctx) error {
 // @Security ApiKeyAuth
 // @Router /api/v1/feeds/stream [get]
 func (h *FeedHandler) ListStream(c fiber.Ctx) error {
-	claims, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	opts, err := types.GetSearchOptions(c, types.SearchConfig{
 		AllowedPreloads: []string{"publisher", "author", "feed", "images", "ingredients", "equipment", "instructions", "nutrition", "taxonomies", "collections", "saved"},
 	})
@@ -193,7 +173,7 @@ func (h *FeedHandler) ListStream(c fiber.Ctx) error {
 		return err
 	}
 
-	recipes, total, err := h.feedService.Stream(claims.ID, claims.HouseholdID, opts)
+	recipes, total, err := h.feedService.Stream(tokenData.ID, tokenData.HouseholdID, opts)
 	if err != nil {
 		return err
 	}

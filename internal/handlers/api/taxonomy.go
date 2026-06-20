@@ -43,11 +43,7 @@ func (h *TaxonomyHandler) GetTaxonomies(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	taxonomies, total, err := h.taxonomyService.Search(taxonomyType, tokenData.HouseholdID, opts)
 	if err != nil {
 		return err

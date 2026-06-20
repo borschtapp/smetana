@@ -33,11 +33,7 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	user, err := h.userService.ByID(id, tokenData.ID)
 	if err != nil {
 		return err
@@ -77,11 +73,7 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email, body.CurrentPassword, body.NewPassword)
 	if err != nil {
 		return err
@@ -107,11 +99,7 @@ func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 		return err
 	}
 
-	tokenData, err := tokens.ParseJwtClaims(c)
-	if err != nil {
-		return err
-	}
-
+	tokenData := tokens.MustClaims(c)
 	if err := h.userService.Delete(id, tokenData.ID); err != nil {
 		return err
 	}
