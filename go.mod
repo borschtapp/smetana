@@ -6,8 +6,8 @@ require (
 	github.com/PuerkitoBio/purell v1.2.2
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
-	github.com/borschtapp/kapusta v0.4.1
-	github.com/borschtapp/krip v0.18.0
+	github.com/borschtapp/kapusta v0.5.0
+	github.com/borschtapp/krip v0.18.1
 	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/doyensec/safeurl v0.2.5
 	github.com/go-co-op/gocron/v2 v2.21.2
