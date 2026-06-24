@@ -35,7 +35,7 @@ type Recipe struct {
 	Updated     time.Time       `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time       `gorm:"autoCreateTime" json:"-"`
 
-	IsSaved      *bool                `gorm:"->;-:migration" json:"is_saved,omitempty"`
+	SavedBy      []*RecipeSavedUser   `gorm:"-" json:"saved_by,omitempty"`
 	Parent       *Recipe              `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
 	Author       *Author              `gorm:"foreignKey:AuthorID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"author,omitempty"`
 	Publisher    *Publisher           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"publisher,omitempty"`

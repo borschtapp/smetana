@@ -133,6 +133,71 @@ func TestRecipeRepository_ByUrl_NotFound_ReturnsErrRecordNotFound(t *testing.T) 
 	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
+func TestRecipeRepository_ByIDPreload_WithSavedPreload_PopulatesSavedBy(t *testing.T) {
+	db := openPrivateTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	require.NoError(t, db.Create(&domain.RecipeSaved{RecipeID: r.ID, UserID: u.ID, HouseholdID: hid}).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	result, err := repo.ByIDPreload(r.ID, u.ID, hid, types.Preload("saved"))
+
+	require.NoError(t, err)
+	require.Len(t, result.SavedBy, 1, "SavedBy must contain one entry when 'saved' preload is requested")
+	assert.Equal(t, u.ID, result.SavedBy[0].ID)
+	assert.Equal(t, u.Name, result.SavedBy[0].Name)
+}
+
+func TestRecipeRepository_ByIDPreload_WithAllPreload_PopulatesSavedBy(t *testing.T) {
+	db := openPrivateTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	require.NoError(t, db.Create(&domain.RecipeSaved{RecipeID: r.ID, UserID: u.ID, HouseholdID: hid}).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	result, err := repo.ByIDPreload(r.ID, u.ID, hid, types.Preload("all"))
+
+	require.NoError(t, err)
+	require.Len(t, result.SavedBy, 1, "SavedBy must contain one entry when 'all' preload is requested")
+	assert.Equal(t, u.ID, result.SavedBy[0].ID)
+}
+
+func TestRecipeRepository_ByIDPreload_WithoutSavedPreload_SavedByIsNil(t *testing.T) {
+	db := openPrivateTestDB(t)
+	hid := seedHousehold(t, db)
+	u := seedUser(t, db, hid)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	require.NoError(t, db.Create(&domain.RecipeSaved{RecipeID: r.ID, UserID: u.ID, HouseholdID: hid}).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	result, err := repo.ByIDPreload(r.ID, u.ID, hid, types.Preload("ingredients"))
+
+	require.NoError(t, err)
+	assert.Empty(t, result.SavedBy, "SavedBy must be empty when 'saved' preload is not requested")
+}
+
+func TestRecipeRepository_ByIDPreload_WithSavedPreload_MultipleHouseholdMembers(t *testing.T) {
+	db := openPrivateTestDB(t)
+	hid := seedHousehold(t, db)
+	u1 := seedUser(t, db, hid)
+	u2 := seedUser(t, db, hid)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	require.NoError(t, db.Create(&domain.RecipeSaved{RecipeID: r.ID, UserID: u1.ID, HouseholdID: hid}).Error)
+	require.NoError(t, db.Create(&domain.RecipeSaved{RecipeID: r.ID, UserID: u2.ID, HouseholdID: hid}).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	result, err := repo.ByIDPreload(r.ID, u2.ID, hid, types.Preload("saved"))
+
+	require.NoError(t, err)
+	require.Len(t, result.SavedBy, 2, "SavedBy must contain all household members who saved the recipe")
+}
+
 func TestRecipeRepository_ByParentIDsAndHousehold_EmptyIDs_ReturnsNil(t *testing.T) {
 	db := openTestDB(t)
 	repo := repositories.NewRecipeRepository(db)
@@ -278,7 +343,7 @@ func TestRecipeRepository_Transaction_RollsBackOnError(t *testing.T) {
 	assert.EqualValues(t, 0, count, "recipe created in a rolled-back transaction must not exist")
 }
 
-func TestRecipeRepository_Search_SavedPath_NoComputedColumnError(t *testing.T) {
+func TestRecipeRepository_Search_WithoutSavedPreload_SavedByIsNil(t *testing.T) {
 	db := openTestDB(t)
 	hid := seedHousehold(t, db)
 	u := seedUser(t, db, hid)
@@ -295,10 +360,10 @@ func TestRecipeRepository_Search_SavedPath_NoComputedColumnError(t *testing.T) {
 	assert.EqualValues(t, 1, total)
 	require.Len(t, results, 1)
 	assert.Equal(t, r.ID, results[0].ID)
-	assert.Nil(t, results[0].IsSaved, "IsSaved must be nil when 'saved' preload is not requested")
+	assert.Empty(t, results[0].SavedBy, "SavedBy must be empty when 'saved' preload is not requested")
 }
 
-func TestRecipeRepository_Search_WithSavedPreload_PopulatesIsSaved(t *testing.T) {
+func TestRecipeRepository_Search_WithSavedPreload_PopulatesSaved(t *testing.T) {
 	db := openTestDB(t)
 	hid := seedHousehold(t, db)
 	u := seedUser(t, db, hid)
@@ -314,8 +379,8 @@ func TestRecipeRepository_Search_WithSavedPreload_PopulatesIsSaved(t *testing.T)
 
 	require.NoError(t, err)
 	require.Len(t, results, 1)
-	require.NotNil(t, results[0].IsSaved, "IsSaved must be populated when 'saved' preload is requested")
-	assert.True(t, *results[0].IsSaved)
+	require.Len(t, results[0].SavedBy, 1, "SavedBy must contain one entry when 'saved' preload is requested")
+	assert.Equal(t, u.ID, results[0].SavedBy[0].ID)
 }
 
 func TestRecipeRepository_Search_FromFeeds_NoComputedColumnError(t *testing.T) {

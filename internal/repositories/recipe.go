@@ -27,8 +27,8 @@ func NewRecipeRepository(db *gorm.DB) domain.RecipeRepository {
 	return &recipeRepository{db: db}
 }
 
-// applyPreloads requires userID and householdID for "collections" and "saved" preloads.
-func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID uuid.UUID) *gorm.DB {
+// applyPreloads requires householdID for the "collections" preload.
+func applyPreloads(q *gorm.DB, preload types.PreloadOptions, householdID uuid.UUID) *gorm.DB {
 	if len(preload.Preload) == 0 {
 		return q
 	}
@@ -39,14 +39,6 @@ func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID
 
 	if preload.HasAny("collections", "all") && householdID != uuid.Nil {
 		q = q.Preload("Collections", "household_id = ?", householdID)
-	}
-
-	if preload.HasAny("saved", "all") && userID != uuid.Nil {
-		q = q.Select(`recipes.*, EXISTS(
-				SELECT 1 FROM recipes_saved
-				WHERE recipes_saved.recipe_id = recipes.id
-				AND recipes_saved.user_id = ?
-			) AS is_saved`, userID)
 	}
 
 	if preload.Has("all") {
@@ -89,6 +81,35 @@ func applyPreloads(q *gorm.DB, preload types.PreloadOptions, userID, householdID
 	return q
 }
 
+// loadSavedBy populates Recipe.SavedBy for each recipe in the slice using a
+// single JOIN query scoped to the given household.
+func loadSavedBy(db *gorm.DB, recipes []*domain.Recipe, householdID uuid.UUID) error {
+	if len(recipes) == 0 || householdID == uuid.Nil {
+		return nil
+	}
+	recipeIDs := make([]uuid.UUID, len(recipes))
+	index := make(map[uuid.UUID]*domain.Recipe, len(recipes))
+	for i, r := range recipes {
+		recipeIDs[i] = r.ID
+		index[r.ID] = r
+	}
+	var rows []domain.RecipeSavedUser
+	err := db.Table("recipes_saved").
+		Select("recipes_saved.recipe_id, recipes_saved.user_id, users.name, users.image_path").
+		Joins("JOIN users ON users.id = recipes_saved.user_id").
+		Where("recipes_saved.recipe_id IN ? AND recipes_saved.household_id = ?", recipeIDs, householdID).
+		Scan(&rows).Error
+	if err != nil {
+		return fmt.Errorf("load saved by: %w", mapErr(err))
+	}
+	for i := range rows {
+		if r := index[rows[i].RecipeID]; r != nil {
+			r.SavedBy = append(r.SavedBy, &rows[i])
+		}
+	}
+	return nil
+}
+
 func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 	var recipe domain.Recipe
 	if err := r.db.First(&recipe, id).Error; err != nil {
@@ -99,9 +120,14 @@ func (r *recipeRepository) ByID(id uuid.UUID) (*domain.Recipe, error) {
 
 func (r *recipeRepository) ByIDPreload(id uuid.UUID, userID, householdID uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
 	var recipe domain.Recipe
-	q := applyPreloads(r.db, preload, userID, householdID)
+	q := applyPreloads(r.db, preload, householdID)
 	if err := q.First(&recipe, id).Error; err != nil {
 		return nil, fmt.Errorf("by id %s preload: %w", id, mapErr(err))
+	}
+	if preload.HasAny("saved", "all") {
+		if err := loadSavedBy(r.db, []*domain.Recipe{&recipe}, householdID); err != nil {
+			return nil, err
+		}
 	}
 	return &recipe, nil
 }
@@ -166,13 +192,11 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 		return recipes, 0, nil
 	}
 
-	// is_saved is not a real DB column; use explicit SELECT to prevent GORM from emitting auto-generated column list.
-	// The "saved" preload block below overrides this with the EXISTS subquery.
 	// Distinct collapses duplicate rows produced by multi-value JOINs (taxonomies, equipment).
 	q = q.Distinct().Select("recipes.*")
 
 	// preload relations
-	q = applyPreloads(q, opts.PreloadOptions, userID, householdID)
+	q = applyPreloads(q, opts.PreloadOptions, householdID)
 
 	// pagination
 	q = q.Offset(opts.Offset).Limit(opts.Limit)
@@ -185,6 +209,16 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 
 	if err := q.Find(&recipes).Error; err != nil {
 		return nil, 0, fmt.Errorf("search find: %w", mapErr(err))
+	}
+
+	if opts.PreloadOptions.HasAny("saved", "all") {
+		ptrs := make([]*domain.Recipe, len(recipes))
+		for i := range recipes {
+			ptrs[i] = &recipes[i]
+		}
+		if err := loadSavedBy(r.db, ptrs, householdID); err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return recipes, total, nil
@@ -297,7 +331,7 @@ func (r *recipeRepository) ByParentIDsAndHousehold(parentIDs []uuid.UUID, househ
 		return nil, nil
 	}
 	var recipes []domain.Recipe
-	err := applyPreloads(r.db, preload, uuid.Nil, householdID).
+	err := applyPreloads(r.db, preload, householdID).
 		Where("parent_id IN ? AND household_id = ?", parentIDs, householdID).
 		Find(&recipes).Error
 	if err != nil {

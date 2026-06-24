@@ -5313,9 +5313,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/domain.RecipeInstruction"
                     }
                 },
-                "is_saved": {
-                    "type": "boolean"
-                },
                 "language": {
                     "type": "string",
                     "example": "en"
@@ -5349,6 +5346,12 @@ const docTemplate = `{
                 },
                 "rating": {
                     "$ref": "#/definitions/domain.Rating"
+                },
+                "saved_by": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RecipeSavedUser"
+                    }
                 },
                 "source_url": {
                     "type": "string"
@@ -5632,6 +5635,20 @@ const docTemplate = `{
                     "description": "The number of milligrams of zinc.",
                     "type": "number",
                     "minimum": 0
+                }
+            }
+        },
+        "domain.RecipeSavedUser": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
