@@ -108,11 +108,19 @@ type RecipeRepository interface {
 	ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error
 }
 
-// RecipePriceEstimate is a computed (never stored) cost breakdown for a recipe.
-type RecipePriceEstimate struct {
-	Total         float64     `json:"total"`
-	PerServing    *float64    `json:"per_serving,omitempty"`    // nil if recipe has no yield
-	MissingPrices []uuid.UUID `json:"missing_prices,omitempty"` // food IDs with no recorded price
+// RecipeIngredientCost is a
+type RecipeIngredientCost struct {
+	IngredientID uuid.UUID  `json:"ingredient_id"`        // references Recipe.Ingredients[].ID
+	FoodPrice    *FoodPrice `json:"food_price,omitempty"` // the price used (nil if not calculated)
+	Cost         *float64   `json:"cost,omitempty"`       // cost for this ingredient in the recipe (nil if not calculated)
+	Status       string     `json:"status"`               // "calculated" | "pantry" | "missing_price" | "incompatible_unit"
+}
+
+// RecipeCostEstimate is a computed (never stored) cost breakdown for a recipe.
+type RecipeCostEstimate struct {
+	Total      float64                 `json:"total"`
+	PerServing *float64                `json:"per_serving,omitempty"`
+	Items      []*RecipeIngredientCost `json:"items,omitempty"`
 }
 
 type RecipeService interface {
@@ -141,5 +149,5 @@ type RecipeService interface {
 	UpdateInstruction(instruction *RecipeInstruction, householdID uuid.UUID) error
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
-	EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*RecipePriceEstimate, error)
+	EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*RecipeCostEstimate, error)
 }

@@ -2945,6 +2945,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/recipes/{id}/cost": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recipes"
+                ],
+                "summary": "Estimate the cost of a recipe",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Recipe UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.RecipeCostEstimate"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/recipes/{id}/equipment/{equipmentId}": {
             "post": {
                 "security": [
@@ -3524,57 +3575,6 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/recipes/{id}/price": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "recipes"
-                ],
-                "summary": "Estimate the cost of a recipe",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Recipe UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.RecipePriceEstimate"
                         }
                     },
                     "401": {
@@ -5378,6 +5378,23 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.RecipeCostEstimate": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.RecipeIngredientCost"
+                    }
+                },
+                "per_serving": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
+        },
         "domain.RecipeIngredient": {
             "type": "object",
             "required": [
@@ -5425,6 +5442,31 @@ const docTemplate = `{
                     "$ref": "#/definitions/domain.Unit"
                 },
                 "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.RecipeIngredientCost": {
+            "type": "object",
+            "properties": {
+                "cost": {
+                    "description": "cost for this ingredient in the recipe (nil if not calculated)",
+                    "type": "number"
+                },
+                "food_price": {
+                    "description": "the price used (nil if not calculated)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.FoodPrice"
+                        }
+                    ]
+                },
+                "ingredient_id": {
+                    "description": "references Recipe.Ingredients[].ID",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"calculated\" | \"pantry\" | \"missing_price\" | \"incompatible_unit\"",
                     "type": "string"
                 }
             }
@@ -5590,25 +5632,6 @@ const docTemplate = `{
                     "description": "The number of milligrams of zinc.",
                     "type": "number",
                     "minimum": 0
-                }
-            }
-        },
-        "domain.RecipePriceEstimate": {
-            "type": "object",
-            "properties": {
-                "missing_prices": {
-                    "description": "food IDs with no recorded price",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "per_serving": {
-                    "description": "nil if recipe has no yield",
-                    "type": "number"
-                },
-                "total": {
-                    "type": "number"
                 }
             }
         },

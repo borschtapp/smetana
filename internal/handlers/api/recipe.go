@@ -474,18 +474,18 @@ func (h *RecipeHandler) DeleteInstruction(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// GetRecipePrice godoc
+// GetRecipeCost godoc
 // @Summary Estimate the cost of a recipe
 // @Tags recipes
 // @Produce json
 // @Param id path string true "Recipe UUID"
-// @Success 200 {object} domain.RecipePriceEstimate
+// @Success 200 {object} domain.RecipeCostEstimate
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
 // @Failure 404 {object} sentinels.Error
 // @Security ApiKeyAuth
-// @Router /api/v1/recipes/{id}/price [get]
-func (h *RecipeHandler) GetRecipePrice(c fiber.Ctx) error {
+// @Router /api/v1/recipes/{id}/cost [get]
+func (h *RecipeHandler) GetRecipeCost(c fiber.Ctx) error {
 	tokenData := tokens.MustClaims(c)
 	id, err := types.UuidParam(c, "id")
 	if err != nil {

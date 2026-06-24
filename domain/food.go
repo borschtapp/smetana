@@ -43,6 +43,7 @@ func (f *Food) BeforeCreate(_ *gorm.DB) error {
 
 type FoodRepository interface {
 	ByID(id uuid.UUID) (*Food, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)
 	FindOrCreate(food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error
@@ -57,6 +58,7 @@ type FoodRepository interface {
 
 type FoodService interface {
 	ByID(id uuid.UUID) (*Food, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)
 	FindOrCreate(ctx context.Context, food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error

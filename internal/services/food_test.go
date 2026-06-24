@@ -16,7 +16,10 @@ import (
 // fakeFoodRepo is a minimal no-op implementation of domain.FoodRepository for service-level tests.
 type fakeFoodRepo struct{}
 
-func (r *fakeFoodRepo) ByID(_ uuid.UUID) (*domain.Food, error)                  { return nil, nil }
+func (r *fakeFoodRepo) ByID(_ uuid.UUID) (*domain.Food, error) { return nil, nil }
+func (r *fakeFoodRepo) ByIDs(_ []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
+	return make(map[uuid.UUID]*domain.Food), nil
+}
 func (r *fakeFoodRepo) FindOrCreate(_ *domain.Food) error                       { return nil }
 func (r *fakeFoodRepo) Search(_ string, _, _ int) ([]domain.Food, int64, error) { return nil, 0, nil }
 func (r *fakeFoodRepo) Merge(_, _ uuid.UUID) error                              { return nil }

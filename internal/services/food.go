@@ -28,6 +28,14 @@ func (s *foodService) ByID(id uuid.UUID) (*domain.Food, error) {
 	return food, nil
 }
 
+func (s *foodService) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
+	foods, err := s.repo.ByIDs(ids)
+	if err != nil {
+		return nil, fmt.Errorf("by ids: %w", err)
+	}
+	return foods, nil
+}
+
 func (s *foodService) FindOrCreate(ctx context.Context, food *domain.Food) error {
 	if err := s.repo.FindOrCreate(food); err != nil {
 		return fmt.Errorf("find or create: %w", err)

@@ -313,7 +313,7 @@ func (s *recipeService) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID, hous
 	return nil
 }
 
-func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*domain.RecipePriceEstimate, error) {
+func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID) (*domain.RecipeCostEstimate, error) {
 	recipe, err := s.ByIDPreload(recipeID, uuid.Nil, householdID, types.Preload("ingredients"))
 	if err != nil {
 		return nil, fmt.Errorf("estimate price (fetch recipe): %w", err)
@@ -326,34 +326,68 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 		}
 	}
 
-	latestPrices, err := s.foodService.LatestPrices(householdID, foodIDs)
+	// Fetch all foods to check pantry status and filter them out
+	foods, err := s.foodService.ByIDs(foodIDs)
+	if err != nil {
+		return nil, fmt.Errorf("estimate price (fetch foods): %w", err)
+	}
+
+	pricedFoodIDs := make([]uuid.UUID, 0, len(foodIDs))
+	for _, foodID := range foodIDs {
+		if food, exists := foods[foodID]; !exists || !food.Pantry {
+			pricedFoodIDs = append(pricedFoodIDs, foodID)
+		}
+	}
+
+	latestPrices, err := s.foodService.LatestPrices(householdID, pricedFoodIDs)
 	if err != nil {
 		return nil, fmt.Errorf("estimate price (fetch food prices): %w", err)
 	}
 
-	estimate := &domain.RecipePriceEstimate{
-		MissingPrices: make([]uuid.UUID, 0, len(recipe.Ingredients)),
+	estimate := &domain.RecipeCostEstimate{
+		Items: make([]*domain.RecipeIngredientCost, 0, len(recipe.Ingredients)),
 	}
 
 	for _, ing := range recipe.Ingredients {
+		ingCost := &domain.RecipeIngredientCost{
+			IngredientID: ing.ID,
+		}
+
+		// Unquantified ingredients (no amount/unit/food) are skipped from cost calculation
 		if ing.FoodID == nil || ing.Amount == nil || ing.UnitID == nil {
-			continue // unquantified ingredient; skip
+			continue
+		}
+
+		// Pantry items are excluded from cost
+		if food, exists := foods[*ing.FoodID]; exists && food.Pantry {
+			ingCost.Status = "pantry"
+			estimate.Items = append(estimate.Items, ingCost)
+			continue
 		}
 
 		foodPrice, ok := latestPrices[*ing.FoodID]
 		if !ok {
-			estimate.MissingPrices = append(estimate.MissingPrices, *ing.FoodID)
+			ingCost.Status = "missing_price"
+			estimate.Items = append(estimate.Items, ingCost)
 			continue
 		}
 
 		convertedAmount, convErr := s.unitService.Convert(*ing.Amount, *ing.UnitID, foodPrice.UnitID)
 		if convErr != nil {
-			// Incompatible units (e.g. price in kg, ingredient in ml): treat as unpriced.
-			estimate.MissingPrices = append(estimate.MissingPrices, *ing.FoodID)
+			// Incompatible units (e.g. price in kg, ingredient in pieces): treat as unpriced.
+			ingCost.Status = "incompatible_unit"
+			estimate.Items = append(estimate.Items, ingCost)
 			continue
 		}
 
-		estimate.Total += (convertedAmount / foodPrice.Amount) * foodPrice.Price
+		cost := (convertedAmount / foodPrice.Amount) * foodPrice.Price
+
+		ingCost.Cost = &cost
+		ingCost.FoodPrice = foodPrice
+		ingCost.Status = "calculated"
+
+		estimate.Total += cost
+		estimate.Items = append(estimate.Items, ingCost)
 	}
 
 	if recipe.Yield != nil && *recipe.Yield > 0 && estimate.Total > 0 {

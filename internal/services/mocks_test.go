@@ -279,7 +279,15 @@ type stubFoodService struct {
 
 	findOrCreateFn func(context.Context, *domain.Food) error
 	updateFn       func(*domain.Food) error
+	byIDsFn        func([]uuid.UUID) (map[uuid.UUID]*domain.Food, error)
 	latestPricesFn func(uuid.UUID, []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error)
+}
+
+func (s *stubFoodService) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
+	if s.byIDsFn != nil {
+		return s.byIDsFn(ids)
+	}
+	return make(map[uuid.UUID]*domain.Food), nil
 }
 
 func (s *stubFoodService) FindOrCreate(ctx context.Context, f *domain.Food) error {

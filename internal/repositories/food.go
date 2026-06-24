@@ -28,6 +28,23 @@ func (r *foodRepository) ByID(id uuid.UUID) (*domain.Food, error) {
 	return &food, nil
 }
 
+func (r *foodRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
+	if len(ids) == 0 {
+		return make(map[uuid.UUID]*domain.Food), nil
+	}
+
+	var foods []domain.Food
+	if err := r.db.Where("id IN ?", ids).Find(&foods).Error; err != nil {
+		return nil, fmt.Errorf("foods by ids: %w", mapErr(err))
+	}
+
+	result := make(map[uuid.UUID]*domain.Food, len(foods))
+	for i := range foods {
+		result[foods[i].ID] = &foods[i]
+	}
+	return result, nil
+}
+
 func (r *foodRepository) FindOrCreate(food *domain.Food) error {
 	if food.Slug == "" {
 		food.Slug = utils.CreateTag(food.Name)
