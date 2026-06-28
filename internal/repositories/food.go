@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -124,6 +125,38 @@ func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
 			return fmt.Errorf("reassign food prices: %w", mapErr(err))
 		}
 
+		var existingKeep []domain.FoodUnitConversion
+		if err := tx.Where("food_id = ?", keepID).Find(&existingKeep).Error; err != nil {
+			return fmt.Errorf("fetch keep conversions: %w", mapErr(err))
+		}
+		keepUnitIDs := make(map[uuid.UUID]bool)
+		for _, c := range existingKeep {
+			keepUnitIDs[c.UnitID] = true
+		}
+
+		var mergeConversions []domain.FoodUnitConversion
+		if err := tx.Where("food_id = ?", mergeID).Find(&mergeConversions).Error; err != nil {
+			return fmt.Errorf("fetch merge conversions: %w", mapErr(err))
+		}
+		var deleteIDs, reassignIDs []uuid.UUID
+		for _, c := range mergeConversions {
+			if keepUnitIDs[c.UnitID] {
+				deleteIDs = append(deleteIDs, c.ID)
+			} else {
+				reassignIDs = append(reassignIDs, c.ID)
+			}
+		}
+		if len(deleteIDs) > 0 {
+			if err := tx.Delete(&domain.FoodUnitConversion{}, "id IN ?", deleteIDs).Error; err != nil {
+				return fmt.Errorf("delete duplicate conversions: %w", mapErr(err))
+			}
+		}
+		if len(reassignIDs) > 0 {
+			if err := tx.Model(&domain.FoodUnitConversion{}).Where("id IN ?", reassignIDs).Update("food_id", keepID).Error; err != nil {
+				return fmt.Errorf("reassign conversions: %w", mapErr(err))
+			}
+		}
+
 		// Preserve fields from the discarded food if the kept food lacks them.
 		inherited := map[string]any{}
 		if keep.ImagePath == nil && merge.ImagePath != nil {
@@ -226,4 +259,54 @@ func (r *foodRepository) DeletePrice(householdID, id uuid.UUID) error {
 		return fmt.Errorf("delete food price %s: %w", id, mapErr(err))
 	}
 	return nil
+}
+
+func (r *foodRepository) CreateConversion(c *domain.FoodUnitConversion) error {
+	if err := r.db.Create(c).Error; err != nil {
+		return fmt.Errorf("create conversion: %w", mapErr(err))
+	}
+	return nil
+}
+
+func (r *foodRepository) ListConversions(foodID uuid.UUID) ([]domain.FoodUnitConversion, error) {
+	var list []domain.FoodUnitConversion
+	if err := r.db.Where("food_id = ?", foodID).Preload("TargetUnit").Preload("Unit").Find(&list).Error; err != nil {
+		return nil, fmt.Errorf("list conversions: %w", mapErr(err))
+	}
+	return list, nil
+}
+
+func (r *foodRepository) UpdateConversion(c *domain.FoodUnitConversion) error {
+	result := r.db.Model(c).Select("target_amount", "target_unit_id").Updates(c)
+	if result.Error != nil {
+		return fmt.Errorf("update conversion: %w", mapErr(result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return sentinels.ErrNotFound
+	}
+	return nil
+}
+
+func (r *foodRepository) DeleteConversion(foodID, id uuid.UUID) error {
+	if err := r.db.Delete(&domain.FoodUnitConversion{}, "id = ? AND food_id = ?", id, foodID).Error; err != nil {
+		return fmt.Errorf("delete conversion: %w", mapErr(err))
+	}
+	return nil
+}
+
+func (r *foodRepository) ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error) {
+	if len(foodIDs) == 0 {
+		return map[uuid.UUID][]domain.FoodUnitConversion{}, nil
+	}
+	var list []domain.FoodUnitConversion
+	if err := r.db.Where("food_id IN ?", foodIDs).Find(&list).Error; err != nil {
+		return nil, fmt.Errorf("conversions by food ids: %w", mapErr(err))
+	}
+
+	result := make(map[uuid.UUID][]domain.FoodUnitConversion)
+	for i := range list {
+		fid := list[i].FoodID
+		result[fid] = append(result[fid], list[i])
+	}
+	return result, nil
 }

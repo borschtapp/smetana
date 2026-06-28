@@ -27,6 +27,7 @@ func Migrate(db *gorm.DB) error {
 		&domain.Unit{},
 		&domain.Food{},
 		&domain.FoodPrice{},
+		&domain.FoodUnitConversion{},
 		&domain.Equipment{},
 		&domain.Taxonomy{},
 		&domain.Recipe{},

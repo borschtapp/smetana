@@ -14,10 +14,11 @@ import (
 type foodService struct {
 	repo         domain.FoodRepository
 	imageService domain.ImageService
+	unitService  domain.UnitService
 }
 
-func NewFoodService(repo domain.FoodRepository, imageService domain.ImageService) domain.FoodService {
-	return &foodService{repo: repo, imageService: imageService}
+func NewFoodService(repo domain.FoodRepository, imageService domain.ImageService, unitService domain.UnitService) domain.FoodService {
+	return &foodService{repo: repo, imageService: imageService, unitService: unitService}
 }
 
 func (s *foodService) ByID(id uuid.UUID) (*domain.Food, error) {
@@ -85,8 +86,23 @@ func (s *foodService) Update(food *domain.Food) error {
 
 func (s *foodService) RecordPrice(householdID uuid.UUID, price *domain.FoodPrice) error {
 	price.HouseholdID = householdID
+
+	food, err := s.repo.ByID(price.FoodID)
+	if err != nil {
+		return fmt.Errorf("record price: %w", err)
+	}
+
 	if err := s.repo.CreatePrice(price); err != nil {
 		return fmt.Errorf("record price: %w", err)
+	}
+
+	// When the food has no reference unit yet, adopt the unit of this first price
+	// observation as its default so later cost and conversion math has a baseline.
+	if food.DefaultUnitID == nil {
+		food.DefaultUnitID = new(price.UnitID)
+		if err := s.repo.Update(food); err != nil {
+			return fmt.Errorf("record price: set default unit: %w", err)
+		}
 	}
 	return nil
 }
@@ -112,4 +128,57 @@ func (s *foodService) DeletePrice(householdID, id uuid.UUID) error {
 		return fmt.Errorf("delete price: %w", err)
 	}
 	return nil
+}
+
+func (s *foodService) validateConversion(c *domain.FoodUnitConversion) error {
+	if c.UnitID == c.TargetUnitID {
+		return sentinels.BadRequest("source and target units cannot be the same")
+	}
+	if _, err := s.unitService.ByID(c.UnitID); err != nil {
+		return sentinels.BadRequest("invalid source unit")
+	}
+	targetUnit, err := s.unitService.ByID(c.TargetUnitID)
+	if err != nil {
+		return sentinels.BadRequest("invalid target unit")
+	}
+	if !targetUnit.Convertible() {
+		return sentinels.BadRequest("target unit must be a convertible unit (e.g. grams, ml)")
+	}
+	return nil
+}
+
+func (s *foodService) CreateConversion(c *domain.FoodUnitConversion) error {
+	if err := s.validateConversion(c); err != nil {
+		return err
+	}
+	if err := s.repo.CreateConversion(c); err != nil {
+		return fmt.Errorf("create conversion: %w", err)
+	}
+	return nil
+}
+
+func (s *foodService) ListConversions(foodID uuid.UUID) ([]domain.FoodUnitConversion, error) {
+	return s.repo.ListConversions(foodID)
+}
+
+func (s *foodService) UpdateConversion(c *domain.FoodUnitConversion) error {
+	targetUnit, err := s.unitService.ByID(c.TargetUnitID)
+	if err != nil {
+		return sentinels.BadRequest("invalid target unit")
+	}
+	if !targetUnit.Convertible() {
+		return sentinels.BadRequest("target unit must be a convertible unit (e.g. grams, ml)")
+	}
+	if err := s.repo.UpdateConversion(c); err != nil {
+		return fmt.Errorf("update conversion: %w", err)
+	}
+	return nil
+}
+
+func (s *foodService) DeleteConversion(foodID, id uuid.UUID) error {
+	return s.repo.DeleteConversion(foodID, id)
+}
+
+func (s *foodService) ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error) {
+	return s.repo.ConversionsByFoodIDs(foodIDs)
 }

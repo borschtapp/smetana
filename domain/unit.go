@@ -77,6 +77,8 @@ type UnitService interface {
 	Update(unit *Unit) error
 	// Convert scales amount from one unit to another using their shared base-unit chain.
 	Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (float64, error)
+	// ConvertWithConversions scales an amount across different dimensions using food-specific unit conversions.
+	ConvertWithConversions(amount float64, fromUnitID, toUnitID uuid.UUID, conversions []FoodUnitConversion) (float64, error)
 	// BestUnit finds the most human-readable unit in the target system for the given amount.
 	BestUnit(amount float64, fromUnitID uuid.UUID, imperial bool) (*Unit, error)
 }

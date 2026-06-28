@@ -1464,6 +1464,238 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/food/{id}/conversions": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get all unit conversions associated with a food.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Get conversions for a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.FoodUnitConversion"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Creates a new unit conversion for a food (e.g., 1 piece = 200 g).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Create a new conversion for a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Conversion request",
+                        "name": "conversion",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.createConversionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.FoodUnitConversion"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/food/{id}/conversions/{conversionId}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Updates target amount and target unit of an existing conversion. The source unit (unit_id) is immutable after creation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Update an existing conversion for a food",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversion UUID",
+                        "name": "conversionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Conversion update request",
+                        "name": "conversion",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.updateConversionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "food"
+                ],
+                "summary": "Delete a food unit conversion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Food UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversion UUID",
+                        "name": "conversionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/food/{id}/merge": {
             "post": {
                 "security": [
@@ -4744,6 +4976,25 @@ const docTemplate = `{
                 }
             }
         },
+        "api.createConversionRequest": {
+            "type": "object",
+            "required": [
+                "target_amount",
+                "target_unit_id",
+                "unit_id"
+            ],
+            "properties": {
+                "target_amount": {
+                    "type": "number"
+                },
+                "target_unit_id": {
+                    "type": "string"
+                },
+                "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
         "api.mergeRequest": {
             "type": "object",
             "required": [
@@ -4770,6 +5021,21 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.updateConversionRequest": {
+            "type": "object",
+            "required": [
+                "target_amount",
+                "target_unit_id"
+            ],
+            "properties": {
+                "target_amount": {
+                    "type": "number"
+                },
+                "target_unit_id": {
                     "type": "string"
                 }
             }
@@ -5052,6 +5318,38 @@ const docTemplate = `{
                     "$ref": "#/definitions/domain.Unit"
                 },
                 "unit_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.FoodUnitConversion": {
+            "type": "object",
+            "required": [
+                "target_amount"
+            ],
+            "properties": {
+                "food_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "target_amount": {
+                    "description": "e.g. 200",
+                    "type": "number"
+                },
+                "target_unit": {
+                    "$ref": "#/definitions/domain.Unit"
+                },
+                "target_unit_id": {
+                    "description": "e.g. gram",
+                    "type": "string"
+                },
+                "unit": {
+                    "$ref": "#/definitions/domain.Unit"
+                },
+                "unit_id": {
+                    "description": "source, e.g. piece",
                     "type": "string"
                 }
             }

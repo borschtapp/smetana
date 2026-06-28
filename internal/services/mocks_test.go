@@ -277,10 +277,11 @@ func (s *stubAuthorService) FindOrCreate(ctx context.Context, author *domain.Aut
 type stubFoodService struct {
 	domain.FoodService
 
-	findOrCreateFn func(context.Context, *domain.Food) error
-	updateFn       func(*domain.Food) error
-	byIDsFn        func([]uuid.UUID) (map[uuid.UUID]*domain.Food, error)
-	latestPricesFn func(uuid.UUID, []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error)
+	findOrCreateFn       func(context.Context, *domain.Food) error
+	updateFn             func(*domain.Food) error
+	byIDsFn              func([]uuid.UUID) (map[uuid.UUID]*domain.Food, error)
+	latestPricesFn       func(uuid.UUID, []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error)
+	conversionsByFoodIDs func([]uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error)
 }
 
 func (s *stubFoodService) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
@@ -311,14 +312,34 @@ func (s *stubFoodService) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUI
 	}
 	return nil, nil
 }
+func (s *stubFoodService) ConversionsByFoodIDs(ids []uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error) {
+	if s.conversionsByFoodIDs != nil {
+		return s.conversionsByFoodIDs(ids)
+	}
+	return make(map[uuid.UUID][]domain.FoodUnitConversion), nil
+}
+func (s *stubFoodService) CreateConversion(_ *domain.FoodUnitConversion) error { return nil }
+func (s *stubFoodService) ListConversions(_ uuid.UUID) ([]domain.FoodUnitConversion, error) {
+	return nil, nil
+}
+func (s *stubFoodService) UpdateConversion(_ *domain.FoodUnitConversion) error { return nil }
+func (s *stubFoodService) DeleteConversion(_, _ uuid.UUID) error               { return nil }
 
 type stubUnitService struct {
 	domain.UnitService
 
-	findOrCreateFn func(*domain.Unit) error
-	convertFn      func(float64, uuid.UUID, uuid.UUID) (float64, error)
+	findOrCreateFn           func(*domain.Unit) error
+	convertFn                func(float64, uuid.UUID, uuid.UUID) (float64, error)
+	convertWithConversionsFn func(float64, uuid.UUID, uuid.UUID, []domain.FoodUnitConversion) (float64, error)
+	byIDFn                   func(uuid.UUID) (*domain.Unit, error)
 }
 
+func (s *stubUnitService) ByID(id uuid.UUID) (*domain.Unit, error) {
+	if s.byIDFn != nil {
+		return s.byIDFn(id)
+	}
+	return &domain.Unit{BaseFactor: 1}, nil
+}
 func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
 	if s.findOrCreateFn != nil {
 		return s.findOrCreateFn(u)
@@ -330,6 +351,12 @@ func (s *stubUnitService) Convert(amount float64, from, to uuid.UUID) (float64, 
 		return s.convertFn(amount, from, to)
 	}
 	return amount, nil
+}
+func (s *stubUnitService) ConvertWithConversions(amount float64, from, to uuid.UUID, conversions []domain.FoodUnitConversion) (float64, error) {
+	if s.convertWithConversionsFn != nil {
+		return s.convertWithConversionsFn(amount, from, to, conversions)
+	}
+	return s.Convert(amount, from, to)
 }
 
 type stubTaxonomyRepo struct {

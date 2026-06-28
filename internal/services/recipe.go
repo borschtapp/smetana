@@ -344,6 +344,15 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 		return nil, fmt.Errorf("estimate price (fetch food prices): %w", err)
 	}
 
+	foodIDsWithPrice := make([]uuid.UUID, 0, len(latestPrices))
+	for id := range latestPrices {
+		foodIDsWithPrice = append(foodIDsWithPrice, id)
+	}
+	conversions, err := s.foodService.ConversionsByFoodIDs(foodIDsWithPrice)
+	if err != nil {
+		return nil, fmt.Errorf("estimate price (fetch food conversions): %w", err)
+	}
+
 	estimate := &domain.RecipeCostEstimate{
 		Items: make([]*domain.RecipeIngredientCost, 0, len(recipe.Ingredients)),
 	}
@@ -372,7 +381,7 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 			continue
 		}
 
-		convertedAmount, convErr := s.unitService.Convert(*ing.Amount, *ing.UnitID, foodPrice.UnitID)
+		convertedAmount, convErr := s.unitService.ConvertWithConversions(*ing.Amount, *ing.UnitID, foodPrice.UnitID, conversions[*ing.FoodID])
 		if convErr != nil {
 			// Incompatible units (e.g. price in kg, ingredient in pieces): treat as unpriced.
 			ingCost.Status = "incompatible_unit"

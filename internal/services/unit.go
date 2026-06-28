@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -126,4 +127,32 @@ func (s *unitService) BestUnit(amount float64, fromUnitID uuid.UUID, imperial bo
 		}
 	}
 	return best, nil
+}
+
+func (s *unitService) ConvertWithConversions(amount float64, fromUnitID, toUnitID uuid.UUID, conversions []domain.FoodUnitConversion) (float64, error) {
+	finalAmount, err := s.Convert(amount, fromUnitID, toUnitID)
+	if err == nil {
+		return finalAmount, nil
+	}
+	if se, ok := errors.AsType[*sentinels.Error](err); !ok || se.Status != 422 {
+		return 0, err
+	}
+
+	for _, conv := range conversions {
+		if bridgeAmount, err := s.Convert(amount, fromUnitID, conv.UnitID); err == nil {
+			targetAmount := bridgeAmount * conv.TargetAmount
+			if finalAmount, err := s.Convert(targetAmount, conv.TargetUnitID, toUnitID); err == nil {
+				return finalAmount, nil
+			}
+		}
+
+		if bridgeAmount, err := s.Convert(amount, fromUnitID, conv.TargetUnitID); err == nil {
+			targetAmount := bridgeAmount / conv.TargetAmount
+			if finalAmount, err := s.Convert(targetAmount, conv.UnitID, toUnitID); err == nil {
+				return finalAmount, nil
+			}
+		}
+	}
+
+	return 0, sentinels.Unprocessable("units do not share a common base unit and no matching conversion bridge was found")
 }

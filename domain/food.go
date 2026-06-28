@@ -54,6 +54,12 @@ type FoodRepository interface {
 	ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]FoodPrice, int64, error)
 	LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*FoodPrice, error)
 	DeletePrice(householdID, id uuid.UUID) error
+
+	CreateConversion(c *FoodUnitConversion) error
+	ListConversions(foodID uuid.UUID) ([]FoodUnitConversion, error)
+	UpdateConversion(c *FoodUnitConversion) error
+	DeleteConversion(foodID, id uuid.UUID) error
+	ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]FoodUnitConversion, error)
 }
 
 type FoodService interface {
@@ -69,4 +75,10 @@ type FoodService interface {
 	ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]FoodPrice, int64, error)
 	LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (map[uuid.UUID]*FoodPrice, error)
 	DeletePrice(householdID, id uuid.UUID) error
+
+	CreateConversion(c *FoodUnitConversion) error
+	ListConversions(foodID uuid.UUID) ([]FoodUnitConversion, error)
+	UpdateConversion(c *FoodUnitConversion) error
+	DeleteConversion(foodID, id uuid.UUID) error
+	ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]FoodUnitConversion, error)
 }

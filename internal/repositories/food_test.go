@@ -3,6 +3,7 @@ package repositories_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -296,4 +297,118 @@ func TestFoodRepository_Merge_KeepsPantryTrue(t *testing.T) {
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
 	assert.True(t, result.Pantry, "keep food must remain pantry when it already was")
+}
+
+func TestFoodRepository_ConversionsByFoodIDs_BatchGroupsCorrectly(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	food1 := &domain.Food{Name: "Apple", Slug: "apple"}
+	food2 := &domain.Food{Name: "Banana", Slug: "banana"}
+	food3 := &domain.Food{Name: "Orange", Slug: "orange"}
+	require.NoError(t, db.Create(food1).Error)
+	require.NoError(t, db.Create(food2).Error)
+	require.NoError(t, db.Create(food3).Error)
+
+	unitMl := &domain.Unit{Name: "ml", Slug: "ml", BaseFactor: 1}
+	unitCup := &domain.Unit{Name: "cup", Slug: "cup", BaseFactor: 250}
+	unitG := &domain.Unit{Name: "g", Slug: "g", BaseFactor: 1}
+	require.NoError(t, db.Create(unitMl).Error)
+	require.NoError(t, db.Create(unitCup).Error)
+	require.NoError(t, db.Create(unitG).Error)
+
+	require.NoError(t, repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: food1.ID, UnitID: unitCup.ID, TargetAmount: 120, TargetUnitID: unitG.ID,
+	}))
+	require.NoError(t, repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: food2.ID, UnitID: unitCup.ID, TargetAmount: 150, TargetUnitID: unitG.ID,
+	}))
+
+	conversions, err := repo.ConversionsByFoodIDs([]uuid.UUID{food1.ID, food2.ID, food3.ID})
+	require.NoError(t, err)
+
+	assert.Len(t, conversions, 2)
+	assert.Len(t, conversions[food1.ID], 1)
+	assert.Len(t, conversions[food2.ID], 1)
+	assert.Len(t, conversions[food3.ID], 0)
+	assert.Equal(t, 120.0, conversions[food1.ID][0].TargetAmount)
+	assert.Equal(t, 150.0, conversions[food2.ID][0].TargetAmount)
+}
+
+func TestFoodRepository_CreateConversion_UniqueConstraint(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	food := &domain.Food{Name: "Milk", Slug: "milk"}
+	require.NoError(t, db.Create(food).Error)
+
+	unitCup := &domain.Unit{Name: "cup", Slug: "cup", BaseFactor: 250}
+	unitG := &domain.Unit{Name: "g", Slug: "g", BaseFactor: 1}
+	unitMl := &domain.Unit{Name: "ml", Slug: "ml", BaseFactor: 1}
+	require.NoError(t, db.Create(unitCup).Error)
+	require.NoError(t, db.Create(unitG).Error)
+	require.NoError(t, db.Create(unitMl).Error)
+
+	err := repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: food.ID, UnitID: unitCup.ID, TargetAmount: 240, TargetUnitID: unitG.ID,
+	})
+	require.NoError(t, err)
+
+	err = repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: food.ID, UnitID: unitCup.ID, TargetAmount: 240, TargetUnitID: unitMl.ID,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
+}
+
+func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	keep := &domain.Food{Name: "Keep", Slug: "keep"}
+	merge := &domain.Food{Name: "Merge", Slug: "merge"}
+	require.NoError(t, db.Create(keep).Error)
+	require.NoError(t, db.Create(merge).Error)
+
+	unit1 := &domain.Unit{Name: "u1", Slug: "u1", BaseFactor: 1}
+	unit2 := &domain.Unit{Name: "u2", Slug: "u2", BaseFactor: 1}
+	unitG := &domain.Unit{Name: "g", Slug: "g", BaseFactor: 1}
+	require.NoError(t, db.Create(unit1).Error)
+	require.NoError(t, db.Create(unit2).Error)
+	require.NoError(t, db.Create(unitG).Error)
+
+	// keep has a conversion from u1 to g
+	require.NoError(t, repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: keep.ID, UnitID: unit1.ID, TargetAmount: 100, TargetUnitID: unitG.ID,
+	}))
+
+	// merge has a conversion from u1 to g (should be deleted upon merge because keep already has it)
+	require.NoError(t, repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: merge.ID, UnitID: unit1.ID, TargetAmount: 120, TargetUnitID: unitG.ID,
+	}))
+
+	// merge has a conversion from u2 to g (should be moved to keep)
+	require.NoError(t, repo.CreateConversion(&domain.FoodUnitConversion{
+		FoodID: merge.ID, UnitID: unit2.ID, TargetAmount: 200, TargetUnitID: unitG.ID,
+	}))
+
+	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+
+	conversions, err := repo.ListConversions(keep.ID)
+	require.NoError(t, err)
+
+	assert.Len(t, conversions, 2)
+
+	byUnit := make(map[uuid.UUID]float64)
+	for _, c := range conversions {
+		byUnit[c.UnitID] = c.TargetAmount
+	}
+
+	assert.Equal(t, 100.0, byUnit[unit1.ID])
+	assert.Equal(t, 200.0, byUnit[unit2.ID])
+
+	// verify merge food has no conversions left
+	var remaining []domain.FoodUnitConversion
+	require.NoError(t, db.Where("food_id = ?", merge.ID).Find(&remaining).Error)
+	assert.Empty(t, remaining)
 }

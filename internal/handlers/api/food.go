@@ -236,3 +236,146 @@ func (h *FoodHandler) DeletePrice(c fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// GetConversions godoc
+// @Summary Get conversions for a food
+// @Description Get all unit conversions associated with a food.
+// @Tags food
+// @Produce json
+// @Param id path string true "Food UUID"
+// @Success 200 {array} domain.FoodUnitConversion
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/conversions [get]
+// @Security ApiKeyAuth
+func (h *FoodHandler) GetConversions(c fiber.Ctx) error {
+	foodID, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	conversions, err := h.service.ListConversions(foodID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(conversions)
+}
+
+type createConversionRequest struct {
+	UnitID       uuid.UUID `json:"unit_id" validate:"required"`
+	TargetAmount float64   `json:"target_amount" validate:"required,gt=0"`
+	TargetUnitID uuid.UUID `json:"target_unit_id" validate:"required"`
+}
+
+type updateConversionRequest struct {
+	TargetAmount float64   `json:"target_amount" validate:"required,gt=0"`
+	TargetUnitID uuid.UUID `json:"target_unit_id" validate:"required"`
+}
+
+// CreateConversion godoc
+// @Summary Create a new conversion for a food
+// @Description Creates a new unit conversion for a food (e.g., 1 piece = 200 g).
+// @Tags food
+// @Accept json
+// @Produce json
+// @Param id path string true "Food UUID"
+// @Param conversion body createConversionRequest true "Conversion request"
+// @Success 201 {object} domain.FoodUnitConversion
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 409 {object} sentinels.Error
+// @Router /api/v1/food/{id}/conversions [post]
+// @Security ApiKeyAuth
+func (h *FoodHandler) CreateConversion(c fiber.Ctx) error {
+	foodID, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	var req createConversionRequest
+	if err := bindBody(c, &req); err != nil {
+		return err
+	}
+
+	conversion := &domain.FoodUnitConversion{
+		FoodID:       foodID,
+		UnitID:       req.UnitID,
+		TargetAmount: req.TargetAmount,
+		TargetUnitID: req.TargetUnitID,
+	}
+
+	if err := h.service.CreateConversion(conversion); err != nil {
+		return err
+	}
+	return c.Status(fiber.StatusCreated).JSON(conversion)
+}
+
+// UpdateConversion godoc
+// @Summary Update an existing conversion for a food
+// @Description Updates target amount and target unit of an existing conversion. The source unit (unit_id) is immutable after creation.
+// @Tags food
+// @Accept json
+// @Param id path string true "Food UUID"
+// @Param conversionId path string true "Conversion UUID"
+// @Param conversion body updateConversionRequest true "Conversion update request"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/conversions/{conversionId} [put]
+// @Security ApiKeyAuth
+func (h *FoodHandler) UpdateConversion(c fiber.Ctx) error {
+	foodID, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+	conversionID, err := types.UuidParam(c, "conversionId")
+	if err != nil {
+		return err
+	}
+
+	var req updateConversionRequest
+	if err := bindBody(c, &req); err != nil {
+		return err
+	}
+
+	conversion := &domain.FoodUnitConversion{
+		ID:           conversionID,
+		FoodID:       foodID,
+		TargetAmount: req.TargetAmount,
+		TargetUnitID: req.TargetUnitID,
+	}
+
+	if err := h.service.UpdateConversion(conversion); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// DeleteConversion godoc
+// @Summary Delete a food unit conversion
+// @Tags food
+// @Param id path string true "Food UUID"
+// @Param conversionId path string true "Conversion UUID"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/conversions/{conversionId} [delete]
+// @Security ApiKeyAuth
+func (h *FoodHandler) DeleteConversion(c fiber.Ctx) error {
+	foodID, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+	conversionID, err := types.UuidParam(c, "conversionId")
+	if err != nil {
+		return err
+	}
+
+	if err := h.service.DeleteConversion(foodID, conversionID); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}

@@ -252,3 +252,86 @@ func TestUnitService_Merge_SameID_ReturnsBadRequest(t *testing.T) {
 	require.ErrorAs(t, err, &se, "same-ID merge must return a typed sentinel error")
 	assert.Equal(t, 400, se.Status)
 }
+
+func TestUnitService_ConvertWithConversions_SameDimension_FastPath(t *testing.T) {
+	svc := services.NewUnitService(newFakeUnitRepo(massFixtures()...))
+
+	// No conversions given, should just use Convert
+	res, err := svc.ConvertWithConversions(1, idKg, idG, nil)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 1000.0, res, 1e-6)
+}
+
+func TestUnitService_ConvertWithConversions_FromSideBridge(t *testing.T) {
+	all := append(massFixtures(), volumeFixtures()...)
+	svc := services.NewUnitService(newFakeUnitRepo(all...))
+
+	// 1 cup = 250ml. Say we want to convert 500ml to oz.
+	// Wait, we don't have cup in volumeFixtures, we have tsp and ml.
+	// We want to convert 100 tsp to oz (volume to mass).
+	// We bridge from ml to g. Say 1 ml = 2 g (so 1 tsp = 5 ml = 10 g).
+	// Target is oz.
+	// Bridge definition: Unit=ml, TargetAmount=2, TargetUnit=g
+	// fromUnit=tsp, toUnit=oz
+	conversions := []domain.FoodUnitConversion{
+		{
+			UnitID:       idMl,
+			TargetAmount: 2.0,
+			TargetUnitID: idG,
+		},
+	}
+
+	// 100 tsp = 500 ml
+	// 500 ml -> bridge -> 1000 g
+	// 1000 g -> oz (~35.714)
+	res, err := svc.ConvertWithConversions(100, idTsp, idOz, conversions)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 1000.0/28.0, res, 1e-6)
+}
+
+func TestUnitService_ConvertWithConversions_ToSideBridge(t *testing.T) {
+	all := append(massFixtures(), volumeFixtures()...)
+	svc := services.NewUnitService(newFakeUnitRepo(all...))
+
+	// Converting 10 oz to tsp.
+	// Bridge: 1 ml = 2 g.
+	// Convert 10 oz -> g -> bridge to ml -> tsp
+	// 10 oz = 280 g
+	// 280 g / 2 = 140 ml
+	// 140 ml / 5 = 28 tsp
+	conversions := []domain.FoodUnitConversion{
+		{
+			UnitID:       idMl,
+			TargetAmount: 2.0,
+			TargetUnitID: idG,
+		},
+	}
+
+	res, err := svc.ConvertWithConversions(10, idOz, idTsp, conversions)
+
+	require.NoError(t, err)
+	assert.InDelta(t, 28.0, res, 1e-6)
+}
+
+func TestUnitService_ConvertWithConversions_NoBridge_ReturnsError(t *testing.T) {
+	all := append(massFixtures(), volumeFixtures()...)
+	svc := services.NewUnitService(newFakeUnitRepo(all...))
+
+	// Unrelated bridge
+	conversions := []domain.FoodUnitConversion{
+		{
+			UnitID:       uuid.New(),
+			TargetAmount: 1,
+			TargetUnitID: uuid.New(),
+		},
+	}
+
+	_, err := svc.ConvertWithConversions(10, idOz, idTsp, conversions)
+
+	require.Error(t, err)
+	var se *sentinels.Error
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, 422, se.Status)
+}
