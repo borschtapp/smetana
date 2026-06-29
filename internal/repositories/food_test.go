@@ -2,6 +2,7 @@ package repositories_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -361,6 +362,33 @@ func TestFoodRepository_CreateConversion_UniqueConstraint(t *testing.T) {
 	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
 }
 
+func TestFoodRepository_Detach_ClearsAliasButKeepsReassignedRows(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	keep := &domain.Food{Slug: "tomato", Name: "Tomato"}
+	alias := &domain.Food{Slug: "tomat", Name: "Tomat"}
+	require.NoError(t, db.Create(keep).Error)
+	require.NoError(t, db.Create(alias).Error)
+
+	recipe := &domain.Recipe{Name: new("Salad")}
+	require.NoError(t, db.Create(recipe).Error)
+	ing := &domain.RecipeIngredient{RecipeID: recipe.ID, FoodID: &alias.ID, RawText: "tomat"}
+	require.NoError(t, db.Create(ing).Error)
+
+	require.NoError(t, repo.Merge(keep.ID, alias.ID))
+	require.NoError(t, repo.Detach(alias.ID))
+
+	var detached domain.Food
+	require.NoError(t, db.First(&detached, "id = ?", alias.ID).Error)
+	assert.Nil(t, detached.CanonicalFoodID, "detach must clear the alias pointer")
+
+	// Documents the deliberate limitation: Merge moved this row and Detach does not move it back.
+	var reloaded domain.RecipeIngredient
+	require.NoError(t, db.First(&reloaded, "id = ?", ing.ID).Error)
+	assert.Equal(t, keep.ID, *reloaded.FoodID, "reassigned rows stay with the kept food")
+}
+
 func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewFoodRepository(db)
@@ -411,4 +439,118 @@ func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {
 	var remaining []domain.FoodUnitConversion
 	require.NoError(t, db.Where("food_id = ?", merge.ID).Find(&remaining).Error)
 	assert.Empty(t, remaining)
+}
+
+func TestFoodRepository_DefaultUnitUsageSince_AggregatesPerFoodUnit(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+	since := time.Now().Add(-time.Hour)
+
+	recipe := &domain.Recipe{Name: new("Test Recipe")}
+	require.NoError(t, db.Create(recipe).Error)
+
+	unitGram := &domain.Unit{Name: "gram", Slug: "gram", BaseFactor: 1}
+	unitCup := &domain.Unit{Name: "cup", Slug: "cup", BaseFactor: 250}
+	require.NoError(t, db.Create(unitGram).Error)
+	require.NoError(t, db.Create(unitCup).Error)
+
+	// Candidate food: no default unit yet, used 3x with gram and 1x with cup.
+	candidate := &domain.Food{Name: "Flour", Slug: "flour"}
+	require.NoError(t, db.Create(candidate).Error)
+	for i := 0; i < 3; i++ {
+		require.NoError(t, db.Create(&domain.RecipeIngredient{
+			RecipeID: recipe.ID, FoodID: &candidate.ID, UnitID: &unitGram.ID, RawText: "flour",
+		}).Error)
+	}
+	require.NoError(t, db.Create(&domain.RecipeIngredient{
+		RecipeID: recipe.ID, FoodID: &candidate.ID, UnitID: &unitCup.ID, RawText: "flour",
+	}).Error)
+
+	// Food already has a default unit: must be excluded even though it has ingredient rows.
+	settled := &domain.Food{Name: "Sugar", Slug: "sugar", DefaultUnitID: &unitGram.ID}
+	require.NoError(t, db.Create(settled).Error)
+	require.NoError(t, db.Create(&domain.RecipeIngredient{
+		RecipeID: recipe.ID, FoodID: &settled.ID, UnitID: &unitGram.ID, RawText: "sugar",
+	}).Error)
+
+	rows, err := repo.DefaultUnitUsageSince(since)
+	require.NoError(t, err)
+
+	byUnit := make(map[uuid.UUID]int)
+	var updated time.Time
+	for _, r := range rows {
+		require.Equal(t, candidate.ID, r.FoodID, "settled food must not appear")
+		byUnit[r.UnitID] = r.Count
+		updated = r.Updated
+	}
+	assert.Equal(t, 3, byUnit[unitGram.ID])
+	assert.Equal(t, 1, byUnit[unitCup.ID])
+
+	total := 0
+	for _, c := range byUnit {
+		total += c
+	}
+	assert.Equal(t, 4, total, "per-unit counts must sum to the food's full ingredient usage")
+	assert.WithinDuration(t, candidate.Updated, updated, time.Second)
+}
+
+func TestFoodRepository_BySlugsOrNames_MatchesEither(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	bySlug := &domain.Food{Name: "Carrot", Slug: "carrot"}
+	byName := &domain.Food{Name: "onion", Slug: "yellow-onion"} // matched by name, not slug
+	alias := &domain.Food{Name: "Tomat", Slug: "tomat"}
+	require.NoError(t, db.Create(bySlug).Error)
+	require.NoError(t, db.Create(byName).Error)
+	require.NoError(t, db.Create(alias).Error)
+	require.NoError(t, repo.Merge(bySlug.ID, alias.ID)) // alias.canonical_food_id now set
+
+	found, err := repo.BySlugsOrNames([]string{"carrot", "tomat"}, []string{"onion"})
+	require.NoError(t, err)
+
+	ids := make([]uuid.UUID, len(found))
+	for i, f := range found {
+		ids[i] = f.ID
+	}
+	assert.Contains(t, ids, bySlug.ID)
+	assert.Contains(t, ids, byName.ID)
+	assert.NotContains(t, ids, alias.ID, "aliases must not resolve as merge candidates")
+}
+
+func TestFoodRepository_MergeCandidates_FiltersAliasesAndSince(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	stale := &domain.Food{Name: "Stale", Slug: "stale"}
+	fresh := &domain.Food{Name: "Fresh", Slug: "fresh"}
+	require.NoError(t, db.Create(stale).Error)
+	require.NoError(t, db.Create(fresh).Error)
+
+	since := stale.Updated.Add(time.Millisecond)
+	// UpdateColumn bypasses the autoUpdateTime hook, so this sets updated without GORM
+	// immediately overwriting it back to time.Now().
+	require.NoError(t, db.Model(fresh).UpdateColumn("updated", since.Add(time.Millisecond)).Error)
+
+	alias := &domain.Food{Name: "Alias", Slug: "alias"}
+	require.NoError(t, db.Create(alias).Error)
+	require.NoError(t, repo.Merge(fresh.ID, alias.ID))
+
+	workSet, catalog, err := repo.MergeCandidates(since)
+	require.NoError(t, err)
+
+	workIDs := make([]uuid.UUID, len(workSet))
+	for i, f := range workSet {
+		workIDs[i] = f.ID
+	}
+	assert.Contains(t, workIDs, fresh.ID)
+	assert.NotContains(t, workIDs, stale.ID, "work set excludes rows updated before since")
+	assert.NotContains(t, workIDs, alias.ID, "work set excludes aliases")
+
+	catalogIDs := make([]uuid.UUID, len(catalog))
+	for i, f := range catalog {
+		catalogIDs[i] = f.ID
+	}
+	assert.Contains(t, catalogIDs, stale.ID, "catalog includes canonical rows regardless of since")
+	assert.NotContains(t, catalogIDs, alias.ID, "catalog excludes aliases")
 }

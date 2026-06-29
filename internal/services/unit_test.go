@@ -74,6 +74,7 @@ func (r *fakeUnitRepo) FindOrCreate(unit *domain.Unit) error {
 }
 
 func (r *fakeUnitRepo) Merge(_, _ uuid.UUID) error  { return nil }
+func (r *fakeUnitRepo) Detach(_ uuid.UUID) error    { return nil }
 func (r *fakeUnitRepo) Update(_ *domain.Unit) error { return nil }
 
 var (

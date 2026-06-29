@@ -36,5 +36,5 @@ func CreateTag(name string) string {
 		name = replaceDiacritics(name)
 	}
 
-	return strings.ToLower(clearNonAlphanumeric(name))
+	return strings.TrimSpace(strings.ToLower(clearNonAlphanumeric(name)))
 }

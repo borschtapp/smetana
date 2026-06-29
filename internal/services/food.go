@@ -70,6 +70,13 @@ func (s *foodService) Merge(keepID, mergeID uuid.UUID) error {
 	return nil
 }
 
+func (s *foodService) Detach(id uuid.UUID) error {
+	if err := s.repo.Detach(id); err != nil {
+		return fmt.Errorf("detach: %w", err)
+	}
+	return nil
+}
+
 func (s *foodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
 	if err := s.repo.AddTaxonomy(foodID, taxonomy); err != nil {
 		return fmt.Errorf("add taxonomy: %w", err)

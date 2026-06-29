@@ -134,6 +134,29 @@ func (h *FoodHandler) MergeFood(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// DetachFood godoc
+// @Summary Detach a merged food from its canonical entry
+// @Description Clears the alias pointer so this food resolves as itself again. This is NOT an undo of merge: ingredients, prices, and shopping items reassigned by the merge stay with the kept food, and duplicate conversions the merge removed are not restored.
+// @Tags food
+// @Produce json
+// @Param id path string true "Food UUID to detach"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/food/{id}/detach [post]
+// @Security ApiKeyAuth
+func (h *FoodHandler) DetachFood(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+	if err := h.service.Detach(id); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // GetPrice godoc
 // @Summary Get price history for a food
 // @Description Get paginated price history for food within the household.

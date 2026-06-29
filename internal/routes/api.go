@@ -18,6 +18,7 @@ import (
 	"borscht.app/smetana/internal/scheduler"
 	"borscht.app/smetana/internal/services"
 	"borscht.app/smetana/internal/storage"
+	"borscht.app/smetana/internal/suggestions"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -38,6 +39,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	shoppingListRepo := repositories.NewShoppingListRepository(db)
 	taxonomyRepo := repositories.NewTaxonomyRepository(db)
 	equipmentRepo := repositories.NewEquipmentRepository(db)
+	suggestionRepo := repositories.NewSuggestionRepository(db)
 
 	// Services with business logic (need repos injected)
 	emailService, err := services.NewEmailService()
@@ -63,6 +65,16 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	mealPlanService := services.NewMealPlanService(mealPlanRepo)
 	householdService := services.NewHouseholdService(householdRepo, userRepo, emailService)
 	shoppingListService := services.NewShoppingListService(shoppingListRepo, scraperProvider, foodService, unitService)
+
+	// Suggestion system
+	suggestionRegistry := suggestions.NewRegistry()
+	suggestionRegistry.RegisterAuto(suggestions.NewFoodDefaultUnitDetector(foodRepo), suggestions.NewFoodDefaultUnitApplier(foodRepo), 0.9)
+	suggestionRegistry.Register(suggestions.NewFoodMergeDetector(foodRepo), suggestions.NewFoodMergeApplier(foodService))
+	suggestionRegistry.Register(suggestions.NewUnitMergeDetector(unitRepo), suggestions.NewUnitMergeApplier(unitService))
+	suggestionRegistry.Register(suggestions.NewTaxonomyMergeDetector(taxonomyRepo), suggestions.NewTaxonomyMergeApplier(taxonomyService))
+	suggestionRegistry.Register(suggestions.NewIngredientFoodLinkDetector(recipeRepo, foodRepo), suggestions.NewIngredientFoodLinkApplier(recipeRepo))
+	suggestionRegistry.Register(suggestions.NewFoodConversionDetector(unitRepo), suggestions.NewFoodConversionApplier(foodService))
+	suggestionService := services.NewSuggestionService(suggestionRepo, foodRepo, unitRepo, taxonomyRepo, suggestionRegistry)
 
 	oidcService, err := services.NewOIDCService(userRepo)
 	if err != nil {
@@ -140,6 +152,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	foodGroup.Get("/", foodHandler.GetFoods)
 	foodGroup.Patch("/:id", foodHandler.UpdateFood)
 	foodGroup.Post("/:id/merge", foodHandler.MergeFood)
+	foodGroup.Post("/:id/detach", foodHandler.DetachFood)
 	foodGroup.Get("/:id/price", foodHandler.GetPrice)
 	foodGroup.Post("/:id/price", foodHandler.RecordPrice)
 	foodGroup.Delete("/:id/price/:priceId", foodHandler.DeletePrice)
@@ -192,10 +205,20 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	unitGroup.Get("/", unitHandler.GetUnits)
 	unitGroup.Patch("/:id", unitHandler.UpdateUnit)
 	unitGroup.Post("/:id/merge", unitHandler.MergeUnit)
+	unitGroup.Post("/:id/detach", unitHandler.DetachUnit)
 
 	equipmentHandler := api.NewEquipmentHandler(equipmentService)
 	equipmentGroup := router.Group("/equipment", middlewares.Protected())
 	equipmentGroup.Get("/", equipmentHandler.GetEquipment)
+
+	suggestionHandler := api.NewSuggestionHandler(suggestionService)
+	suggestionsGroup := router.Group("/suggestions", middlewares.Protected())
+	suggestionsGroup.Get("/", suggestionHandler.ListSuggestions)
+	suggestionsGroup.Get("/stats", suggestionHandler.GetStats)
+	suggestionsGroup.Post("/scan", suggestionHandler.ScanNow)
+	suggestionsGroup.Get("/:id", suggestionHandler.GetSuggestion)
+	suggestionsGroup.Post("/:id/accept", suggestionHandler.AcceptSuggestion)
+	suggestionsGroup.Post("/:id/reject", suggestionHandler.RejectSuggestion)
 
 	feedHandler := api.NewFeedHandler(feedService)
 	feedsGroup := router.Group("/feeds", middlewares.Protected())
@@ -214,6 +237,11 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	fetchInterval := utils.GetenvDuration("FETCH_INTERVAL", 24*time.Hour)
 	if err := sched.Register(jobs.NewFeedFetchJob(feedService, feedRepo, schedulerRepo), fetchInterval); err != nil {
 		return fmt.Errorf("failed to register feed fetch job: %w", err)
+	}
+
+	reconcileInterval := utils.GetenvDuration("RECONCILE_INTERVAL", 6*time.Hour)
+	if err := sched.Register(jobs.NewSuggestionReconcileJob(suggestionService, schedulerRepo), reconcileInterval); err != nil {
+		return fmt.Errorf("failed to register suggestion reconcile job: %w", err)
 	}
 
 	sched.Start()

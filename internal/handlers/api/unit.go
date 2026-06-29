@@ -126,3 +126,26 @@ func (h *UnitHandler) MergeUnit(c fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// DetachUnit godoc
+// @Summary Detach a merged unit from its canonical entry
+// @Description Clears the alias pointer so this unit resolves as itself again. This is NOT an undo of merge: ingredients, conversions, and derived units reassigned by the merge stay with the kept unit.
+// @Tags units
+// @Produce json
+// @Param id path string true "Unit UUID to detach"
+// @Success 204
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Router /api/v1/units/{id}/detach [post]
+// @Security ApiKeyAuth
+func (h *UnitHandler) DetachUnit(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+	if err := h.service.Detach(id); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}

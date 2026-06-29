@@ -3,6 +3,7 @@ package repositories
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -366,6 +367,15 @@ func (r *recipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) er
 		return fmt.Errorf("delete ingredient %s: %w", id, mapErr(err))
 	}
 	return nil
+}
+
+func (r *recipeRepository) IngredientsWithoutFoodSince(since time.Time) ([]domain.RecipeIngredient, error) {
+	var ingredients []domain.RecipeIngredient
+	err := r.db.Where("food_id IS NULL AND name IS NOT NULL AND updated > ?", since).Find(&ingredients).Error
+	if err != nil {
+		return nil, fmt.Errorf("ingredients without food since %s: %w", since, mapErr(err))
+	}
+	return ingredients, nil
 }
 
 func (r *recipeRepository) AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {

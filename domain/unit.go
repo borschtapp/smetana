@@ -59,21 +59,41 @@ func (u *Unit) ToBaseFactor() (float64, error) {
 	return u.BaseFactor, nil
 }
 
+// FoodUnitPair identifies a food/unit combination observed in a recipe ingredient.
+type FoodUnitPair struct {
+	FoodID uuid.UUID
+	UnitID uuid.UUID
+}
+
 type UnitRepository interface {
 	FindOrCreate(unit *Unit) error
 	ByID(id uuid.UUID) (*Unit, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Unit, error)
 	ByBase(baseUnitID uuid.UUID, imperial bool) ([]Unit, error)
 	Search(query string, imperial *bool, offset, limit int) ([]Unit, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error
+	// Detach clears the canonical pointer set by Merge, so the unit stops resolving
+	// as an alias. It does not restore rows Merge reassigned to the kept unit.
+	Detach(id uuid.UUID) error
 	AddTaxonomy(unitID uuid.UUID, taxonomy *Taxonomy) error
 	Update(unit *Unit) error
+
+	// NonConvertibleUsageSince returns distinct (food, unit) pairs, for canonical foods
+	// updated after since, where the unit is not convertible (see Unit.Convertible) and
+	// no FoodUnitConversion row exists yet to bridge the dimension mismatch.
+	NonConvertibleUsageSince(since time.Time) ([]FoodUnitPair, error)
+	// MergeCandidates returns the work set (canonical units updated after since) and the
+	// full canonical catalog to compare it against for near-duplicate detection.
+	MergeCandidates(since time.Time) (workSet, catalog []Unit, err error)
 }
 
 type UnitService interface {
 	ByID(id uuid.UUID) (*Unit, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Unit, error)
 	FindOrCreate(unit *Unit) error
 	Search(query string, imperial *bool, offset, limit int) ([]Unit, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error
+	Detach(id uuid.UUID) error
 	Update(unit *Unit) error
 	// Convert scales amount from one unit to another using their shared base-unit chain.
 	Convert(amount float64, fromUnitID, toUnitID uuid.UUID) (float64, error)

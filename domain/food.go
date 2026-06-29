@@ -41,14 +41,37 @@ func (f *Food) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
+// FoodUnitUsage is the number of times a (food, unit) pair occurs across recipe ingredients
+type FoodUnitUsage struct {
+	FoodID  uuid.UUID
+	UnitID  uuid.UUID
+	Count   int
+	Updated time.Time
+}
+
 type FoodRepository interface {
 	ByID(id uuid.UUID) (*Food, error)
 	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)
 	FindOrCreate(food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error
+	// Detach clears the canonical pointer set by Merge, so the food stops resolving
+	// as an alias. It does not restore rows Merge reassigned to the kept food.
+	Detach(id uuid.UUID) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
+
+	// DefaultUnitUsageSince returns (food, unit) usage counts across recipe ingredients
+	// for canonical foods with no default unit that changed after since. A food's
+	// per-unit counts always partition its total usage, so callers can sum Count per
+	// FoodID instead of running a separate total-count query.
+	DefaultUnitUsageSince(since time.Time) ([]FoodUnitUsage, error)
+	// BySlugsOrNames batch-resolves canonical foods matching any of the given slugs or
+	// any of the given (already-lowercased) names.
+	BySlugsOrNames(slugs, names []string) ([]Food, error)
+	// MergeCandidates returns the work set (canonical foods updated after since) and the
+	// full canonical catalog to compare it against for near-duplicate detection.
+	MergeCandidates(since time.Time) (workSet, catalog []Food, err error)
 
 	CreatePrice(price *FoodPrice) error
 	ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]FoodPrice, int64, error)
@@ -68,6 +91,7 @@ type FoodService interface {
 	FindOrCreate(ctx context.Context, food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error
+	Detach(id uuid.UUID) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
 

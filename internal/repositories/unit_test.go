@@ -2,7 +2,9 @@ package repositories_test
 
 import (
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -154,4 +156,96 @@ func TestUnitRepository_Merge_DoesNotOverwriteExistingBaseUnit(t *testing.T) {
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
 	assert.Equal(t, base1.ID, *result.BaseUnitID, "keep unit must retain its own base_unit_id when both have one")
 	assert.Equal(t, 1000.0, result.BaseFactor, "keep unit must retain its own base_factor when both have one")
+}
+
+func TestUnitRepository_Detach_ClearsAlias(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewUnitRepository(db)
+
+	keep := &domain.Unit{Slug: "gram", Name: "gram"}
+	alias := &domain.Unit{Slug: "grams", Name: "grams"}
+	require.NoError(t, db.Create(keep).Error)
+	require.NoError(t, db.Create(alias).Error)
+
+	require.NoError(t, repo.Merge(keep.ID, alias.ID))
+	require.NoError(t, repo.Detach(alias.ID))
+
+	var detached domain.Unit
+	require.NoError(t, db.First(&detached, "id = ?", alias.ID).Error)
+	assert.Nil(t, detached.CanonicalUnitID)
+}
+
+func TestUnitRepository_NonConvertibleUsageSince_ExcludesConvertibleAndAlreadyBridged(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewUnitRepository(db)
+	since := time.Now().Add(-time.Hour)
+
+	recipe := &domain.Recipe{Name: new("Test Recipe")}
+	require.NoError(t, db.Create(recipe).Error)
+
+	piece := &domain.Unit{Name: "piece", Slug: "piece", BaseFactor: 0} // non-convertible
+	gram := &domain.Unit{Name: "gram", Slug: "gram", BaseFactor: 1}    // convertible
+	require.NoError(t, db.Create(piece).Error)
+	require.NoError(t, db.Create(gram).Error)
+
+	needsConversion := &domain.Food{Name: "Egg", Slug: "egg"}
+	convertibleUnit := &domain.Food{Name: "Rice", Slug: "rice"}
+	alreadyBridged := &domain.Food{Name: "Bunch", Slug: "bunch"}
+	require.NoError(t, db.Create(needsConversion).Error)
+	require.NoError(t, db.Create(convertibleUnit).Error)
+	require.NoError(t, db.Create(alreadyBridged).Error)
+
+	require.NoError(t, db.Create(&domain.RecipeIngredient{
+		RecipeID: recipe.ID, FoodID: &needsConversion.ID, UnitID: &piece.ID, RawText: "egg",
+	}).Error)
+	require.NoError(t, db.Create(&domain.RecipeIngredient{
+		RecipeID: recipe.ID, FoodID: &convertibleUnit.ID, UnitID: &gram.ID, RawText: "rice",
+	}).Error)
+	require.NoError(t, db.Create(&domain.RecipeIngredient{
+		RecipeID: recipe.ID, FoodID: &alreadyBridged.ID, UnitID: &piece.ID, RawText: "bunch",
+	}).Error)
+	require.NoError(t, db.Create(&domain.FoodUnitConversion{
+		FoodID: alreadyBridged.ID, UnitID: piece.ID, TargetAmount: 100, TargetUnitID: gram.ID,
+	}).Error)
+
+	pairs, err := repo.NonConvertibleUsageSince(since)
+	require.NoError(t, err)
+
+	require.Len(t, pairs, 1, "only the food with a non-convertible unit and no existing conversion must be returned")
+	assert.Equal(t, domain.FoodUnitPair{FoodID: needsConversion.ID, UnitID: piece.ID}, pairs[0])
+}
+
+func TestUnitRepository_MergeCandidates_FiltersAliasesAndSince(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewUnitRepository(db)
+
+	stale := &domain.Unit{Name: "Stale", Slug: "stale", BaseFactor: 1}
+	fresh := &domain.Unit{Name: "Fresh", Slug: "fresh", BaseFactor: 1}
+	require.NoError(t, db.Create(stale).Error)
+	require.NoError(t, db.Create(fresh).Error)
+
+	since := stale.Updated.Add(time.Millisecond)
+	require.NoError(t, db.Model(fresh).UpdateColumn("updated", since.Add(time.Millisecond)).Error)
+
+	alias := &domain.Unit{Name: "Alias", Slug: "alias", BaseFactor: 1}
+	require.NoError(t, db.Create(alias).Error)
+	require.NoError(t, repo.Merge(fresh.ID, alias.ID))
+
+	workSet, catalog, err := repo.MergeCandidates(since)
+	require.NoError(t, err)
+
+	workIDs := make([]uuid.UUID, len(workSet))
+	for i, u := range workSet {
+		workIDs[i] = u.ID
+	}
+	assert.Contains(t, workIDs, fresh.ID)
+	assert.NotContains(t, workIDs, stale.ID, "work set excludes rows updated before since")
+	assert.NotContains(t, workIDs, alias.ID, "work set excludes aliases")
+
+	catalogIDs := make([]uuid.UUID, len(catalog))
+	for i, u := range catalog {
+		catalogIDs[i] = u.ID
+	}
+	assert.Contains(t, catalogIDs, stale.ID, "catalog includes canonical rows regardless of since")
+	assert.NotContains(t, catalogIDs, alias.ID, "catalog excludes aliases")
 }

@@ -26,6 +26,10 @@ func (s *unitService) ByID(id uuid.UUID) (*domain.Unit, error) {
 	return unit, nil
 }
 
+func (s *unitService) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Unit, error) {
+	return s.repo.ByIDs(ids)
+}
+
 func (s *unitService) Update(unit *domain.Unit) error {
 	if err := s.repo.Update(unit); err != nil {
 		return fmt.Errorf("update: %w", err)
@@ -46,6 +50,13 @@ func (s *unitService) Merge(keepID, mergeID uuid.UUID) error {
 	}
 	if err := s.repo.Merge(keepID, mergeID); err != nil {
 		return fmt.Errorf("merge: %w", err)
+	}
+	return nil
+}
+
+func (s *unitService) Detach(id uuid.UUID) error {
+	if err := s.repo.Detach(id); err != nil {
+		return fmt.Errorf("detach: %w", err)
 	}
 	return nil
 }

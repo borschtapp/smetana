@@ -96,6 +96,8 @@ type RecipeRepository interface {
 	CreateIngredient(ingredient *RecipeIngredient) error
 	UpdateIngredient(ingredient *RecipeIngredient) error
 	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error
+	// IngredientsWithoutFoodSince returns ingredients with no linked food and a non-empty name, updated after since.
+	IngredientsWithoutFoodSince(since time.Time) ([]RecipeIngredient, error)
 
 	AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error
 	RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error

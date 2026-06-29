@@ -2,6 +2,7 @@ package services_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,7 @@ func (r *fakeFoodRepo) ByIDs(_ []uuid.UUID) (map[uuid.UUID]*domain.Food, error) 
 func (r *fakeFoodRepo) FindOrCreate(_ *domain.Food) error                       { return nil }
 func (r *fakeFoodRepo) Search(_ string, _, _ int) ([]domain.Food, int64, error) { return nil, 0, nil }
 func (r *fakeFoodRepo) Merge(_, _ uuid.UUID) error                              { return nil }
+func (r *fakeFoodRepo) Detach(_ uuid.UUID) error                                { return nil }
 func (r *fakeFoodRepo) AddTaxonomy(_ uuid.UUID, _ *domain.Taxonomy) error       { return nil }
 func (r *fakeFoodRepo) Update(food *domain.Food) error {
 	if r.updateFn != nil {
@@ -66,6 +68,13 @@ func (r *fakeFoodRepo) UpdateConversion(_ *domain.FoodUnitConversion) error { re
 func (r *fakeFoodRepo) DeleteConversion(_, _ uuid.UUID) error               { return nil }
 func (r *fakeFoodRepo) ConversionsByFoodIDs(_ []uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error) {
 	return nil, nil
+}
+func (r *fakeFoodRepo) DefaultUnitUsageSince(_ time.Time) ([]domain.FoodUnitUsage, error) {
+	return nil, nil
+}
+func (r *fakeFoodRepo) BySlugsOrNames(_, _ []string) ([]domain.Food, error) { return nil, nil }
+func (r *fakeFoodRepo) MergeCandidates(_ time.Time) (workSet, catalog []domain.Food, err error) {
+	return nil, nil, nil
 }
 
 // compile-time interface check

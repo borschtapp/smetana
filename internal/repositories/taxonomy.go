@@ -3,6 +3,7 @@ package repositories
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -80,6 +81,73 @@ func (r *taxonomyRepository) Search(taxonomyType string, householdID uuid.UUID, 
 	return taxonomies, total, nil
 }
 
+func (r *taxonomyRepository) ByID(id uuid.UUID) (*domain.Taxonomy, error) {
+	var t domain.Taxonomy
+	if err := r.db.First(&t, "id = ?", id).Error; err != nil {
+		return nil, fmt.Errorf("taxonomy by id %s: %w", id, mapErr(err))
+	}
+	return &t, nil
+}
+
+func (r *taxonomyRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Taxonomy, error) {
+	return byIDs(r.db, ids, func(t *domain.Taxonomy) uuid.UUID { return t.ID })
+}
+
+// reassignJunction moves all rows in a taxonomy junction table from mergeID to keepID,
+// then deletes whatever is left under mergeID. Rows that would duplicate an existing
+// (keepID, taxonomy_id) pair are excluded from the UPDATE instead of relying on an
+// upsert, so the statements stay plain SQL that every dialect understands the same way.
+func reassignJunction(tx *gorm.DB, table, fkCol string, keepID, mergeID uuid.UUID) error {
+	var keptFKs []uuid.UUID
+	if err := tx.Table(table).Where("taxonomy_id = ?", keepID).Pluck(fkCol, &keptFKs).Error; err != nil {
+		return fmt.Errorf("load kept %s: %w", table, mapErr(err))
+	}
+
+	q := tx.Table(table).Where("taxonomy_id = ?", mergeID)
+	if len(keptFKs) > 0 {
+		q = q.Where(fkCol+" NOT IN ?", keptFKs)
+	}
+	if err := q.Update("taxonomy_id", keepID).Error; err != nil {
+		return fmt.Errorf("reassign %s: %w", table, mapErr(err))
+	}
+
+	if err := tx.Table(table).Where("taxonomy_id = ?", mergeID).Delete(nil).Error; err != nil {
+		return fmt.Errorf("delete old %s: %w", table, mapErr(err))
+	}
+	return nil
+}
+
+func (r *taxonomyRepository) Merge(keepID, mergeID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var keep, merge domain.Taxonomy
+		if err := tx.First(&keep, "id = ? AND canonical_id IS NULL", keepID).Error; err != nil {
+			return fmt.Errorf("keep taxonomy: %w", mapErr(err))
+		}
+		if err := tx.First(&merge, "id = ? AND canonical_id IS NULL", mergeID).Error; err != nil {
+			return fmt.Errorf("merge taxonomy: %w", mapErr(err))
+		}
+
+		for _, j := range []struct{ table, fkCol string }{
+			{"recipe_taxonomies", "recipe_id"},
+			{"food_taxonomies", "food_id"},
+			{"unit_taxonomies", "unit_id"},
+		} {
+			if err := reassignJunction(tx, j.table, j.fkCol, keepID, mergeID); err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Model(&domain.Taxonomy{}).Where("id = ?", mergeID).Update("canonical_id", keepID).Error; err != nil {
+			return fmt.Errorf("set taxonomy alias: %w", mapErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *taxonomyRepository) Detach(id uuid.UUID) error {
+	return detach[domain.Taxonomy](r.db, id, "canonical_id")
+}
+
 func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 	if err := r.db.First(taxonomy, "slug = ?", taxonomy.Slug).Error; err == nil {
 		return nil
@@ -97,4 +165,14 @@ func (r *taxonomyRepository) FindOrCreate(taxonomy *domain.Taxonomy) error {
 	}
 
 	return nil
+}
+
+func (r *taxonomyRepository) MergeCandidates(since time.Time) (workSet, catalog []domain.Taxonomy, err error) {
+	if err := r.db.Where("canonical_id IS NULL AND updated > ?", since).Find(&workSet).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates workset: %w", mapErr(err))
+	}
+	if err := r.db.Where("canonical_id IS NULL").Find(&catalog).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates catalog: %w", mapErr(err))
+	}
+	return workSet, catalog, nil
 }

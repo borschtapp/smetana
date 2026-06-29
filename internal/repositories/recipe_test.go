@@ -501,6 +501,35 @@ func TestRecipeRepository_DeleteIngredient_WrongRecipeID_DoesNotDelete(t *testin
 	assert.EqualValues(t, 1, count, "ingredient must not be deleted when recipe_id does not match")
 }
 
+func TestRecipeRepository_IngredientsWithoutFoodSince_FiltersLinkedNamelessAndStale(t *testing.T) {
+	db := openPrivateTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+	repo := repositories.NewRecipeRepository(db)
+
+	since := time.Now().Add(-time.Hour)
+
+	unlinked := &domain.RecipeIngredient{RecipeID: r.ID, Name: new("carrot"), RawText: "carrot"}
+	require.NoError(t, db.Create(unlinked).Error)
+
+	foodID := uuid.New()
+	linked := &domain.RecipeIngredient{RecipeID: r.ID, Name: new("onion"), RawText: "onion", FoodID: &foodID}
+	require.NoError(t, db.Create(linked).Error)
+
+	nameless := &domain.RecipeIngredient{RecipeID: r.ID, RawText: "a pinch of salt"}
+	require.NoError(t, db.Create(nameless).Error)
+
+	stale := &domain.RecipeIngredient{RecipeID: r.ID, Name: new("garlic"), RawText: "garlic"}
+	require.NoError(t, db.Create(stale).Error)
+	require.NoError(t, db.Model(stale).UpdateColumn("updated", since.Add(-time.Minute)).Error)
+
+	got, err := repo.IngredientsWithoutFoodSince(since)
+	require.NoError(t, err)
+
+	require.Len(t, got, 1)
+	assert.Equal(t, unlinked.ID, got[0].ID)
+}
+
 func TestRecipeRepository_Import_CreatesRecipeWithoutPublisher(t *testing.T) {
 	db := openTestDB(t)
 	repo := repositories.NewRecipeRepository(db)

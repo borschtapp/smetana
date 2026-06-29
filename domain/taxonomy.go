@@ -45,11 +45,25 @@ func (t *Taxonomy) BeforeCreate(_ *gorm.DB) error {
 }
 
 type TaxonomyRepository interface {
+	ByID(id uuid.UUID) (*Taxonomy, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Taxonomy, error)
 	Search(taxonomyType string, householdID uuid.UUID, opts types.SearchOptions) ([]Taxonomy, int64, error)
 	FindOrCreate(taxonomy *Taxonomy) error
+	Merge(keepID, mergeID uuid.UUID) error
+	// Detach clears the canonical pointer set by Merge, so the taxonomy stops resolving
+	// as an alias. It does not restore junction rows Merge reassigned to the kept taxonomy.
+	Detach(id uuid.UUID) error
+
+	// MergeCandidates returns the work set (canonical taxonomies updated after since) and
+	// the full canonical catalog to compare it against for near-duplicate detection.
+	MergeCandidates(since time.Time) (workSet, catalog []Taxonomy, err error)
 }
 
 type TaxonomyService interface {
+	ByID(id uuid.UUID) (*Taxonomy, error)
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Taxonomy, error)
 	Search(taxonomyType string, householdID uuid.UUID, opts types.SearchOptions) ([]Taxonomy, int64, error)
 	FindOrCreate(taxonomy *Taxonomy) error
+	Merge(keepID, mergeID uuid.UUID) error
+	Detach(id uuid.UUID) error
 }

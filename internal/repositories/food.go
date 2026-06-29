@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"time"
 
 	"borscht.app/smetana/internal/types"
 	"github.com/google/uuid"
@@ -30,20 +31,7 @@ func (r *foodRepository) ByID(id uuid.UUID) (*domain.Food, error) {
 }
 
 func (r *foodRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
-	if len(ids) == 0 {
-		return make(map[uuid.UUID]*domain.Food), nil
-	}
-
-	var foods []domain.Food
-	if err := r.db.Where("id IN ?", ids).Find(&foods).Error; err != nil {
-		return nil, fmt.Errorf("foods by ids: %w", mapErr(err))
-	}
-
-	result := make(map[uuid.UUID]*domain.Food, len(foods))
-	for i := range foods {
-		result[foods[i].ID] = &foods[i]
-	}
-	return result, nil
+	return byIDs(r.db, ids, func(f *domain.Food) uuid.UUID { return f.ID })
 }
 
 func (r *foodRepository) FindOrCreate(food *domain.Food) error {
@@ -181,6 +169,10 @@ func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
 	})
 }
 
+func (r *foodRepository) Detach(id uuid.UUID) error {
+	return detach[domain.Food](r.db, id, "canonical_food_id")
+}
+
 func (r *foodRepository) Update(food *domain.Food) error {
 	if err := r.db.Model(food).Select("name", "description", "default_unit_id", "pantry").Updates(food).Error; err != nil {
 		return fmt.Errorf("update food %s: %w", food.ID, mapErr(err))
@@ -292,6 +284,48 @@ func (r *foodRepository) DeleteConversion(foodID, id uuid.UUID) error {
 		return fmt.Errorf("delete conversion: %w", mapErr(err))
 	}
 	return nil
+}
+
+func (r *foodRepository) DefaultUnitUsageSince(since time.Time) ([]domain.FoodUnitUsage, error) {
+	var rows []domain.FoodUnitUsage
+	// food.updated is added to the GROUP BY (not wrapped in MAX) even though it's already
+	// single-valued per food_id within a group: an aggregated expression loses its column
+	// type metadata on SQLite, which breaks the driver's automatic time.Time scan.
+	err := r.db.Model(&domain.RecipeIngredient{}).
+		Select("recipe_ingredients.food_id AS food_id, recipe_ingredients.unit_id AS unit_id, COUNT(*) AS count, food.updated AS updated").
+		Joins("JOIN food ON food.id = recipe_ingredients.food_id").
+		Where("food.default_unit_id IS NULL AND food.canonical_food_id IS NULL AND food.updated > ?", since).
+		Where("recipe_ingredients.food_id IS NOT NULL AND recipe_ingredients.unit_id IS NOT NULL").
+		Group("recipe_ingredients.food_id, recipe_ingredients.unit_id, food.updated").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("default unit usage since %s: %w", since, mapErr(err))
+	}
+	return rows, nil
+}
+
+func (r *foodRepository) BySlugsOrNames(slugs, names []string) ([]domain.Food, error) {
+	if len(slugs) == 0 && len(names) == 0 {
+		return nil, nil
+	}
+	var foods []domain.Food
+	err := r.db.Scopes(IsCanonicalFood).
+		Where("slug IN ? OR lower(name) IN ?", slugs, names).
+		Find(&foods).Error
+	if err != nil {
+		return nil, fmt.Errorf("foods by slugs or names: %w", mapErr(err))
+	}
+	return foods, nil
+}
+
+func (r *foodRepository) MergeCandidates(since time.Time) (workSet, catalog []domain.Food, err error) {
+	if err := r.db.Scopes(IsCanonicalFood).Where("updated > ?", since).Find(&workSet).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates workset: %w", mapErr(err))
+	}
+	if err := r.db.Scopes(IsCanonicalFood).Find(&catalog).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates catalog: %w", mapErr(err))
+	}
+	return workSet, catalog, nil
 }
 
 func (r *foodRepository) ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error) {

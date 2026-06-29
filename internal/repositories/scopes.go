@@ -55,6 +55,13 @@ func IsCanonicalUnit(db *gorm.DB) *gorm.DB {
 	return db.Where("canonical_unit_id IS NULL")
 }
 
+// NonConvertibleUnit restricts a units query to units with no base factor, mirroring
+// Unit.Convertible()'s zero check. Kept as a single named scope so a future change to
+// that invariant only needs updating in one SQL location.
+func NonConvertibleUnit(db *gorm.DB) *gorm.DB {
+	return db.Where("units.base_factor = 0")
+}
+
 // WithPreloadIngredients eagerly loads a recipe's Ingredients relation, joining Food and Unit.
 func WithPreloadIngredients(db *gorm.DB) *gorm.DB {
 	return db.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {

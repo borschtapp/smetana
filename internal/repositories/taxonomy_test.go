@@ -2,6 +2,7 @@ package repositories_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -62,6 +63,38 @@ func TestTaxonomyRepository_FindOrCreate_ReturnsExistingBySlug(t *testing.T) {
 	var count int64
 	db.Model(&domain.Taxonomy{}).Where("slug = ?", "vegan").Count(&count)
 	assert.EqualValues(t, 1, count)
+}
+
+func TestTaxonomyRepository_MergeCandidates_FiltersAliasesAndSince(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewTaxonomyRepository(db)
+
+	stale := seedTaxonomy(t, db, "Stale", domain.TaxonomyTypeCuisine)
+	fresh := seedTaxonomy(t, db, "Fresh", domain.TaxonomyTypeCuisine)
+
+	since := stale.Updated.Add(time.Millisecond)
+	require.NoError(t, db.Model(fresh).UpdateColumn("updated", since.Add(time.Millisecond)).Error)
+
+	alias := seedTaxonomy(t, db, "Alias", domain.TaxonomyTypeCuisine)
+	require.NoError(t, repo.Merge(fresh.ID, alias.ID))
+
+	workSet, catalog, err := repo.MergeCandidates(since)
+	require.NoError(t, err)
+
+	workIDs := make([]uuid.UUID, len(workSet))
+	for i, tx := range workSet {
+		workIDs[i] = tx.ID
+	}
+	assert.Contains(t, workIDs, fresh.ID)
+	assert.NotContains(t, workIDs, stale.ID, "work set excludes rows updated before since")
+	assert.NotContains(t, workIDs, alias.ID, "work set excludes aliases")
+
+	catalogIDs := make([]uuid.UUID, len(catalog))
+	for i, tx := range catalog {
+		catalogIDs[i] = tx.ID
+	}
+	assert.Contains(t, catalogIDs, stale.ID, "catalog includes canonical rows regardless of since")
+	assert.NotContains(t, catalogIDs, alias.ID, "catalog excludes aliases")
 }
 
 func TestTaxonomyRepository_Search_SortByTotalRecipes(t *testing.T) {

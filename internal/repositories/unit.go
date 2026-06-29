@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -25,6 +26,10 @@ func (r *unitRepository) ByID(id uuid.UUID) (*domain.Unit, error) {
 		return nil, fmt.Errorf("unit by id %s: %w", id, mapErr(err))
 	}
 	return &unit, nil
+}
+
+func (r *unitRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Unit, error) {
+	return byIDs(r.db, ids, func(u *domain.Unit) uuid.UUID { return u.ID })
 }
 
 func (r *unitRepository) FindOrCreate(unit *domain.Unit) error {
@@ -140,8 +145,13 @@ func (r *unitRepository) Merge(keepID, mergeID uuid.UUID) error {
 	})
 }
 
+func (r *unitRepository) Detach(id uuid.UUID) error {
+	return detach[domain.Unit](r.db, id, "canonical_unit_id")
+}
+
 func (r *unitRepository) Update(unit *domain.Unit) error {
-	if err := r.db.Model(unit).Select("name").Updates(unit).Error; err != nil {
+	cols := []string{"name", "slug", "base_unit_id", "base_factor", "imperial"}
+	if err := r.db.Model(unit).Select(cols).Updates(unit).Error; err != nil {
 		return fmt.Errorf("update unit %s: %w", unit.ID, mapErr(err))
 	}
 	return nil
@@ -160,4 +170,55 @@ func (r *unitRepository) AddTaxonomy(unitID uuid.UUID, taxonomy *domain.Taxonomy
 		return fmt.Errorf("add taxonomy %s to unit %s: %w", taxonomy.ID, unitID, mapErr(err))
 	}
 	return nil
+}
+
+// The "no conversion yet" check is done as a second query rather than a correlated
+// NOT EXISTS subquery, to keep both queries expressible with the plain query builder.
+func (r *unitRepository) NonConvertibleUsageSince(since time.Time) ([]domain.FoodUnitPair, error) {
+	var candidates []domain.FoodUnitPair
+	err := r.db.Model(&domain.RecipeIngredient{}).
+		Distinct("recipe_ingredients.food_id AS food_id, recipe_ingredients.unit_id AS unit_id").
+		Joins("JOIN food ON food.id = recipe_ingredients.food_id").
+		Joins("JOIN units ON units.id = recipe_ingredients.unit_id").
+		Where("recipe_ingredients.food_id IS NOT NULL AND recipe_ingredients.unit_id IS NOT NULL").
+		Where("food.canonical_food_id IS NULL AND food.updated > ?", since).
+		Scopes(NonConvertibleUnit).
+		Scan(&candidates).Error
+	if err != nil {
+		return nil, fmt.Errorf("non-convertible usage since %s: %w", since, mapErr(err))
+	}
+	if len(candidates) == 0 {
+		return nil, nil
+	}
+
+	foodIDs := make([]uuid.UUID, len(candidates))
+	for i, c := range candidates {
+		foodIDs[i] = c.FoodID
+	}
+	var existing []domain.FoodUnitConversion
+	if err := r.db.Where("food_id IN ?", foodIDs).Find(&existing).Error; err != nil {
+		return nil, fmt.Errorf("existing conversions for non-convertible usage: %w", mapErr(err))
+	}
+	hasConversion := make(map[domain.FoodUnitPair]bool, len(existing))
+	for _, c := range existing {
+		hasConversion[domain.FoodUnitPair{FoodID: c.FoodID, UnitID: c.UnitID}] = true
+	}
+
+	result := candidates[:0]
+	for _, c := range candidates {
+		if !hasConversion[c] {
+			result = append(result, c)
+		}
+	}
+	return result, nil
+}
+
+func (r *unitRepository) MergeCandidates(since time.Time) (workSet, catalog []domain.Unit, err error) {
+	if err := r.db.Scopes(IsCanonicalUnit).Where("updated > ?", since).Find(&workSet).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates workset: %w", mapErr(err))
+	}
+	if err := r.db.Scopes(IsCanonicalUnit).Find(&catalog).Error; err != nil {
+		return nil, nil, fmt.Errorf("merge candidates catalog: %w", mapErr(err))
+	}
+	return workSet, catalog, nil
 }

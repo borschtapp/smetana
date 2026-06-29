@@ -4181,6 +4181,336 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/suggestions": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "List catalog maintenance suggestions with optional filters. Defaults to pending status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "List suggestions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suggestion type filter",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter (default: pending)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Subject entity type (food|unit|taxonomy|ingredient)",
+                        "name": "subject_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Subject entity UUID",
+                        "name": "subject_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Visibility scope: global|household|all (default: all)",
+                        "name": "scope",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination limit (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ListResponse-domain_SuggestionView"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/scan": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Runs all global detectors (or a single global type if ?type= is provided) synchronously. Household-scoped detectors are skipped.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Trigger an immediate reconcile sweep",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Limit scan to a single detector type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/stats": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Suggestion counts grouped by type and status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.SuggestionStat"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Get a single suggestion with hydrated view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suggestion UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.SuggestionView"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/{id}/accept": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Accept and apply a suggestion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suggestion UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Reject a suggestion (kept for dedup)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suggestion UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/{id}/revert": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "tags": [
+                    "suggestions"
+                ],
+                "summary": "Revert an applied suggestion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Suggestion UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/taxonomies": {
             "get": {
                 "security": [
@@ -6010,6 +6340,126 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.SuggestionStat": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.SuggestionStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/domain.SuggestionType"
+                }
+            }
+        },
+        "domain.SuggestionStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "accepted",
+                "auto_applied",
+                "rejected",
+                "reverted",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusAccepted",
+                "StatusAutoApplied",
+                "StatusRejected",
+                "StatusReverted",
+                "StatusFailed"
+            ]
+        },
+        "domain.SuggestionType": {
+            "type": "string",
+            "enum": [
+                "food_merge",
+                "unit_merge",
+                "taxonomy_merge",
+                "food_default_unit",
+                "food_conversion",
+                "unit_base_factor",
+                "food_pantry",
+                "ingredient_food_link",
+                "food_price"
+            ],
+            "x-enum-varnames": [
+                "SuggestionFoodMerge",
+                "SuggestionUnitMerge",
+                "SuggestionTaxonomyMerge",
+                "SuggestionFoodDefaultUnit",
+                "SuggestionFoodConversion",
+                "SuggestionUnitBaseFactor",
+                "SuggestionFoodPantry",
+                "SuggestionIngredientFood",
+                "SuggestionFoodPrice"
+            ]
+        },
+        "domain.SuggestionView": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "description": "0..1",
+                    "type": "number"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "household_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "description": "type-specific proposal",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "resolved_by": {
+                    "type": "string"
+                },
+                "source": {
+                    "description": "\"algorithm\" | \"llm\" | \"external\"",
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.SuggestionStatus"
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "subject_type": {
+                    "description": "Subject columns: indexed so we can list \"suggestions about food X\" without parsing JSON.",
+                    "type": "string"
+                },
+                "target_id": {
+                    "description": "\"keep\" entity in a merge",
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/domain.SuggestionType"
+                },
+                "view": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
         "domain.Taxonomy": {
             "type": "object",
             "required": [
@@ -6388,6 +6838,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.ShoppingList"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/types.Meta"
+                }
+            }
+        },
+        "types.ListResponse-domain_SuggestionView": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.SuggestionView"
                     }
                 },
                 "meta": {
