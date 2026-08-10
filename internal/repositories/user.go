@@ -111,3 +111,21 @@ func (r *userRepository) DeleteToken(tokenStr string) (bool, error) {
 	}
 	return result.RowsAffected == 1, nil
 }
+
+func (r *userRepository) DeleteTokensByUserExcept(userID uuid.UUID, tokenType string, exceptTokenHash *string) error {
+	q := r.db.Unscoped().Where("user_id = ? AND type = ?", userID, tokenType)
+	if exceptTokenHash != nil {
+		q = q.Where("token <> ?", *exceptTokenHash)
+	}
+	if err := q.Delete(&domain.UserToken{}).Error; err != nil {
+		return fmt.Errorf("delete tokens by user %s type %s: %w", userID, tokenType, mapErr(err))
+	}
+	return nil
+}
+
+func (r *userRepository) Transaction(fn func(txRepo domain.UserRepository) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txRepo := NewUserRepository(tx)
+		return fn(txRepo)
+	})
+}

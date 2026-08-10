@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -26,6 +27,10 @@ type recipeIngestService struct {
 	taxonomyService  domain.TaxonomyService
 	equipmentService domain.EquipmentService
 	fetchConcurrency int
+
+	// importGroup serializes Import calls for the same source URL so two concurrent imports
+	// of a brand-new recipe can't both miss each other's in-flight row and create duplicates.
+	importGroup singleflight.Group
 }
 
 func NewRecipeIngestService(
@@ -189,6 +194,15 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 	s.processInstructionImages(ctx, recipe)
 
 	// 8. Save global recipe
+	if recipe.SourceUrl != nil {
+		v, err, _ := s.importGroup.Do(*recipe.SourceUrl, func() (any, error) {
+			return recipe, s.recipeService.Import(recipe)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return v.(*domain.Recipe), nil
+	}
 	if err := s.recipeService.Import(recipe); err != nil {
 		return nil, err
 	}

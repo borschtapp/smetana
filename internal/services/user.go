@@ -30,8 +30,7 @@ func (s *userService) ByID(id uuid.UUID, requesterID uuid.UUID) (*domain.User, e
 	return user, nil
 }
 
-// Update fetches the user, applies the non-nil patches, and persists the result.
-func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*domain.User, error) {
+func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword, currentRefreshTokenHash *string) (*domain.User, error) {
 	if id != requesterID {
 		return nil, sentinels.ErrForbidden
 	}
@@ -39,7 +38,8 @@ func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	if err != nil {
 		return nil, fmt.Errorf("update (fetch user): %w", err)
 	}
-	if email != nil || newPassword != nil {
+	credentialChange := email != nil || newPassword != nil
+	if credentialChange {
 		if currentPassword == nil || !utils.ValidatePassword(user.Password, *currentPassword) {
 			return nil, sentinels.ErrUnauthorized
 		}
@@ -57,7 +57,17 @@ func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	if name != nil {
 		user.Name = *name
 	}
-	if err := s.repo.Update(user); err != nil {
+
+	err = s.repo.Transaction(func(txRepo domain.UserRepository) error {
+		if err := txRepo.Update(user); err != nil {
+			return err
+		}
+		if credentialChange {
+			return txRepo.DeleteTokensByUserExcept(user.ID, domain.TokenTypeRefresh, currentRefreshTokenHash)
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, fmt.Errorf("update (persist): %w", err)
 	}
 	return user, nil

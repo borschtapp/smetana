@@ -47,10 +47,17 @@ type UserRepository interface {
 	FindTokensByHousehold(householdID uuid.UUID, tokenType string) ([]UserToken, error)
 	CreateToken(token *UserToken) error
 	DeleteToken(tokenStr string) (bool, error)
+	// DeleteTokensByUserExcept deletes every token of tokenType for the user. If exceptTokenHash
+	// is non-nil, the matching token is left in place; pass nil to delete all of them.
+	DeleteTokensByUserExcept(userID uuid.UUID, tokenType string, exceptTokenHash *string) error
+
+	Transaction(fn func(txRepo UserRepository) error) error
 }
 
 type UserService interface {
 	ByID(id uuid.UUID, requesterID uuid.UUID) (*User, error)
-	Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword *string) (*User, error)
+	// Update applies the given non-nil patches. When email or newPassword is set, the currentPassword must validate.
+	// currentRefreshTokenHash, if provided, is the hash of the caller's own refresh token (see utils.HashToken);
+	Update(id uuid.UUID, requesterID uuid.UUID, name, email, currentPassword, newPassword, currentRefreshTokenHash *string) (*User, error)
 	Delete(id uuid.UUID, requesterID uuid.UUID) error
 }

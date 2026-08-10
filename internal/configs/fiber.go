@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -21,12 +22,14 @@ func FiberConfig() fiber.Config {
 
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			var se *sentinels.Error
+			var fe *fiber.Error
 
-			if e, ok := err.(*sentinels.Error); ok {
-				se = e
-			} else if e, ok := err.(*fiber.Error); ok {
-				se = &sentinels.Error{Status: e.Code, Message: e.Message}
-			} else {
+			switch {
+			case errors.As(err, &se):
+				// already a sentinels.Error, use as-is
+			case errors.As(err, &fe):
+				se = &sentinels.Error{Status: fe.Code, Message: fe.Message}
+			default:
 				log.Errorw("unexpected error", "error", err.Error(), "method", ctx.Method(), "path", ctx.Path())
 				se = &sentinels.Error{Status: fiber.StatusInternalServerError, Message: "An internal error occurred"}
 			}

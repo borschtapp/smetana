@@ -41,14 +41,20 @@ func NewStorage(serverHost string, serverPort int) StorageConfig {
 		}
 	}
 
-	baseURL := os.Getenv("BASE_URL")
+	origin := os.Getenv("BASE_URL")
 	storageRoot := utils.Getenv("STORAGE_ROOT", "./data/uploads")
-	if baseURL == "" {
+
+	var baseURL string
+	if origin == "" {
 		uploadsHost := serverHost
 		if uploadsHost == "" {
 			uploadsHost = "localhost"
 		}
 		baseURL = fmt.Sprintf("http://%s:%d/uploads", uploadsHost, serverPort)
+	} else {
+		// BASE_URL is the app origin (see README); local uploads are only ever
+		// mounted under /uploads (main.go), so the media base must match that.
+		baseURL = strings.TrimSuffix(origin, "/") + "/uploads"
 	}
 
 	log.Infow("Storage initialized", "baseURL", baseURL, "storageRoot", storageRoot)

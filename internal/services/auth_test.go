@@ -344,3 +344,83 @@ func TestAuthService_Register_WithInviteCode_ExpiredToken_BadRequest(t *testing.
 	require.ErrorAs(t, err, &sentinelErr)
 	assert.Equal(t, 400, sentinelErr.Status)
 }
+
+func TestAuthService_ResetPassword_RevokesAllResetAndRefreshTokens(t *testing.T) {
+	userID := uuid.New()
+	user := &domain.User{ID: userID, Password: "old-hash"}
+	userToken := &domain.UserToken{
+		UserID:  userID,
+		Type:    domain.TokenTypePasswordReset,
+		Token:   hashToken("valid-reset-token"),
+		Expires: time.Now().Add(time.Hour),
+		User:    user,
+	}
+
+	var updatedPassword string
+	var revokedTypes []string
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return userToken, nil },
+		updateFn: func(u *domain.User) error {
+			updatedPassword = u.Password
+			return nil
+		},
+		deleteTokensByUserExceptFn: func(id uuid.UUID, tokenType string, exceptTokenHash *string) error {
+			assert.Equal(t, userID, id)
+			assert.Nil(t, exceptTokenHash, "a reset has no session to preserve, so every token of this type is revoked")
+			revokedTypes = append(revokedTypes, tokenType)
+			return nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	err := svc.ResetPassword("valid-reset-token", "new-password")
+
+	require.NoError(t, err)
+	assert.NotEqual(t, "old-hash", updatedPassword, "password must be rehashed")
+	assert.ElementsMatch(t, []string{domain.TokenTypePasswordReset, domain.TokenTypeRefresh}, revokedTypes,
+		"reset must revoke every outstanding password-reset token and every refresh token, not just the one used")
+}
+
+func TestAuthService_ResetPassword_ExpiredToken_Unauthorized(t *testing.T) {
+	expiredToken := &domain.UserToken{
+		Type:    domain.TokenTypePasswordReset,
+		Expires: time.Now().Add(-time.Hour),
+		User:    &domain.User{ID: uuid.New()},
+	}
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return expiredToken, nil },
+	}
+
+	svc := newTestAuthService(repo)
+	err := svc.ResetPassword("expired-token", "new-password")
+
+	require.ErrorIs(t, err, sentinels.ErrUnauthorized)
+}
+
+func TestAuthService_ResetPassword_RevokeFails_PropagatesErrorAndDoesNotCommit(t *testing.T) {
+	userID := uuid.New()
+	user := &domain.User{ID: userID, Password: "old-hash"}
+	userToken := &domain.UserToken{
+		UserID:  userID,
+		Type:    domain.TokenTypePasswordReset,
+		Token:   hashToken("valid-reset-token"),
+		Expires: time.Now().Add(time.Hour),
+		User:    user,
+	}
+
+	repo := &stubUserRepo{
+		findTokenFn: func(_, _ string) (*domain.UserToken, error) { return userToken, nil },
+		updateFn:    func(_ *domain.User) error { return nil },
+		deleteTokensByUserExceptFn: func(_ uuid.UUID, tokenType string, _ *string) error {
+			if tokenType == domain.TokenTypeRefresh {
+				return errDB
+			}
+			return nil
+		},
+	}
+
+	svc := newTestAuthService(repo)
+	err := svc.ResetPassword("valid-reset-token", "new-password")
+
+	require.ErrorIs(t, err, errDB, "caller must see the failure so the transaction rolls back")
+}

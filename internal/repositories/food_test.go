@@ -357,8 +357,7 @@ func TestFoodRepository_CreateConversion_UniqueConstraint(t *testing.T) {
 	err = repo.CreateConversion(&domain.FoodUnitConversion{
 		FoodID: food.ID, UnitID: unitCup.ID, TargetAmount: 240, TargetUnitID: unitMl.ID,
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "UNIQUE constraint failed")
+	require.ErrorIs(t, err, sentinels.ErrAlreadyExists)
 }
 
 func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {

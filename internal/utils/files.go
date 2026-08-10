@@ -26,7 +26,7 @@ func DetectContentTypeFromResponse(r *http.Response) string {
 func DetectContentTypeFromHeader(header http.Header) string {
 	contentType := header.Get("Content-type")
 	if contentType != "" {
-		for _, v := range strings.Split(contentType, ",") {
+		for v := range strings.SplitSeq(contentType, ",") {
 			if t, _, err := mime.ParseMediaType(v); err == nil {
 				return t
 			}
@@ -43,4 +43,12 @@ func ExtensionByType(typ string) string {
 	}
 
 	return extensions[len(extensions)-1]
+}
+
+// AllowedImageTypes maps accepted image MIME types to fixed formats.
+var AllowedImageTypes = map[string]string{
+	"image/jpeg": "jpeg",
+	"image/png":  "png",
+	"image/webp": "webp",
+	"image/gif":  "gif",
 }

@@ -211,7 +211,7 @@ func TestUnitService_Search_ImperialFilter_ReturnsOnlyImperialUnits(t *testing.T
 	all := append(massFixtures(), volumeFixtures()...)
 	svc := services.NewUnitService(newFakeUnitRepo(all...))
 
-	units, total, err := svc.Search("", ptr(true), 0, 20)
+	units, total, err := svc.Search("", new(true), 0, 20)
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total, "fixture has exactly 2 imperial units (oz, tsp)")
@@ -224,7 +224,7 @@ func TestUnitService_Search_MetricFilter_ReturnsOnlyMetricUnits(t *testing.T) {
 	all := append(massFixtures(), volumeFixtures()...)
 	svc := services.NewUnitService(newFakeUnitRepo(all...))
 
-	units, _, err := svc.Search("", ptr(false), 0, 20)
+	units, _, err := svc.Search("", new(false), 0, 20)
 
 	require.NoError(t, err)
 	for _, u := range units {

@@ -33,7 +33,7 @@ func SeedUnits(db *gorm.DB) error {
 
 	// Re-fetch base IDs in case rows existed before this run.
 	var existing []domain.Unit
-	if err := db.Select("id, slug").Where("slug IN ?", []string{"g", "ml", "pc"}).Find(&existing).Error; err != nil {
+	if err := db.Select("id, slug").Where("slug IN ?", []string{"g", "ml", "cm", "pc"}).Find(&existing).Error; err != nil {
 		return err
 	}
 	idx := make(map[string]uuid.UUID, len(existing))
@@ -42,15 +42,10 @@ func SeedUnits(db *gorm.DB) error {
 	}
 
 	gramID := new(idx["g"])
-	mlID := new(idx["ml"])
+	mliterID := new(idx["ml"])
+	cmeterID := new(idx["cm"])
 
 	units := []domain.Unit{
-		{Slug: "mm", Name: "millimeter", BaseUnitID: gramID, BaseFactor: 0.1},
-		{Slug: "dm", Name: "decimeter", BaseUnitID: gramID, BaseFactor: 10},
-		{Slug: "m", Name: "meter", BaseUnitID: gramID, BaseFactor: 100},
-		{Slug: "in", Name: "inch", BaseUnitID: gramID, BaseFactor: 25, Imperial: true},
-		{Slug: "ft", Name: "foot", BaseUnitID: gramID, BaseFactor: 300, Imperial: true},
-
 		{Slug: "mg", Name: "milligram", BaseUnitID: gramID, BaseFactor: 0.001},
 		{Slug: "kg", Name: "kilogram", BaseUnitID: gramID, BaseFactor: 1000},
 		{Slug: "t", Name: "metric ton", BaseUnitID: gramID, BaseFactor: 1_000_000},
@@ -58,18 +53,24 @@ func SeedUnits(db *gorm.DB) error {
 		{Slug: "lb", Name: "pound", BaseUnitID: gramID, BaseFactor: 454, Imperial: true},
 		{Slug: "st", Name: "stone", BaseUnitID: gramID, BaseFactor: 6350, Imperial: true},
 
-		{Slug: "l", Name: "liter", BaseUnitID: mlID, BaseFactor: 1000},
-		{Slug: "dl", Name: "deciliter", BaseUnitID: mlID, BaseFactor: 100},
-		{Slug: "cl", Name: "centiliter", BaseUnitID: mlID, BaseFactor: 10},
+		{Slug: "l", Name: "liter", BaseUnitID: mliterID, BaseFactor: 1000},
+		{Slug: "dl", Name: "deciliter", BaseUnitID: mliterID, BaseFactor: 100},
+		{Slug: "cl", Name: "centiliter", BaseUnitID: mliterID, BaseFactor: 10},
 		// I have discovered that imperial tsp is 18% larger than tsp, it was difficult to fall asleep with this.
 		// I decided, I don't care, it's anyway easier to read when we have 5 ml and not 4.928922 or 5.91939 ml 🙄
-		{Slug: "tsp", Name: "teaspoon", BaseUnitID: mlID, BaseFactor: 5, Imperial: true},
-		{Slug: "tbsp", Name: "tablespoon", BaseUnitID: mlID, BaseFactor: 15, Imperial: true},
-		{Slug: "fl-oz", Name: "fluid ounce", BaseUnitID: mlID, BaseFactor: 30, Imperial: true},
-		{Slug: "cup", Name: "cup", BaseUnitID: mlID, BaseFactor: 240, Imperial: true},
-		{Slug: "pt", Name: "pint", BaseUnitID: mlID, BaseFactor: 480, Imperial: true},
-		{Slug: "qt", Name: "quart", BaseUnitID: mlID, BaseFactor: 950, Imperial: true},
-		{Slug: "gal", Name: "gallon", BaseUnitID: mlID, BaseFactor: 3800, Imperial: true},
+		{Slug: "tsp", Name: "teaspoon", BaseUnitID: mliterID, BaseFactor: 5, Imperial: true},
+		{Slug: "tbsp", Name: "tablespoon", BaseUnitID: mliterID, BaseFactor: 15, Imperial: true},
+		{Slug: "fl-oz", Name: "fluid ounce", BaseUnitID: mliterID, BaseFactor: 30, Imperial: true},
+		{Slug: "cup", Name: "cup", BaseUnitID: mliterID, BaseFactor: 240, Imperial: true},
+		{Slug: "pt", Name: "pint", BaseUnitID: mliterID, BaseFactor: 480, Imperial: true},
+		{Slug: "qt", Name: "quart", BaseUnitID: mliterID, BaseFactor: 950, Imperial: true},
+		{Slug: "gal", Name: "gallon", BaseUnitID: mliterID, BaseFactor: 3800, Imperial: true},
+
+		{Slug: "mm", Name: "millimeter", BaseUnitID: cmeterID, BaseFactor: 0.1},
+		{Slug: "dm", Name: "decimeter", BaseUnitID: cmeterID, BaseFactor: 10},
+		{Slug: "m", Name: "meter", BaseUnitID: cmeterID, BaseFactor: 100},
+		{Slug: "in", Name: "inch", BaseUnitID: cmeterID, BaseFactor: 25, Imperial: true},
+		{Slug: "ft", Name: "foot", BaseUnitID: cmeterID, BaseFactor: 300, Imperial: true},
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "slug"}},

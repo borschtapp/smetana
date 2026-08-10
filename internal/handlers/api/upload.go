@@ -4,23 +4,21 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"slices"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/log"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/utils"
 )
 
 type UploadHandler struct {
-	allowedTypes []string
 	imageService domain.ImageService
 }
 
 func NewUploadHandler(imageService domain.ImageService) *UploadHandler {
 	return &UploadHandler{
-		allowedTypes: []string{"image/jpeg", "image/png", "image/webp", "image/gif"},
 		imageService: imageService,
 	}
 }
@@ -63,7 +61,7 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	}
 
 	contentType := http.DetectContentType(data)
-	if !slices.Contains(h.allowedTypes, contentType) {
+	if _, ok := utils.AllowedImageTypes[contentType]; !ok {
 		return sentinels.BadRequest("Only image files are allowed (jpeg, png, webp, gif)")
 	}
 

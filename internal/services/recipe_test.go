@@ -85,7 +85,7 @@ func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
 	globalID := uuid.New()
 	myHID := uuid.New()
 	uid := uuid.New()
-	global := &domain.Recipe{ID: globalID, HouseholdID: nil, Name: ptr("Global")}
+	global := &domain.Recipe{ID: globalID, HouseholdID: nil, Name: new("Global")}
 
 	var clonedID uuid.UUID
 	createCalled := false
@@ -119,7 +119,7 @@ func TestRecipeService_Update_GlobalRecipe_ClonesBeforeUpdate(t *testing.T) {
 	}
 
 	svc := newTestRecipeService(recipeServiceDeps{repo: repo})
-	patch := &domain.Recipe{ID: globalID, Name: ptr("My Custom Version")}
+	patch := &domain.Recipe{ID: globalID, Name: new("My Custom Version")}
 	err := svc.Update(patch, uid, myHID)
 
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestRecipeService_Update_GlobalRecipe_DeepClonesIngredientsAndInstructions(
 		ID:          globalID,
 		HouseholdID: nil,
 		Ingredients: []*domain.RecipeIngredient{
-			{ID: uuid.New(), FoodID: &foodID, UnitID: &unitID, Amount: ptr(100.0)},
+			{ID: uuid.New(), FoodID: &foodID, UnitID: &unitID, Amount: new(100.0)},
 		},
 		Instructions: []*domain.RecipeInstruction{
 			{ID: uuid.New(), Text: "Step 1"},
@@ -302,10 +302,10 @@ func TestRecipeService_EstimatePrice_CalculatesTotal(t *testing.T) {
 
 	recipe := &domain.Recipe{
 		ID:    uuid.New(),
-		Yield: ptr(4),
+		Yield: new(4),
 		Ingredients: []*domain.RecipeIngredient{
-			{FoodID: &foodID1, Amount: ptr(200.0), UnitID: &unitID},
-			{FoodID: &foodID2, Amount: ptr(500.0), UnitID: &unitID},
+			{FoodID: &foodID1, Amount: new(200.0), UnitID: &unitID},
+			{FoodID: &foodID2, Amount: new(500.0), UnitID: &unitID},
 		},
 	}
 

@@ -7,7 +7,7 @@ services:
 #      postgres:
 #        condition: service_healthy
     volumes:
-      - ./data:/data
+      - ./data:/app/data
 
 # database is optional, read .env.example or README.md for more details
 #  postgres:

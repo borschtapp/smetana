@@ -21,7 +21,7 @@ import (
 // openTestDB opens a shared in-memory SQLite database with the full production schema.
 func openTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{TranslateError: true})
 	require.NoError(t, err, "failed to open in-memory SQLite")
 	require.NoError(t, database.Migrate(db), "failed to apply migrations")
 	return db
@@ -31,7 +31,7 @@ func openTestDB(t *testing.T) *gorm.DB {
 func openPrivateTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=private", t.Name())
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{TranslateError: true})
 	require.NoError(t, err, "failed to open private in-memory SQLite")
 	require.NoError(t, database.Migrate(db), "failed to apply migrations")
 	return db
@@ -518,6 +518,61 @@ func TestRecipeRepository_Import_CreatesRecipeWithoutPublisher(t *testing.T) {
 	var pubCount int64
 	db.Model(&domain.Publisher{}).Where("name = ?", "Test Publisher").Count(&pubCount)
 	assert.EqualValues(t, 0, pubCount, "Import must omit Publisher association creation")
+}
+
+func TestRecipeRepository_Import_ForceUpdateReusesExistingRowBySourceURL(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	url := "https://example.com/recipe-1"
+	first := &domain.Recipe{SourceUrl: &url, Name: new("Original Name")}
+	require.NoError(t, repo.Import(first))
+	firstID := first.ID
+
+	// Simulate a forced reimport: a fresh scrape with no ID assigned yet, same source URL.
+	second := &domain.Recipe{SourceUrl: &url, Name: new("Updated Name")}
+	require.NoError(t, repo.Import(second))
+
+	assert.Equal(t, firstID, second.ID, "reimporting the same source URL must reuse the existing row's ID")
+
+	var count int64
+	db.Model(&domain.Recipe{}).Where("source_url = ?", url).Count(&count)
+	assert.EqualValues(t, 1, count, "reimporting must not create a duplicate row for the same source URL")
+
+	var got domain.Recipe
+	require.NoError(t, db.First(&got, "id = ?", firstID).Error)
+	assert.Equal(t, "Updated Name", *got.Name, "the existing row must be updated in place")
+}
+
+func TestRecipeRepository_Import_ClearsAssociationsAbsentFromReimport(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	url := "https://example.com/recipe-2"
+	e := seedEquipment(t, db, "Whisk")
+
+	first := &domain.Recipe{
+		SourceUrl: &url,
+		Nutrition: &domain.RecipeNutrition{Calories: new(120.0)},
+		Equipment: []*domain.Equipment{e},
+	}
+	require.NoError(t, repo.Import(first))
+
+	var nutritionCount, equipmentCount int64
+	db.Model(&domain.RecipeNutrition{}).Where("recipe_id = ?", first.ID).Count(&nutritionCount)
+	db.Model(&recipeEquipment{}).Where("recipe_id = ?", first.ID).Count(&equipmentCount)
+	require.EqualValues(t, 1, nutritionCount)
+	require.EqualValues(t, 1, equipmentCount)
+
+	// Reimport the same URL where the source no longer yields nutrition or equipment data.
+	second := &domain.Recipe{SourceUrl: &url}
+	require.NoError(t, repo.Import(second))
+	assert.Equal(t, first.ID, second.ID)
+
+	db.Model(&domain.RecipeNutrition{}).Where("recipe_id = ?", first.ID).Count(&nutritionCount)
+	db.Model(&recipeEquipment{}).Where("recipe_id = ?", first.ID).Count(&equipmentCount)
+	assert.EqualValues(t, 0, nutritionCount, "stale nutrition must be cleared when absent from reimport")
+	assert.EqualValues(t, 0, equipmentCount, "stale equipment must be cleared when absent from reimport")
 }
 
 // seedPublisher creates a Publisher row directly in the DB and returns it.

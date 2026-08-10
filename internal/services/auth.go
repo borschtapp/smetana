@@ -171,6 +171,7 @@ func (s *authService) ForgotPassword(email string) error {
 }
 
 // ResetPassword validates the reset token and updates the user's password.
+// It revokes all password-reset and refresh tokens for the user.
 func (s *authService) ResetPassword(rawToken, newPassword string) error {
 	userToken, err := s.userRepo.FindToken(utils.HashToken(rawToken), domain.TokenTypePasswordReset)
 	if err != nil {
@@ -185,11 +186,14 @@ func (s *authService) ResetPassword(rawToken, newPassword string) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	userToken.User.Password = hash
-	if err := s.userRepo.Update(userToken.User); err != nil {
-		return err
-	}
-
-	_, err = s.userRepo.DeleteToken(userToken.Token)
-	return err
+	return s.userRepo.Transaction(func(txRepo domain.UserRepository) error {
+		userToken.User.Password = hash
+		if err := txRepo.Update(userToken.User); err != nil {
+			return err
+		}
+		if err := txRepo.DeleteTokensByUserExcept(userToken.UserID, domain.TokenTypePasswordReset, nil); err != nil {
+			return err
+		}
+		return txRepo.DeleteTokensByUserExcept(userToken.UserID, domain.TokenTypeRefresh, nil)
+	})
 }

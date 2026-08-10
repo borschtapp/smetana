@@ -12,13 +12,11 @@ import (
 	"borscht.app/smetana/internal/types"
 )
 
-func ptrStr(s string) *string { return &s }
-
 func TestAuthorRepository_FindOrCreate_CreatesNew(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewAuthorRepository(db)
 
-	a := &domain.Author{Name: "Julia Child", Url: ptrStr("https://juliachild.com")}
+	a := &domain.Author{Name: "Julia Child", Url: new("https://juliachild.com")}
 	require.NoError(t, repo.FindOrCreate(a))
 
 	assert.NotEmpty(t, a.ID)
@@ -31,10 +29,10 @@ func TestAuthorRepository_FindOrCreate_ExistingByURL_ReturnsExistingID(t *testin
 	db := openPrivateTestDB(t)
 	repo := repositories.NewAuthorRepository(db)
 
-	first := &domain.Author{Name: "Gordon Ramsay", Url: ptrStr("https://gordonramsay.com")}
+	first := &domain.Author{Name: "Gordon Ramsay", Url: new("https://gordonramsay.com")}
 	require.NoError(t, repo.FindOrCreate(first))
 
-	second := &domain.Author{Name: "Gordon Ramsay", Url: ptrStr("https://gordonramsay.com")}
+	second := &domain.Author{Name: "Gordon Ramsay", Url: new("https://gordonramsay.com")}
 	require.NoError(t, repo.FindOrCreate(second))
 
 	assert.Equal(t, first.ID, second.ID, "same URL must resolve to the same author")

@@ -135,7 +135,7 @@ func TestFeedService_FetchFeed_SkipsAlreadyImportedRecipes(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/borsch")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -167,7 +167,7 @@ func TestFeedService_FetchFeed_NewRecipe_ImportsAndAssignsFeedID(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
 
-	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/new")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/new")}
 	feedRepo := &stubFeedRepo{
 		updateFn: func(_ *domain.Feed) error { return nil },
 	}
@@ -201,7 +201,7 @@ func TestFeedService_FetchFeed_ExistingPublicRecipeWithNoFeedID_BackfillsFeedID(
 	feedID := uuid.New()
 	existingID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
-	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/borsch")}
 
 	feedRepo := &stubFeedRepo{updateFn: func(_ *domain.Feed) error { return nil }}
 	scraper := &stubScraperService{
@@ -240,7 +240,7 @@ func TestFeedService_FetchFeed_ExistingPublicRecipeWithNoFeedID_BackfillsFeedID(
 func TestFeedService_FetchFeed_ExistingPrivateRecipe_ImportsNewPublicCopy(t *testing.T) {
 	feedID := uuid.New()
 	feed := domain.Feed{ID: feedID, Active: true, Url: "https://good.feed"}
-	scraped := &domain.Recipe{SourceUrl: ptr("https://recipe.example.com/borsch")}
+	scraped := &domain.Recipe{SourceUrl: new("https://recipe.example.com/borsch")}
 
 	feedRepo := &stubFeedRepo{updateFn: func(_ *domain.Feed) error { return nil }}
 	scraper := &stubScraperService{

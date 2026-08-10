@@ -131,3 +131,10 @@ func (r *shoppingListRepository) DeleteItem(id uuid.UUID) error {
 	}
 	return nil
 }
+
+func (r *shoppingListRepository) Transaction(fn func(txRepo domain.ShoppingListRepository) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txRepo := NewShoppingListRepository(tx)
+		return fn(txRepo)
+	})
+}

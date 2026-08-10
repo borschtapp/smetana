@@ -211,7 +211,7 @@ func (r *recipeRepository) Search(userID uuid.UUID, householdID uuid.UUID, opts 
 		return nil, 0, fmt.Errorf("search find: %w", mapErr(err))
 	}
 
-	if opts.PreloadOptions.HasAny("saved", "all") {
+	if opts.HasAny("saved", "all") {
 		ptrs := make([]*domain.Recipe, len(recipes))
 		for i := range recipes {
 			ptrs[i] = &recipes[i]
@@ -233,7 +233,7 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if recipe.ID == uuid.Nil && recipe.SourceUrl != nil {
+		if recipe.SourceUrl != nil {
 			var urlExisting domain.Recipe
 			if err := tx.Where("source_url = ? AND household_id IS NULL", *recipe.SourceUrl).First(&urlExisting).Error; err == nil {
 				recipe.ID = urlExisting.ID
@@ -261,18 +261,20 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 			}
 		}
 
-		// Explicitly sync associations that should be persisted on import
-		if recipe.Nutrition != nil {
+		// Explicitly sync associations to exactly what was scraped this time — an empty/nil
+		// value means the source no longer has that data, so replace (not skip) clears it.
+		// On a fresh create there is nothing to clear, so only replace when there's data to add.
+		if isUpdate || recipe.Nutrition != nil {
 			if err := tx.Model(recipe).Association("Nutrition").Replace(recipe.Nutrition); err != nil {
 				return fmt.Errorf("import replace nutrition: %w", mapErr(err))
 			}
 		}
-		if len(recipe.Equipment) > 0 {
+		if isUpdate || len(recipe.Equipment) > 0 {
 			if err := tx.Model(recipe).Association("Equipment").Replace(recipe.Equipment); err != nil {
 				return fmt.Errorf("import replace equipment: %w", mapErr(err))
 			}
 		}
-		if len(recipe.Taxonomies) > 0 {
+		if isUpdate || len(recipe.Taxonomies) > 0 {
 			if err := tx.Model(recipe).Association("Taxonomies").Replace(recipe.Taxonomies); err != nil {
 				return fmt.Errorf("import replace taxonomies: %w", mapErr(err))
 			}

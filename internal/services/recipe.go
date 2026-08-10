@@ -85,11 +85,14 @@ func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts dom
 func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	recipe.HouseholdID = &householdID
 	recipe.UserID = &userID
-	if err := s.repo.Create(recipe); err != nil {
+	err := s.repo.Transaction(func(txRepo domain.RecipeRepository) error {
+		if err := txRepo.Create(recipe); err != nil {
+			return err
+		}
+		return txRepo.UserSave(recipe.ID, userID, householdID)
+	})
+	if err != nil {
 		return fmt.Errorf("create: %w", err)
-	}
-	if err := s.UserSave(recipe.ID, userID, householdID); err != nil {
-		return fmt.Errorf("auto-save after create: %w", err)
 	}
 	return nil
 }

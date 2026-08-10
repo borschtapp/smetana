@@ -2,8 +2,10 @@ package configs
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gofiber/fiber/v3/log"
 	"gorm.io/driver/mysql"
@@ -38,8 +40,29 @@ var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
 	},
 	"sqlite": func(cfg databaseEnvVars) gorm.Dialector {
 		_ = os.MkdirAll(filepath.Dir(cfg.Name), 0700)
-		return sqlite.Open(cfg.Name)
+		return sqlite.Open(sqliteDSN(cfg.Name))
 	},
+}
+
+// sqliteDSN ensures that SQLite enforces foreign-key constraints on every
+// connection opened by the driver. Foreign keys are disabled by default in
+// SQLite, even when the schema contains FOREIGN KEY clauses.
+func sqliteDSN(dsn string) string {
+	base, query, hasQuery := strings.Cut(dsn, "?")
+	if !hasQuery {
+		return dsn + "?_foreign_keys=on"
+	}
+
+	values, err := url.ParseQuery(query)
+	if err != nil {
+		// Preserve an otherwise valid driver DSN and still request enforcement.
+		return dsn + "&_foreign_keys=on"
+	}
+	// url.Values.Get returns the first matching value. Remove any supplied
+	// setting so DB_NAME cannot accidentally leave foreign keys disabled.
+	values.Del("_foreign_keys")
+	values.Set("_foreign_keys", "on")
+	return base + "?" + values.Encode()
 }
 
 func GormConfig() (gorm.Config, gorm.Dialector) {

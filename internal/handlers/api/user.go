@@ -4,6 +4,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/tokens"
 	"borscht.app/smetana/internal/types"
+	"borscht.app/smetana/internal/utils"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -46,6 +47,10 @@ type UpdateUserForm struct {
 	Email           *string `validate:"omitempty,email,min=6" json:"email" format:"email" example:"john@example.com"`
 	NewPassword     *string `validate:"omitempty,min=8" json:"new_password" example:"newpassword123"`
 	CurrentPassword *string `validate:"required_if=Email !nil,required_if=NewPassword !nil" json:"current_password" example:"password123"`
+	// RefreshToken is the caller's own refresh token. When changing the email or password, every
+	// other refresh token for the user is revoked; passing this one exempts it so the current
+	// session survives the change instead of being logged out along with every other session.
+	RefreshToken *string `validate:"omitempty" json:"refresh_token,omitempty"`
 }
 
 // UpdateUser godoc
@@ -73,8 +78,14 @@ func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 		return err
 	}
 
+	var refreshTokenHash *string
+	if body.RefreshToken != nil {
+		hash := utils.HashToken(*body.RefreshToken)
+		refreshTokenHash = &hash
+	}
+
 	tokenData := tokens.MustClaims(c)
-	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email, body.CurrentPassword, body.NewPassword)
+	user, err := h.userService.Update(id, tokenData.ID, body.Name, body.Email, body.CurrentPassword, body.NewPassword, refreshTokenHash)
 	if err != nil {
 		return err
 	}

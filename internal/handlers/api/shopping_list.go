@@ -183,13 +183,14 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 		items[i] = &domain.ShoppingItem{Text: form.Text, Amount: form.Amount, FoodID: form.FoodID, UnitID: form.UnitID}
 	}
 
-	if err := h.service.AddItems(c.Context(), items, id, tokenData.HouseholdID); err != nil {
+	saved, err := h.service.AddItems(c.Context(), items, id, tokenData.HouseholdID)
+	if err != nil {
 		return err
 	}
 	if isArray {
-		return c.Status(fiber.StatusCreated).JSON(items)
+		return c.Status(fiber.StatusCreated).JSON(saved)
 	}
-	return c.Status(fiber.StatusCreated).JSON(items[0])
+	return c.Status(fiber.StatusCreated).JSON(saved[0])
 }
 
 type UpdateShoppingItemForm struct {

@@ -86,14 +86,14 @@ func (s *imageService) PersistRemoteAsDefault(ctx context.Context, img *domain.I
 // fillFromRemote downloads img.SourceURL, saves the file, and updates image with path + metadata.
 // On failure the DB record is left intact (empty Path) so the caller can retry later.
 func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pathPrefix string) error {
-	data, contentType, err := s.download(ctx, img.SourceURL)
+	data, err := s.download(ctx, img.SourceURL)
 	if err != nil {
 		return fmt.Errorf("download %s: %w", img.SourceURL, err)
 	}
 
-	ext := utils.ExtensionByType(contentType)
-	if ext == "" {
-		ext = ".jpg"
+	contentType, ext, w, h, err := validateImage(data)
+	if err != nil {
+		return fmt.Errorf("validate remote image %s: %w", img.SourceURL, err)
 	}
 	fullPath := pathPrefix + "/" + img.ID.String() + ext
 
@@ -101,7 +101,6 @@ func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pa
 		return fmt.Errorf("save to storage: %w", err)
 	}
 
-	w, h := decodeImageDimensions(data)
 	img.Path = new(storage.Path(fullPath))
 	img.Width = &w
 	img.Height = &h
@@ -116,15 +115,18 @@ func (s *imageService) fillFromRemote(ctx context.Context, img *domain.Image, pa
 	return nil
 }
 
-func (s *imageService) PersistUploaded(_ context.Context, data []byte, contentType string) (*domain.UploadedImage, error) {
+// PersistUploaded ignores the caller-supplied contentType for storage decisions — it re-derives
+// the type from the actual bytes so a caller that skips (or gets tricked past) its own validation
+// can't smuggle in an unsafe extension or content type.
+func (s *imageService) PersistUploaded(_ context.Context, data []byte, _ string) (*domain.UploadedImage, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, fmt.Errorf("persist uploaded (generate uuid): %w", err)
 	}
 
-	ext := utils.ExtensionByType(contentType)
-	if ext == "" {
-		ext = ".jpg"
+	contentType, ext, w, h, err := validateImage(data)
+	if err != nil {
+		return nil, fmt.Errorf("persist uploaded (validate): %w", err)
 	}
 	fullPath := "uploads/" + id.String() + ext
 
@@ -132,7 +134,6 @@ func (s *imageService) PersistUploaded(_ context.Context, data []byte, contentTy
 		return nil, fmt.Errorf("persist uploaded (save to storage): %w", err)
 	}
 
-	w, h := decodeImageDimensions(data)
 	return &domain.UploadedImage{
 		Path:        storage.Path(fullPath),
 		Width:       w,
@@ -166,19 +167,22 @@ func (s *imageService) Delete(imageID uuid.UUID) error {
 	return nil
 }
 
-func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, string, error) {
+// download fetches remoteURL and returns the raw response bytes. The response's declared
+// Content-Type is intentionally not trusted or returned here — validateImage sniffs and
+// verifies the real type from the bytes themselves.
+func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, error) {
 	dlCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(dlCtx, http.MethodGet, remoteURL, nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("create download request: %w", err)
+		return nil, fmt.Errorf("create download request: %w", err)
 	}
 	req.Header.Set("User-Agent", s.userAgent)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("execute download request: %w", err)
+		return nil, fmt.Errorf("execute download request: %w", err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, resp.Body)
@@ -186,31 +190,44 @@ func (s *imageService) download(ctx context.Context, remoteURL string) ([]byte, 
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", errors.New("unable to download image: non-200 status")
+		return nil, errors.New("unable to download image: non-200 status")
 	}
 
 	const maxImageBytes = 20 << 20 // 20 MB
 	limited := io.LimitReader(resp.Body, maxImageBytes+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
-		return nil, "", fmt.Errorf("read response body: %w", err)
+		return nil, fmt.Errorf("read response body: %w", err)
 	}
 	if int64(len(data)) > maxImageBytes {
-		return nil, "", errors.New("remote image too large (>20 MB)")
+		return nil, errors.New("remote image too large (>20 MB)")
 	}
 
-	contentType := utils.DetectContentTypeFromHeader(resp.Header)
-	if contentType == "" || contentType == "application/octet-stream" {
-		contentType = http.DetectContentType(data)
-	}
-
-	return data, contentType, nil
+	return data, nil
 }
 
-func decodeImageDimensions(data []byte) (int, int) {
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil {
-		return 0, 0
+// validateImage is the single gate remote downloads and uploads must both pass before bytes
+// are written to storage or served back to clients:
+//  1. sniff the real content type from the bytes (never trust a caller- or server-supplied header)
+//  2. reject anything outside the image allowlist, so nothing (e.g. HTML) can ever be stored
+//     with a content type or extension that a static file server would treat as active content
+//  3. require the bytes to actually decode as an image, and as the *same* format that was
+//     sniffed, to reject truncated files and polyglot payloads crafted to sniff as one format
+//     while decoding as another
+func validateImage(data []byte) (contentType, ext string, width, height int, err error) {
+	contentType = http.DetectContentType(data)
+	imgType, allowed := utils.AllowedImageTypes[contentType]
+	if !allowed {
+		return "", "", 0, 0, fmt.Errorf("unsupported image content type: %s", contentType)
 	}
-	return cfg.Width, cfg.Height
+
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return "", "", 0, 0, fmt.Errorf("invalid or corrupt image data: %w", err)
+	}
+	if imgType != format {
+		return "", "", 0, 0, fmt.Errorf("image content mismatch: sniffed %s but decoded as %s", contentType, format)
+	}
+
+	return contentType, utils.ExtensionByType(contentType), cfg.Width, cfg.Height, nil
 }

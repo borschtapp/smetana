@@ -156,7 +156,10 @@ func (s *stubRecipeRepo) UpdateInstruction(i *domain.RecipeInstruction) error {
 	return s.updateInstructionFn(i)
 }
 func (s *stubRecipeRepo) Transaction(fn func(domain.RecipeRepository) error) error {
-	return s.transactionFn(fn)
+	if s.transactionFn != nil {
+		return s.transactionFn(fn)
+	}
+	return fn(s)
 }
 func (s *stubRecipeRepo) ReplaceRecipePointers(old, newID, hid uuid.UUID) error {
 	return s.replaceRecipePointersFn(old, newID, hid)
@@ -165,14 +168,17 @@ func (s *stubRecipeRepo) ReplaceRecipePointers(old, newID, hid uuid.UUID) error 
 type stubUserRepo struct {
 	domain.UserRepository
 
-	byIDFn        func(uuid.UUID) (*domain.User, error)
-	byEmailFn     func(string) (*domain.User, error)
-	createFn      func(*domain.User) error
-	updateFn      func(*domain.User) error
-	deleteFn      func(uuid.UUID) error
-	findTokenFn   func(string, string) (*domain.UserToken, error)
-	createTokenFn func(*domain.UserToken) error
-	deleteTokenFn func(string) (bool, error)
+	byIDFn                     func(uuid.UUID) (*domain.User, error)
+	byEmailFn                  func(string) (*domain.User, error)
+	createFn                   func(*domain.User) error
+	updateFn                   func(*domain.User) error
+	deleteFn                   func(uuid.UUID) error
+	deleteAndCleanupFn         func(uuid.UUID) error
+	findTokenFn                func(string, string) (*domain.UserToken, error)
+	createTokenFn              func(*domain.UserToken) error
+	deleteTokenFn              func(string) (bool, error)
+	deleteTokensByUserExceptFn func(uuid.UUID, string, *string) error
+	transactionFn              func(func(domain.UserRepository) error) error
 }
 
 func (s *stubUserRepo) ByID(id uuid.UUID) (*domain.User, error) {
@@ -195,11 +201,29 @@ func (s *stubUserRepo) Delete(id uuid.UUID) error {
 	}
 	return nil
 }
+func (s *stubUserRepo) DeleteAndCleanupHousehold(id uuid.UUID) error {
+	if s.deleteAndCleanupFn != nil {
+		return s.deleteAndCleanupFn(id)
+	}
+	return nil
+}
 func (s *stubUserRepo) FindToken(tok, typ string) (*domain.UserToken, error) {
 	return s.findTokenFn(tok, typ)
 }
 func (s *stubUserRepo) CreateToken(t *domain.UserToken) error { return s.createTokenFn(t) }
 func (s *stubUserRepo) DeleteToken(tok string) (bool, error)  { return s.deleteTokenFn(tok) }
+func (s *stubUserRepo) DeleteTokensByUserExcept(userID uuid.UUID, tokenType string, exceptTokenHash *string) error {
+	if s.deleteTokensByUserExceptFn != nil {
+		return s.deleteTokensByUserExceptFn(userID, tokenType, exceptTokenHash)
+	}
+	return nil
+}
+func (s *stubUserRepo) Transaction(fn func(domain.UserRepository) error) error {
+	if s.transactionFn != nil {
+		return s.transactionFn(fn)
+	}
+	return fn(s)
+}
 
 type stubHouseholdRepo struct {
 	domain.HouseholdRepository
@@ -219,6 +243,47 @@ func (s *stubHouseholdRepo) Delete(id uuid.UUID) error {
 		return s.deleteFn(id)
 	}
 	return nil
+}
+
+type stubShoppingListRepo struct {
+	domain.ShoppingListRepository
+
+	byIDFn               func(uuid.UUID) (*domain.ShoppingList, error)
+	findItemsByFoodIDsFn func(uuid.UUID, []uuid.UUID) ([]domain.ShoppingItem, error)
+	updateItemFn         func(*domain.ShoppingItem) error
+	createItemsFn        func([]*domain.ShoppingItem) error
+	transactionFn        func(func(domain.ShoppingListRepository) error) error
+}
+
+func (s *stubShoppingListRepo) ByID(id uuid.UUID) (*domain.ShoppingList, error) {
+	if s.byIDFn != nil {
+		return s.byIDFn(id)
+	}
+	return nil, nil
+}
+func (s *stubShoppingListRepo) FindItemsByFoodIDs(listID uuid.UUID, foodIDs []uuid.UUID) ([]domain.ShoppingItem, error) {
+	if s.findItemsByFoodIDsFn != nil {
+		return s.findItemsByFoodIDsFn(listID, foodIDs)
+	}
+	return nil, nil
+}
+func (s *stubShoppingListRepo) UpdateItem(item *domain.ShoppingItem) error {
+	if s.updateItemFn != nil {
+		return s.updateItemFn(item)
+	}
+	return nil
+}
+func (s *stubShoppingListRepo) CreateItems(items []*domain.ShoppingItem) error {
+	if s.createItemsFn != nil {
+		return s.createItemsFn(items)
+	}
+	return nil
+}
+func (s *stubShoppingListRepo) Transaction(fn func(domain.ShoppingListRepository) error) error {
+	if s.transactionFn != nil {
+		return s.transactionFn(fn)
+	}
+	return fn(s)
 }
 
 type stubImageService struct {
@@ -359,19 +424,6 @@ func (s *stubUnitService) ConvertWithConversions(amount float64, from, to uuid.U
 	return s.Convert(amount, from, to)
 }
 
-type stubTaxonomyRepo struct {
-	domain.TaxonomyRepository
-
-	findOrCreateFn func(*domain.Taxonomy) error
-}
-
-func (s *stubTaxonomyRepo) FindOrCreate(t *domain.Taxonomy) error {
-	if s.findOrCreateFn != nil {
-		return s.findOrCreateFn(t)
-	}
-	return nil
-}
-
 type stubEquipmentService struct {
 	domain.EquipmentService
 
@@ -484,5 +536,3 @@ func (s *stubTaxonomyService) FindOrCreate(t *domain.Taxonomy) error {
 	}
 	return nil
 }
-
-func ptr[T any](v T) *T { return &v }
