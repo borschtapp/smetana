@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -110,16 +111,32 @@ func (s *stubRecipeService) DeleteIngredient(id, rid, hid uuid.UUID) error {
 	return nil
 }
 
-// buildApp creates a Fiber app with a stubbed RecipeService already wired in.
-func buildApp(t *testing.T, svc *stubRecipeService) *fiber.App {
+// newProtectedApp returns an app and its JWT-protected /api/v1 group.
+func newProtectedApp(t *testing.T) (*fiber.App, fiber.Router) {
 	t.Helper()
-	const testSecret = "test-jwt-secret-key-for-handler-tests"
-	t.Setenv("JWT_SECRET_KEY", testSecret)
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret-key-for-handler-tests")
 	t.Setenv("JWT_SECRET_EXPIRE_MINUTES", "60")
 
 	app := fiber.New(configs.FiberConfig())
+	return app, app.Group("/api/v1", middlewares.Protected())
+}
+
+// sendJSON sends an authenticated JSON request.
+func sendJSON(t *testing.T, app *fiber.App, method, url, body string) *http.Response {
+	t.Helper()
+	req := httptest.NewRequest(method, url, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", makeToken(t, uuid.New(), uuid.New()))
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	return resp
+}
+
+// buildApp creates a Fiber app with a stubbed RecipeService already wired in.
+func buildApp(t *testing.T, svc *stubRecipeService) *fiber.App {
+	t.Helper()
+	app, protected := newProtectedApp(t)
 	handler := api.NewRecipeHandler(svc)
-	protected := app.Group("/api/v1", middlewares.Protected())
 	protected.Get("/recipes/:id", handler.GetRecipe)
 	protected.Get("/recipes", handler.GetRecipes)
 	protected.Post("/recipes", handler.CreateRecipe)

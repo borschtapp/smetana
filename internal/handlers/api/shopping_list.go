@@ -46,7 +46,7 @@ func (h *ShoppingListHandler) GetShoppingLists(c fiber.Ctx) error {
 }
 
 type ShoppingListForm struct {
-	Name string `validate:"required" json:"name" example:"Weekly Shop"`
+	Name string `validate:"required,min=2,max=255" json:"name" example:"Weekly Shop"`
 }
 
 // CreateShoppingList godoc
@@ -194,9 +194,9 @@ func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {
 }
 
 type UpdateShoppingItemForm struct {
-	Text     *string  `json:"text" example:"Organic Milk"`
-	Amount   *float64 `validate:"omitempty,gt=0" json:"amount" example:"1"`
-	IsBought *bool    `json:"is_bought" example:"true"`
+	Text     *string                 `validate:"omitnil,min=1,max=255" json:"text" example:"Organic Milk"`
+	Amount   types.Optional[float64] `validate:"omitnil,gt=0" json:"amount" swaggertype:"number" extensions:"x-nullable" example:"1"` // null clears it
+	IsBought *bool                   `json:"is_bought" example:"true"`
 }
 
 // UpdateShoppingItem godoc
@@ -223,23 +223,23 @@ func (h *ShoppingListHandler) UpdateShoppingItem(c fiber.Ctx) error {
 	if err := bindBody(c, &form); err != nil {
 		return err
 	}
-	tokenData := tokens.MustClaims(c)
-	patch := &domain.ShoppingItem{ID: itemID}
-	if form.Text != nil {
-		patch.Text = *form.Text
-	}
-	if form.Amount != nil {
-		patch.Amount = form.Amount
-	}
-	if form.IsBought != nil {
-		patch.IsBought = *form.IsBought
-	}
 
-	item, err := h.service.UpdateItem(patch, id, tokenData.HouseholdID)
+	tokenData := tokens.MustClaims(c)
+	updated, err := h.service.UpdateItem(itemID, id, tokenData.HouseholdID, func(item *domain.ShoppingItem) {
+		if form.Text != nil {
+			item.Text = *form.Text
+		}
+		if form.Amount.Set {
+			item.Amount = form.Amount.Value
+		}
+		if form.IsBought != nil {
+			item.IsBought = *form.IsBought
+		}
+	})
 	if err != nil {
 		return err
 	}
-	return c.JSON(item)
+	return c.JSON(updated)
 }
 
 // DeleteShoppingItem godoc

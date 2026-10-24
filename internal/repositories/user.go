@@ -46,7 +46,7 @@ func (r *userRepository) Create(user *domain.User) error {
 		if user.HouseholdID == uuid.Nil {
 			_ = user.BeforeCreate(tx) // to ensure user's ID is not empty
 			user.Household = &domain.Household{OwnerID: user.ID, Name: user.Name + "'s Household"}
-			if err := tx.Create(user.Household).Error; err != nil {
+			if err := createHousehold(tx, user.Household); err != nil {
 				return mapErr(err)
 			}
 			user.HouseholdID = user.Household.ID

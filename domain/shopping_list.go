@@ -11,7 +11,7 @@ import (
 type ShoppingList struct {
 	ID          uuid.UUID `gorm:"type:char(36);primaryKey" json:"id"`
 	HouseholdID uuid.UUID `gorm:"type:char(36);index;uniqueIndex:idx_household_default_list,priority:1,where:is_default = true" json:"-"`
-	Name        string    `json:"name" validate:"required,min=2,max=255"`
+	Name        string    `json:"name" validate:"omitempty,min=2,max=255"` // empty for the default list, clients show a localized name
 	IsDefault   bool      `gorm:"default:false;uniqueIndex:idx_household_default_list,priority:2,where:is_default = true" json:"is_default"`
 	Updated     time.Time `gorm:"autoUpdateTime" json:"-"`
 	Created     time.Time `gorm:"autoCreateTime" json:"-"`
@@ -80,6 +80,6 @@ type ShoppingListService interface {
 	Items(listID uuid.UUID, householdID uuid.UUID, offset, limit int) ([]ShoppingItem, int64, error)
 	AddItems(ctx context.Context, items []*ShoppingItem, listID uuid.UUID, householdID uuid.UUID) ([]*ShoppingItem, error)
 	GetItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) (*ShoppingItem, error)
-	UpdateItem(item *ShoppingItem, listID uuid.UUID, householdID uuid.UUID) (*ShoppingItem, error)
+	UpdateItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID, apply func(*ShoppingItem)) (*ShoppingItem, error)
 	DeleteItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID) error
 }

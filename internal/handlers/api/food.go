@@ -48,10 +48,10 @@ func (h *FoodHandler) GetFoods(c fiber.Ctx) error {
 }
 
 type updateFoodRequest struct {
-	Name          *string    `json:"name"           validate:"omitempty,min=1,max=255"`
-	Description   *string    `json:"description"    validate:"omitempty,max=1000"`
-	DefaultUnitID *uuid.UUID `json:"default_unit_id"`
-	Pantry        *bool      `json:"pantry"`
+	Name          *string                   `json:"name"            validate:"omitnil,min=1,max=255"`
+	Description   types.Optional[string]    `json:"description"     validate:"omitnil,max=1000" swaggertype:"string" extensions:"x-nullable"` // null clears it
+	DefaultUnitID types.Optional[uuid.UUID] `json:"default_unit_id" swaggertype:"string" format:"uuid" extensions:"x-nullable"`               // null clears it
+	Pantry        *bool                     `json:"pantry"`
 }
 
 // UpdateFood godoc
@@ -87,11 +87,11 @@ func (h *FoodHandler) UpdateFood(c fiber.Ctx) error {
 	if req.Name != nil {
 		food.Name = *req.Name
 	}
-	if req.Description != nil {
-		food.Description = req.Description
+	if req.Description.Set {
+		food.Description = req.Description.Value
 	}
-	if req.DefaultUnitID != nil {
-		food.DefaultUnitID = req.DefaultUnitID
+	if req.DefaultUnitID.Set {
+		food.DefaultUnitID = req.DefaultUnitID.Value
 	}
 	if req.Pantry != nil {
 		food.Pantry = *req.Pantry

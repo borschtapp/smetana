@@ -4878,6 +4878,8 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string",
+                    "maxLength": 255,
+                    "minLength": 2,
                     "example": "Weekly Shop"
                 }
             }
@@ -4938,7 +4940,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amount": {
+                    "description": "null clears it",
                     "type": "number",
+                    "x-nullable": true,
                     "example": 1
                 },
                 "is_bought": {
@@ -4947,6 +4951,8 @@ const docTemplate = `{
                 },
                 "text": {
                     "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1,
                     "example": "Organic Milk"
                 }
             }
@@ -5048,11 +5054,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "default_unit_id": {
-                    "type": "string"
+                    "description": "null clears it",
+                    "type": "string",
+                    "format": "uuid",
+                    "x-nullable": true
                 },
                 "description": {
+                    "description": "null clears it",
                     "type": "string",
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string",
@@ -5991,9 +6002,6 @@ const docTemplate = `{
         },
         "domain.ShoppingList": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -6008,6 +6016,7 @@ const docTemplate = `{
                     }
                 },
                 "name": {
+                    "description": "empty for the default list, clients show a localized name",
                     "type": "string",
                     "maxLength": 255,
                     "minLength": 2

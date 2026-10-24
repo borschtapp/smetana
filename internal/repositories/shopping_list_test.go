@@ -6,19 +6,27 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/repositories"
 	"borscht.app/smetana/internal/sentinels"
 )
+
+// seedShoppingList creates a list in a new household.
+func seedShoppingList(t *testing.T, db *gorm.DB) uuid.UUID {
+	t.Helper()
+	listID := uuid.New()
+	require.NoError(t, db.Create(&domain.ShoppingList{ID: listID, HouseholdID: seedHousehold(t, db), Name: "Groceries"}).Error)
+	return listID
+}
 
 func TestShoppingListRepository_CreateItems_DuplicateFoodInSameList_RejectedByUniqueConstraint(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewShoppingListRepository(db)
 
-	householdID := seedHousehold(t, db)
-	listID := uuid.New()
-	require.NoError(t, db.Create(&domain.ShoppingList{ID: listID, HouseholdID: householdID, Name: "Groceries"}).Error)
+	listID := seedShoppingList(t, db)
 
 	foodID := uuid.New()
 	require.NoError(t, db.Create(&domain.Food{ID: foodID, Name: "Flour", Slug: foodID.String()}).Error)
@@ -36,9 +44,7 @@ func TestShoppingListRepository_CreateItems_NilFoodDoesNotCollide(t *testing.T) 
 	db := openPrivateTestDB(t)
 	repo := repositories.NewShoppingListRepository(db)
 
-	householdID := seedHousehold(t, db)
-	listID := uuid.New()
-	require.NoError(t, db.Create(&domain.ShoppingList{ID: listID, HouseholdID: householdID, Name: "Groceries"}).Error)
+	listID := seedShoppingList(t, db)
 
 	first := &domain.ShoppingItem{ID: uuid.New(), ShoppingListID: listID, Text: "something"}
 	second := &domain.ShoppingItem{ID: uuid.New(), ShoppingListID: listID, Text: "something else"}
@@ -47,4 +53,78 @@ func TestShoppingListRepository_CreateItems_NilFoodDoesNotCollide(t *testing.T) 
 	err := repo.CreateItems([]*domain.ShoppingItem{second})
 
 	assert.NoError(t, err, "free-text items without a food reference must not be constrained by the food uniqueness index")
+}
+
+func TestShoppingListRepository_UpdateItem_LoadedItem_ClearsAmountAndKeepsOtherFields(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewShoppingListRepository(db)
+
+	listID := seedShoppingList(t, db)
+	foodID := uuid.New()
+	require.NoError(t, db.Create(&domain.Food{ID: foodID, Name: "Milk", Slug: foodID.String()}).Error)
+
+	itemID := uuid.New()
+	require.NoError(t, repo.CreateItems([]*domain.ShoppingItem{{ID: itemID, ShoppingListID: listID, FoodID: &foodID, Text: "milk", Amount: new(2.0)}}))
+
+	item, err := repo.ItemByID(itemID)
+	require.NoError(t, err)
+	item.Amount = nil
+	item.IsBought = true
+	require.NoError(t, repo.UpdateItem(item))
+
+	got, err := repo.ItemByID(itemID)
+	require.NoError(t, err)
+	assert.Nil(t, got.Amount, "a nil amount on a loaded item must be written as NULL")
+	assert.True(t, got.IsBought)
+	assert.Equal(t, "milk", got.Text)
+	assert.Equal(t, &foodID, got.FoodID)
+}
+
+func defaultListsOf(t *testing.T, db *gorm.DB, householdID uuid.UUID) []domain.ShoppingList {
+	t.Helper()
+	var lists []domain.ShoppingList
+	require.NoError(t, db.Scopes(repositories.HouseholdOwned(householdID)).Where("is_default = ?", true).Find(&lists).Error)
+	return lists
+}
+
+func TestUserRepository_Create_CreatesUnnamedDefaultShoppingList(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewUserRepository(db)
+
+	user := &domain.User{Name: "Alice", Email: "alice@example.com"}
+	require.NoError(t, repo.Create(user))
+
+	lists := defaultListsOf(t, db, user.HouseholdID)
+	require.Len(t, lists, 1)
+	assert.Empty(t, lists[0].Name, "the default list is unnamed so clients can localize it")
+}
+
+func TestHouseholdRepository_MoveUserToNewHousehold_CreatesDefaultShoppingList(t *testing.T) {
+	db := openPrivateTestDB(t)
+	user := &domain.User{Name: "Bob", Email: "bob@example.com"}
+	require.NoError(t, repositories.NewUserRepository(db).Create(user))
+
+	household, err := repositories.NewHouseholdRepository(db).MoveUserToNewHousehold(user, "EUR")
+	require.NoError(t, err)
+
+	assert.Len(t, defaultListsOf(t, db, household.ID), 1)
+}
+
+func TestSeedDefaultShoppingLists_BackfillsOnlyHouseholdsWithoutOne(t *testing.T) {
+	db := openPrivateTestDB(t)
+
+	withoutList := seedHousehold(t, db)
+	withList := seedHousehold(t, db)
+	require.NoError(t, db.Create(&domain.ShoppingList{HouseholdID: withList, Name: "Einkauf", IsDefault: true}).Error)
+
+	require.NoError(t, database.SeedDefaultShoppingLists(db))
+	require.NoError(t, database.SeedDefaultShoppingLists(db), "a second run must be a no-op")
+
+	backfilled := defaultListsOf(t, db, withoutList)
+	require.Len(t, backfilled, 1)
+	assert.Empty(t, backfilled[0].Name)
+
+	existing := defaultListsOf(t, db, withList)
+	require.Len(t, existing, 1)
+	assert.Equal(t, "Einkauf", existing[0].Name, "an existing default list must be left alone")
 }

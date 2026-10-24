@@ -265,16 +265,15 @@ func (s *shoppingListService) GetItem(itemID uuid.UUID, listID uuid.UUID, househ
 	return item, nil
 }
 
-func (s *shoppingListService) UpdateItem(item *domain.ShoppingItem, listID uuid.UUID, householdID uuid.UUID) (*domain.ShoppingItem, error) {
-	if _, err := s.GetItem(item.ID, listID, householdID); err != nil {
+// UpdateItem applies changes to the stored item, since the repository writes every updatable column.
+func (s *shoppingListService) UpdateItem(itemID uuid.UUID, listID uuid.UUID, householdID uuid.UUID, apply func(*domain.ShoppingItem)) (*domain.ShoppingItem, error) {
+	item, err := s.GetItem(itemID, listID, householdID)
+	if err != nil {
 		return nil, err
 	}
+	apply(item)
 	if err := s.repo.UpdateItem(item); err != nil {
 		return nil, fmt.Errorf("update item (persist): %w", err)
-	}
-	item, err := s.repo.ItemByID(item.ID)
-	if err != nil {
-		return nil, fmt.Errorf("update item (refetch): %w", err)
 	}
 	return item, nil
 }

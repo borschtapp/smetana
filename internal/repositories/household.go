@@ -20,6 +20,14 @@ func NewHouseholdRepository(db *gorm.DB) domain.HouseholdRepository {
 	return &householdRepository{db: db}
 }
 
+// createHousehold inserts a household together with its default shopping list.
+func createHousehold(tx *gorm.DB, household *domain.Household) error {
+	if err := tx.Omit(clause.Associations).Create(household).Error; err != nil {
+		return err
+	}
+	return tx.Create(&domain.ShoppingList{HouseholdID: household.ID, IsDefault: true}).Error
+}
+
 func (r *householdRepository) ByID(id uuid.UUID) (*domain.Household, error) {
 	var household domain.Household
 	if err := r.db.First(&household, id).Error; err != nil {
@@ -45,7 +53,7 @@ func (r *householdRepository) ByIDWithPreload(id uuid.UUID, opts types.PreloadOp
 }
 
 func (r *householdRepository) Create(household *domain.Household) error {
-	if err := r.db.Model(household).Omit(clause.Associations).Create(household).Error; err != nil {
+	if err := r.db.Transaction(func(tx *gorm.DB) error { return createHousehold(tx, household) }); err != nil {
 		return fmt.Errorf("create household: %w", mapErr(err))
 	}
 	return nil
@@ -83,7 +91,7 @@ func (r *householdRepository) MoveUserToNewHousehold(user *domain.User, currency
 	var newHousehold *domain.Household
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		newHousehold = &domain.Household{Name: user.Name + "'s Household", OwnerID: user.ID, Currency: currency}
-		if err := tx.Omit(clause.Associations).Create(newHousehold).Error; err != nil {
+		if err := createHousehold(tx, newHousehold); err != nil {
 			return err
 		}
 		return tx.Model(user).Update("household_id", newHousehold.ID).Error

@@ -76,6 +76,9 @@ func main() {
 		if err := database.SeedUnits(db); err != nil {
 			log.Fatalw("unit seed error", "error", err.Error())
 		}
+		if err := database.SeedDefaultShoppingLists(db); err != nil {
+			log.Fatalw("default shopping list seed error", "error", err.Error())
+		}
 	}
 
 	app := fiber.New(configs.FiberConfig())
