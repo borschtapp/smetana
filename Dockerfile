@@ -36,6 +36,6 @@ RUN chown -R appuser:appgroup /app/data
 EXPOSE 3000
 USER appuser
 
-HEALTHCHECK CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/_health || exit 1
+HEALTHCHECK CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:${SERVER_PORT:-3000}/_health" || exit 1
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["./main"]

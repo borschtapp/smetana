@@ -11,8 +11,8 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "contact": {},
         "license": {
-            "name": "MIT license",
-            "url": "https://opensource.org/license/mit/"
+            "name": "GNU General Public License v3.0",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.html"
         },
         "version": "{{.Version}}"
     },
@@ -4973,6 +4973,10 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "newpassword123"
+                },
+                "refresh_token": {
+                    "description": "RefreshToken is the caller's own refresh token. When changing the email or password, every\nother refresh token for the user is revoked; passing this one exempts it so the current\nsession survives the change instead of being logged out along with every other session.",
+                    "type": "string"
                 }
             }
         },

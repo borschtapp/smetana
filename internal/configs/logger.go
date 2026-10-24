@@ -21,8 +21,11 @@ func parseLogLevel(level string) log.Level {
 		return log.LevelWarn
 	case "error":
 		return log.LevelError
-	default:
+	case "trace":
 		return log.LevelTrace
+	default:
+		log.Warnw("unknown LOG_LEVEL, falling back to info", "level", level)
+		return log.LevelInfo
 	}
 }
 

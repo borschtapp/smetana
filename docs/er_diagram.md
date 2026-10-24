@@ -1,3 +1,6 @@
+# Database ER Diagram
+
+```mermaid
 classDiagram
 direction BT
 class authors {
@@ -32,17 +35,19 @@ class equipment {
    char(36) id
 }
 class feed_subscriptions {
-   char(36) household_id
    char(36) feed_id
+   char(36) household_id
 }
 class feeds {
    numeric active
    char(36) publisher_id
    text url
    text name
+   text description
    integer error_count
    datetime last_sync_at
    numeric last_sync_success
+   text discovered
    datetime updated
    datetime created
    char(36) id
@@ -53,7 +58,18 @@ class food {
    text description
    text image_path
    char(36) default_unit_id
+   numeric pantry
+   char(36) canonical_food_id
    datetime updated
+   datetime created
+   char(36) id
+}
+class food_prices {
+   char(36) household_id
+   char(36) food_id
+   char(36) unit_id
+   real price
+   real amount
    datetime created
    char(36) id
 }
@@ -61,9 +77,19 @@ class food_taxonomies {
    char(36) taxonomy_id
    char(36) food_id
 }
+class food_unit_conversions {
+   char(36) food_id
+   char(36) unit_id
+   real target_amount
+   char(36) target_unit_id
+   datetime updated
+   datetime created
+   char(36) id
+}
 class households {
    char(36) owner_id
    text name
+   text currency
    datetime updated
    datetime created
    char(36) id
@@ -192,12 +218,10 @@ class recipes {
    char(36) id
 }
 class recipes_saved {
-   char(36) household_id
-   numeric is_favorite
-   datetime updated
-   datetime created
    char(36) user_id
    char(36) recipe_id
+   char(36) household_id
+   datetime created
 }
 class scheduler_logs {
    text job_type
@@ -228,13 +252,6 @@ class shopping_lists {
    datetime created
    char(36) id
 }
-class sqlite_master {
-   text type
-   text name
-   text tbl_name
-   int rootpage
-   text sql
-}
 class taxonomies {
    text type
    text slug
@@ -252,6 +269,10 @@ class unit_taxonomies {
 class units {
    text slug
    text name
+   numeric imperial
+   char(36) base_unit_id
+   real base_factor
+   char(36) canonical_unit_id
    datetime updated
    datetime created
    char(36) id
@@ -283,9 +304,16 @@ collections  -->  users : user_id:id
 feed_subscriptions  -->  feeds : feed_id:id
 feed_subscriptions  -->  households : household_id:id
 feeds  -->  publishers : publisher_id:id
+food  -->  food : canonical_food_id:id
 food  -->  units : default_unit_id:id
+food_prices  -->  food : food_id:id
+food_prices  -->  households : household_id:id
+food_prices  -->  units : unit_id:id
 food_taxonomies  -->  food : food_id:id
 food_taxonomies  -->  taxonomies : taxonomy_id:id
+food_unit_conversions  -->  food : food_id:id
+food_unit_conversions  -->  units : unit_id:id
+food_unit_conversions  -->  units : target_unit_id:id
 meal_plans  -->  households : household_id:id
 meal_plans  -->  recipes : recipe_id:id
 recipe_equipment  -->  equipment : equipment_id:id
@@ -315,5 +343,8 @@ taxonomies  -->  taxonomies : canonical_id:id
 taxonomies  -->  taxonomies : parent_id:id
 unit_taxonomies  -->  taxonomies : taxonomy_id:id
 unit_taxonomies  -->  units : unit_id:id
+units  -->  units : base_unit_id:id
+units  -->  units : canonical_unit_id:id
 user_tokens  -->  users : user_id:id
 users  -->  households : household_id:id
+```

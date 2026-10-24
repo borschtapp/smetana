@@ -33,8 +33,8 @@ var version = "dev"
 // @title Smetana API
 // @version 1.0
 // @description The backend API for Borscht app.
-// @license.name MIT license
-// @license.url https://opensource.org/license/mit/
+// @license.name GNU General Public License v3.0
+// @license.url https://www.gnu.org/licenses/gpl-3.0.html
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization

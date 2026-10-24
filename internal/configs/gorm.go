@@ -1,12 +1,15 @@
 package configs
 
 import (
-	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	gomysql "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v3/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -27,21 +30,42 @@ type databaseEnvVars struct {
 	SSLMode  string // For Postgres
 }
 
-var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
-	"mysql": func(cfg databaseEnvVars) gorm.Dialector {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
-		return mysql.Open(dsn)
-	},
-	"postgres": func(cfg databaseEnvVars) gorm.Dialector {
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC",
-			cfg.Host, cfg.User, cfg.Password, cfg.Name, cfg.Port, cfg.SSLMode)
-		return postgres.Open(dsn)
-	},
-	"sqlite": func(cfg databaseEnvVars) gorm.Dialector {
-		_ = os.MkdirAll(filepath.Dir(cfg.Name), 0700)
-		return sqlite.Open(sqliteDSN(cfg.Name))
-	},
+func mysqlDSN(cfg databaseEnvVars) string {
+	port := cfg.Port
+	if port <= 0 {
+		port = 3306
+	}
+	dsn := gomysql.NewConfig()
+	dsn.User = cfg.User
+	dsn.Passwd = cfg.Password
+	dsn.Net = "tcp"
+	dsn.Addr = net.JoinHostPort(cfg.Host, strconv.Itoa(port))
+	dsn.DBName = cfg.Name
+	dsn.ParseTime = true
+	dsn.Loc = time.Local
+	_ = dsn.Apply(gomysql.Charset("utf8mb4", ""))
+	return dsn.FormatDSN()
+}
+
+// postgresDSN builds a postgres:// URL so that credentials and names are
+// percent-encoded; the key/value form breaks on empty or space-containing values.
+func postgresDSN(cfg databaseEnvVars) string {
+	port := cfg.Port
+	if port <= 0 {
+		port = 5432
+	}
+	u := url.URL{
+		Scheme:   "postgres",
+		Host:     net.JoinHostPort(cfg.Host, strconv.Itoa(port)),
+		Path:     "/" + cfg.Name,
+		RawQuery: url.Values{"sslmode": {cfg.SSLMode}, "TimeZone": {"UTC"}}.Encode(),
+	}
+	if cfg.Password != "" {
+		u.User = url.UserPassword(cfg.User, cfg.Password)
+	} else if cfg.User != "" {
+		u.User = url.User(cfg.User)
+	}
+	return u.String()
 }
 
 // sqliteDSN ensures that SQLite enforces foreign-key constraints on every
@@ -65,12 +89,25 @@ func sqliteDSN(dsn string) string {
 	return base + "?" + values.Encode()
 }
 
+var dialectRegistry = map[string]func(databaseEnvVars) gorm.Dialector{
+	"mysql": func(cfg databaseEnvVars) gorm.Dialector {
+		return mysql.Open(mysqlDSN(cfg))
+	},
+	"postgres": func(cfg databaseEnvVars) gorm.Dialector {
+		return postgres.Open(postgresDSN(cfg))
+	},
+	"sqlite": func(cfg databaseEnvVars) gorm.Dialector {
+		_ = os.MkdirAll(filepath.Dir(cfg.Name), 0700)
+		return sqlite.Open(sqliteDSN(cfg.Name))
+	},
+}
+
 func GormConfig() (gorm.Config, gorm.Dialector) {
 	enableLogger := utils.GetenvBool("LOG_DB_QUERIES", false)
 	envVars := databaseEnvVars{
 		Type:     utils.Getenv("DB_TYPE", "sqlite"),
 		Host:     utils.Getenv("DB_HOST", "localhost"),
-		Port:     utils.GetenvInt("DB_PORT", 3306),
+		Port:     utils.GetenvInt("DB_PORT", 0),
 		Name:     utils.Getenv("DB_NAME", "./data/borscht.db"),
 		User:     utils.Getenv("DB_USER", ""),
 		Password: utils.Getenv("DB_PASSWORD", ""),

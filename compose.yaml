@@ -2,19 +2,29 @@ services:
   backend:
     image: ghcr.io/borschtapp/smetana:latest
     restart: unless-stopped
+    ports:
+      - "3000:${SERVER_PORT:-3000}"
     env_file: .env
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
     volumes:
       - ./data:/app/data
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
 
-# database is optional, read .env.example or README.md for more details
-#  postgres:
-#    image: pgvector/pgvector:pg18-trixie
-#    restart: unless-stopped
-#    env_file: .env
-#    volumes:
-#      - ./pgdata:/var/lib/postgresql
-#    healthcheck:
-#      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+  # Optional PostgreSQL database service (uncomment to use PostgreSQL instead of SQLite).
+  # Requires DB_TYPE=postgres, DB_HOST=postgres, DB_USER, DB_PASSWORD and DB_NAME in .env;
+  # the same values configure both this container and the backend.
+  # postgres:
+  #   image: postgres:18
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${DB_USER:?set DB_USER in .env}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  #     POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+  #   volumes:
+  #     - ./pgdata:/var/lib/postgresql
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5

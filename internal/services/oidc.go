@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -28,6 +29,15 @@ func NewOIDCService(userRepo domain.UserRepository) (domain.OIDCService, error) 
 
 	if providerURL == "" || clientID == "" || clientSecret == "" {
 		return nil, fmt.Errorf("OIDC configuration missing")
+	}
+
+	// OIDC Core requires redirect_uri on the auth request, so derive it from BASE_URL when not set explicitly.
+	if redirectURL == "" {
+		baseURL := utils.Getenv("BASE_URL", "")
+		if baseURL == "" {
+			return nil, fmt.Errorf("OIDC_REDIRECT_URL or BASE_URL must be set")
+		}
+		redirectURL = strings.TrimRight(baseURL, "/") + "/api/v1/auth/oidc/callback"
 	}
 
 	ctx := context.Background()
