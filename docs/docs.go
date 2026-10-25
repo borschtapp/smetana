@@ -5563,6 +5563,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1200
                 },
+                "created": {
+                    "type": "string",
+                    "format": "date-time"
+                },
                 "description": {
                     "type": "string",
                     "maxLength": 10000,
@@ -5660,6 +5664,10 @@ const docTemplate = `{
                 "total_time": {
                     "type": "integer",
                     "example": 2100
+                },
+                "updated": {
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "user_id": {
                     "type": "string"

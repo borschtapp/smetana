@@ -33,8 +33,8 @@ type Recipe struct {
 	Rating      *Rating         `gorm:"embedded;embeddedPrefix:rating_" json:"rating,omitempty"`
 	Video       *Video          `gorm:"serializer:json" json:"video,omitempty"`
 	Published   *time.Time      `json:"published,omitempty" swaggertype:"string" format:"date-time"`
-	Updated     time.Time       `gorm:"autoUpdateTime" json:"-"`
-	Created     time.Time       `gorm:"autoCreateTime" json:"-"`
+	Updated     time.Time       `gorm:"autoUpdateTime" json:"updated" swaggertype:"string" format:"date-time"`
+	Created     time.Time       `gorm:"autoCreateTime" json:"created" swaggertype:"string" format:"date-time"`
 
 	SavedBy      []*RecipeSavedUser   `gorm:"-" json:"saved_by,omitempty"`
 	Parent       *Recipe              `gorm:"foreignKey:ParentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"-"`
