@@ -156,7 +156,6 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup := router.Group("/recipes", middlewares.Protected())
 	recipesGroup.Get("/", recipeHandler.GetRecipes)
 	recipesGroup.Post("/", recipeHandler.CreateRecipe)
-	recipesGroup.Post("/import", importHandler.Import)
 	recipesGroup.Get("/:id", recipeHandler.GetRecipe)
 	recipesGroup.Patch("/:id", recipeHandler.UpdateRecipe)
 	recipesGroup.Delete("/:id", recipeHandler.DeleteRecipe)

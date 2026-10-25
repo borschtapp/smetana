@@ -2960,63 +2960,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/recipes/import": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Backend attempts semantic extraction first, then AI extraction. Returns the imported Recipe object.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "recipes"
-                ],
-                "summary": "Import a recipe from URL.",
-                "parameters": [
-                    {
-                        "description": "Import request",
-                        "name": "import",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.ImportRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Recipe"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/sentinels.Error"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/recipes/{id}": {
             "get": {
                 "security": [
