@@ -56,7 +56,7 @@ func (s *stubRecipeService) Search(uid, hid uuid.UUID, opts domain.RecipeSearchO
 func (s *stubRecipeService) ImportRecipe(_ context.Context, _ *domain.Recipe) (*domain.Recipe, error) {
 	panic("not implemented in this test")
 }
-func (s *stubRecipeService) Create(r *domain.Recipe, uid, hid uuid.UUID) error {
+func (s *stubRecipeService) Create(_ context.Context, r *domain.Recipe, uid, hid uuid.UUID) error {
 	if s.createFn != nil {
 		return s.createFn(r, uid, hid)
 	}
@@ -98,7 +98,7 @@ func (s *stubRecipeService) RemoveEquipment(rid, eid, hid uuid.UUID) error {
 	}
 	return nil
 }
-func (s *stubRecipeService) CreateIngredient(ing *domain.RecipeIngredient, hid uuid.UUID) error {
+func (s *stubRecipeService) CreateIngredient(_ context.Context, ing *domain.RecipeIngredient, hid uuid.UUID) error {
 	if s.createIngredientFn != nil {
 		return s.createIngredientFn(ing, hid)
 	}

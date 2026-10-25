@@ -80,6 +80,33 @@ func TestShoppingListRepository_UpdateItem_LoadedItem_ClearsAmountAndKeepsOtherF
 	assert.Equal(t, &foodID, got.FoodID)
 }
 
+func TestShoppingListRepository_UpdateItem_ChangedUnit_ReloadsUnitAssociation(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewShoppingListRepository(db)
+
+	listID := seedShoppingList(t, db)
+	gram := &domain.Unit{Name: "gram", Slug: "g", BaseFactor: 1}
+	kilo := &domain.Unit{Name: "kilogram", Slug: "kg", BaseFactor: 1000}
+	require.NoError(t, db.Create(gram).Error)
+	require.NoError(t, db.Create(kilo).Error)
+
+	itemID := uuid.New()
+	require.NoError(t, repo.CreateItems([]*domain.ShoppingItem{{ID: itemID, ShoppingListID: listID, Text: "flour", Amount: new(500.0), UnitID: &gram.ID}}))
+
+	item, err := repo.ItemByID(itemID)
+	require.NoError(t, err)
+	require.NotNil(t, item.Unit)
+	item.UnitID = &kilo.ID
+	require.NoError(t, repo.UpdateItem(item))
+
+	require.NotNil(t, item.Unit)
+	assert.Equal(t, kilo.ID, item.Unit.ID, "the preloaded unit must follow the new unit_id")
+
+	item.UnitID = nil
+	require.NoError(t, repo.UpdateItem(item))
+	assert.Nil(t, item.Unit, "clearing unit_id must clear the preloaded unit")
+}
+
 func defaultListsOf(t *testing.T, db *gorm.DB, householdID uuid.UUID) []domain.ShoppingList {
 	t.Helper()
 	var lists []domain.ShoppingList

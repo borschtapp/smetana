@@ -65,14 +65,14 @@ func (r *shoppingListRepository) DeleteList(id uuid.UUID) error {
 
 func (r *shoppingListRepository) ItemByID(id uuid.UUID) (*domain.ShoppingItem, error) {
 	var item domain.ShoppingItem
-	if err := r.db.Preload("Unit").Preload("Food").First(&item, id).Error; err != nil {
+	if err := r.db.Scopes(WithPreloadItemAssociations).First(&item, id).Error; err != nil {
 		return nil, fmt.Errorf("shopping item by id %s: %w", id, mapErr(err))
 	}
 	return &item, nil
 }
 
 func (r *shoppingListRepository) ListItems(listID uuid.UUID, offset, limit int) ([]domain.ShoppingItem, int64, error) {
-	query := r.db.Preload("Unit").Preload("Food").
+	query := r.db.Scopes(WithPreloadItemAssociations).
 		Where("shopping_list_id = ?", listID).
 		Order("is_bought ASC, created DESC")
 
@@ -94,7 +94,7 @@ func (r *shoppingListRepository) FindItemsByFoodIDs(listID uuid.UUID, foodIDs []
 	}
 
 	var items []domain.ShoppingItem
-	err := r.db.Preload("Unit").Preload("Food").
+	err := r.db.Scopes(WithPreloadItemAssociations).
 		Where("shopping_list_id = ? AND food_id IN ?", listID, foodIDs).
 		Find(&items).Error
 	if err != nil {
@@ -109,9 +109,9 @@ func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error
 	}
 
 	for _, item := range items {
-		if item.UnitID != nil || item.FoodID != nil {
-			if err := r.db.Preload("Unit").Preload("Food").First(item, item.ID).Error; err != nil {
-				return fmt.Errorf("reload shopping item %s: %w", item.ID, mapErr(err))
+		if associationsStale(item) {
+			if err := r.reloadItem(item); err != nil {
+				return err
 			}
 		}
 	}
@@ -121,6 +121,26 @@ func (r *shoppingListRepository) CreateItems(items []*domain.ShoppingItem) error
 func (r *shoppingListRepository) UpdateItem(item *domain.ShoppingItem) error {
 	if err := r.db.Model(item).Select("amount", "text", "is_bought", "unit_id", "food_id").Updates(item).Error; err != nil {
 		return fmt.Errorf("update shopping item %s: %w", item.ID, mapErr(err))
+	}
+
+	if associationsStale(item) {
+		return r.reloadItem(item)
+	}
+	return nil
+}
+
+// associationsStale reports whether the loaded Unit or Food no longer match unit_id or food_id.
+func associationsStale(item *domain.ShoppingItem) bool {
+	unitStale := (item.Unit == nil) != (item.UnitID == nil) || (item.Unit != nil && item.Unit.ID != *item.UnitID)
+	foodStale := (item.Food == nil) != (item.FoodID == nil) || (item.Food != nil && item.Food.ID != *item.FoodID)
+	return unitStale || foodStale
+}
+
+// reloadItem re-reads item with its Unit and Food associations.
+func (r *shoppingListRepository) reloadItem(item *domain.ShoppingItem) error {
+	item.Unit, item.Food = nil, nil
+	if err := r.db.Scopes(WithPreloadItemAssociations).First(item, item.ID).Error; err != nil {
+		return fmt.Errorf("reload shopping item %s: %w", item.ID, mapErr(err))
 	}
 	return nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/borschtapp/kapusta"
 	"github.com/google/uuid"
@@ -99,18 +101,52 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 		}
 	}
 
-	// Combine items that reference the same food so the batch itself never asks to create
-	// (or double-accumulate into) two rows for the same food.
-	items = s.mergeDuplicateFoodItems(items)
-
-	var foodIDs []uuid.UUID
+	// Client-supplied IDs may be aliases of merged foods or units; parsed ones are already canonical.
+	var clientFoodIDs, clientUnitIDs []*uuid.UUID
 	for _, item := range items {
-		if item.FoodID != nil {
-			foodIDs = append(foodIDs, *item.FoodID)
+		if item.Food == nil {
+			clientFoodIDs = append(clientFoodIDs, item.FoodID)
+		}
+		if item.Unit == nil {
+			clientUnitIDs = append(clientUnitIDs, item.UnitID)
 		}
 	}
+	if err := s.foodService.Canonicalize(clientFoodIDs...); err != nil {
+		return nil, fmt.Errorf("add items (resolve foods): %w", err)
+	}
+	if err := s.unitService.Canonicalize(clientUnitIDs...); err != nil {
+		return nil, fmt.Errorf("add items (resolve units): %w", err)
+	}
 
-	err := s.repo.Transaction(func(txRepo domain.ShoppingListRepository) error {
+	// Pass on loaded units; the rest are fetched in one query, and only if a conversion needs them.
+	converter := s.unitService.NewConverter()
+	foodSet := make(map[uuid.UUID]struct{}, len(items))
+	for _, item := range items {
+		if item.FoodID != nil {
+			foodSet[*item.FoodID] = struct{}{}
+		}
+		if item.Unit != nil {
+			converter.Add(item.Unit)
+		} else if item.UnitID != nil {
+			converter.Expect(*item.UnitID)
+		}
+	}
+	foodIDs := slices.Collect(maps.Keys(foodSet))
+
+	conversions, err := s.foodService.ConversionsByFoodIDs(foodIDs)
+	if err != nil {
+		return nil, fmt.Errorf("add items (fetch conversions): %w", err)
+	}
+	converter.Expect(conversionUnitIDs(conversions)...)
+
+	// Combine items that reference the same food so the batch itself never asks to create
+	// (or double-accumulate into) two rows for the same food.
+	items, err = mergeDuplicateFoodItems(items, conversions, converter)
+	if err != nil {
+		return nil, fmt.Errorf("add items (merge batch): %w", err)
+	}
+
+	err = s.repo.Transaction(func(txRepo domain.ShoppingListRepository) error {
 		existingItems, err := txRepo.FindItemsByFoodIDs(listID, foodIDs)
 		if err != nil {
 			return fmt.Errorf("fetch existing: %w", err)
@@ -119,34 +155,31 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 		byFood := make(map[uuid.UUID]*domain.ShoppingItem, len(existingItems))
 		for i := range existingItems {
 			byFood[*existingItems[i].FoodID] = &existingItems[i]
+			converter.Add(existingItems[i].Unit)
 		}
 
 		var toCreate []*domain.ShoppingItem
 		for _, item := range items {
 			item.ShoppingListID = listID
 
+			var match *domain.ShoppingItem
 			if item.FoodID != nil {
-				if match, ok := byFood[*item.FoodID]; ok {
-					if match.IsBought {
-						// Restore a previously bought item: uncheck and replace amount.
-						match.IsBought = false
-						match.Amount = item.Amount
-						match.UnitID = item.UnitID
-						if item.Text != "" {
-							match.Text = item.Text
-						}
-					} else {
-						// Accumulate into an existing unbought item.
-						s.accumulateAmount(match, item)
-					}
-					if err := txRepo.UpdateItem(match); err != nil {
-						return fmt.Errorf("update match %s: %w", match.ID, err)
-					}
-					*item = *match
-					continue
-				}
+				match = byFood[*item.FoodID]
 			}
-			toCreate = append(toCreate, item)
+			if match == nil {
+				toCreate = append(toCreate, item)
+				continue
+			}
+
+			if match.IsBought {
+				reopenWith(match, item)
+			} else if err := accumulateAmount(match, item, conversions[*item.FoodID], converter); err != nil {
+				return fmt.Errorf("accumulate into %s: %w", match.ID, err)
+			}
+			if err := txRepo.UpdateItem(match); err != nil {
+				return fmt.Errorf("update match %s: %w", match.ID, err)
+			}
+			*item = *match
 		}
 
 		if len(toCreate) == 0 {
@@ -165,7 +198,7 @@ func (s *shoppingListService) AddItems(ctx context.Context, items []*domain.Shop
 
 // mergeDuplicateFoodItems combines items referencing the same food into the first
 // occurrence, accumulating their amounts, so a single batch cannot create duplicate rows.
-func (s *shoppingListService) mergeDuplicateFoodItems(items []*domain.ShoppingItem) []*domain.ShoppingItem {
+func mergeDuplicateFoodItems(items []*domain.ShoppingItem, conversions map[uuid.UUID][]domain.FoodUnitConversion, converter domain.UnitConverter) ([]*domain.ShoppingItem, error) {
 	merged := make([]*domain.ShoppingItem, 0, len(items))
 	byFood := make(map[uuid.UUID]*domain.ShoppingItem, len(items))
 	for _, item := range items {
@@ -174,49 +207,66 @@ func (s *shoppingListService) mergeDuplicateFoodItems(items []*domain.ShoppingIt
 			continue
 		}
 		if existing, ok := byFood[*item.FoodID]; ok {
-			s.accumulateAmount(existing, item)
+			if err := accumulateAmount(existing, item, conversions[*item.FoodID], converter); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		byFood[*item.FoodID] = item
 		merged = append(merged, item)
 	}
-	return merged
+	return merged, nil
 }
 
-// accumulateAmount accumulates incoming into target, converting units if they differ and are convertible.
-func (s *shoppingListService) accumulateAmount(target, incoming *domain.ShoppingItem) {
+// accumulateAmount adds incoming's amount to target, converted to target's unit (a missing unit means pieces).
+// Returns a 422 if the units cannot be converted, rather than adding mismatched amounts.
+func accumulateAmount(target, incoming *domain.ShoppingItem, conversions []domain.FoodUnitConversion, converter domain.UnitConverter) error {
 	if incoming.Amount == nil {
-		return
+		return nil
 	}
 	if target.Amount == nil {
 		target.Amount = incoming.Amount
-		target.UnitID = incoming.UnitID
-		return
+		setUnit(target, incoming.UnitID, incoming.Unit)
+		return nil
 	}
-	if target.UnitID != nil && incoming.UnitID != nil && *target.UnitID != *incoming.UnitID && s.unitService != nil {
-		converted, err := s.unitService.Convert(*incoming.Amount, *incoming.UnitID, *target.UnitID)
-		if err == nil {
-			sum := *target.Amount + converted
-			target.Amount = &sum
-			return
-		}
+
+	amount, err := converter.Convert(*incoming.Amount, incoming.UnitID, target.UnitID, conversions)
+	if errors.Is(err, sentinels.ErrUnitConversion) {
+		return incompatibleUnitsError(target)
 	}
-	target.Amount = sumAmounts(target.Amount, incoming.Amount)
-	if target.UnitID == nil && incoming.UnitID != nil {
-		target.UnitID = incoming.UnitID
+	if err != nil {
+		return fmt.Errorf("convert amount: %w", err)
+	}
+	sum := *target.Amount + amount
+	target.Amount = &sum
+	return nil
+}
+
+// reopenWith restores a bought item for incoming: it is unchecked and takes incoming's amount, unit and text.
+func reopenWith(target, incoming *domain.ShoppingItem) {
+	target.IsBought = false
+	target.Amount = incoming.Amount
+	setUnit(target, incoming.UnitID, incoming.Unit)
+	if incoming.Text != "" {
+		target.Text = incoming.Text
 	}
 }
 
-// sumAmounts combines two optional amounts, treating a nil amount as "no contribution".
-func sumAmounts(a, b *float64) *float64 {
-	if b == nil {
-		return a
+// setUnit points item at unitID with its unit. When the ID is unchanged, the loaded Unit is kept,
+// so UpdateItem does not reload it.
+func setUnit(item *domain.ShoppingItem, unitID *uuid.UUID, unit *domain.Unit) {
+	if unitID != nil && item.Unit != nil && item.Unit.ID == *unitID {
+		return
 	}
-	if a == nil {
-		return b
+	item.UnitID, item.Unit = unitID, unit
+}
+
+func incompatibleUnitsError(target *domain.ShoppingItem) error {
+	subject := "amount"
+	if target.Text != "" {
+		subject = fmt.Sprintf("amount for %q", target.Text)
 	}
-	sum := *a + *b
-	return &sum
+	return sentinels.Unprocessable(subject + " cannot be added: its unit cannot be converted to the unit already on the list")
 }
 
 // parseItemText uses kapusta to extract amount, food, and unit from raw text.

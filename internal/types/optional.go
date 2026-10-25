@@ -26,7 +26,8 @@ func (o *Optional[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ValidationValue returns a typed pointer, since `omitnil` only skips a typed nil.
-func (o Optional[T]) ValidationValue() any {
+// ValidatorValue implements validator.Valuer, so validate tags apply to the inner value.
+// It returns a typed pointer because `omitnil` only skips a typed nil.
+func (o Optional[T]) ValidatorValue() any {
 	return o.Value
 }

@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/gofiber/fiber/v3/log"
@@ -82,9 +84,13 @@ func (s *recipeService) Search(userID uuid.UUID, householdID uuid.UUID, opts dom
 	return recipes, total, nil
 }
 
-func (s *recipeService) Create(recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
+func (s *recipeService) Create(ctx context.Context, recipe *domain.Recipe, userID uuid.UUID, householdID uuid.UUID) error {
 	recipe.HouseholdID = &householdID
 	recipe.UserID = &userID
+	detachNested(recipe)
+	if err := s.canonicalizeIngredients(ctx, recipe.Ingredients...); err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
 	err := s.repo.Transaction(func(txRepo domain.RecipeRepository) error {
 		if err := txRepo.Create(recipe); err != nil {
 			return err
@@ -117,9 +123,13 @@ func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, househol
 		return fmt.Errorf("update (fetch existing): %w", err)
 	}
 
+	if existing.HouseholdID != nil && *existing.HouseholdID != householdID {
+		return sentinels.ErrForbidden
+	}
+
 	// Copy-on-write: if it doesn't belong to household yet, clone it into the household first
 	if existing.HouseholdID == nil {
-		cloned, err := s.cloneToHousehold(existing, userID, householdID)
+		cloned, err := s.cloneToHousehold(recipe.ID, userID, householdID)
 		if err != nil {
 			return fmt.Errorf("update (clone to household): %w", err)
 		}
@@ -136,8 +146,172 @@ func (s *recipeService) Update(recipe *domain.Recipe, userID uuid.UUID, househol
 	return nil
 }
 
-// cloneToHousehold clones a global recipe into the given household. Make sure to preload all relevant associations
-func (s *recipeService) cloneToHousehold(global *domain.Recipe, userID, householdID uuid.UUID) (*domain.Recipe, error) {
+// detachNested clears client IDs on nested rows: GORM upserts them by ID, moving other recipes' rows into this one.
+// Collections are dropped, as GORM would join any collection by ID without an ownership check.
+func detachNested(recipe *domain.Recipe) {
+	recipe.Collections = nil
+	for _, img := range recipe.Images {
+		if img != nil {
+			img.ID = uuid.Nil
+		}
+	}
+	for _, ing := range recipe.Ingredients {
+		if ing != nil {
+			ing.ID = uuid.Nil
+		}
+	}
+	for _, ins := range recipe.Instructions {
+		if ins != nil {
+			detachInstruction(ins)
+			ins.ParentID = nil
+		}
+	}
+}
+
+// detachInstruction makes a client-supplied instruction and its images new rows.
+func detachInstruction(ins *domain.RecipeInstruction) {
+	ins.ID, ins.Parent = uuid.Nil, nil
+	for _, img := range ins.Images {
+		if img != nil {
+			img.ID = uuid.Nil
+		}
+	}
+}
+
+// canonicalizeIngredients replaces alias unit and food IDs on client-supplied ingredients with their canonical IDs.
+// Nested unit/food objects are reduced to their IDs: GORM would save them and write their IDs back over unit_id/food_id.
+// Nested objects without an ID are found or created by name.
+func (s *recipeService) canonicalizeIngredients(ctx context.Context, ingredients ...*domain.RecipeIngredient) error {
+	findUnit := byNameOnce("unit", func(name, slug string) (uuid.UUID, error) {
+		unit := &domain.Unit{Name: name, Slug: slug}
+		err := s.unitService.FindOrCreate(unit)
+		return unit.ID, err
+	})
+	// Only the name and slug are passed on, so client image URLs are never fetched.
+	findFood := byNameOnce("food", func(name, slug string) (uuid.UUID, error) {
+		food := &domain.Food{Name: name, Slug: slug}
+		err := s.foodService.FindOrCreate(ctx, food)
+		return food.ID, err
+	})
+
+	var unitIDs, foodIDs []*uuid.UUID // client-supplied only: IDs found by name are canonical already
+	for _, ing := range ingredients {
+		if ing == nil {
+			continue
+		}
+		switch {
+		case ing.UnitID != nil:
+			unitIDs = append(unitIDs, ing.UnitID)
+		case ing.Unit != nil && ing.Unit.ID != uuid.Nil:
+			ing.UnitID = &ing.Unit.ID
+			unitIDs = append(unitIDs, ing.UnitID)
+		case ing.Unit != nil:
+			id, err := findUnit(ing.Unit.Name, ing.Unit.Slug)
+			if err != nil {
+				return err
+			}
+			ing.UnitID = &id
+		}
+		switch {
+		case ing.FoodID != nil:
+			foodIDs = append(foodIDs, ing.FoodID)
+		case ing.Food != nil && ing.Food.ID != uuid.Nil:
+			ing.FoodID = &ing.Food.ID
+			foodIDs = append(foodIDs, ing.FoodID)
+		case ing.Food != nil:
+			id, err := findFood(ing.Food.Name, ing.Food.Slug)
+			if err != nil {
+				return err
+			}
+			ing.FoodID = &id
+		}
+		ing.Unit, ing.Food = nil, nil
+	}
+	if err := s.unitService.Canonicalize(unitIDs...); err != nil {
+		return err
+	}
+	return s.foodService.Canonicalize(foodIDs...)
+}
+
+// byNameOnce wraps findOrCreate so each slug is looked up once per call site; a missing name is a bad request.
+func byNameOnce(kind string, findOrCreate func(name, slug string) (uuid.UUID, error)) func(name, slug string) (uuid.UUID, error) {
+	found := make(map[string]uuid.UUID)
+	return func(name, slug string) (uuid.UUID, error) {
+		if name == "" {
+			return uuid.Nil, sentinels.BadRequest("ingredient " + kind + " needs an id or a name")
+		}
+		if slug == "" {
+			slug = utils.CreateTag(name)
+		}
+		if id, ok := found[slug]; ok {
+			return id, nil
+		}
+		id, err := findOrCreate(name, slug)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		found[slug] = id
+		return id, nil
+	}
+}
+
+// cloneInstructions copies instructions as new rows that keep their sub-step links. Parents come before
+// their children, so each row's parent is already inserted, even where the database checks every row.
+func cloneInstructions(instructions []*domain.RecipeInstruction) ([]*domain.RecipeInstruction, error) {
+	newIDs := make(map[uuid.UUID]uuid.UUID, len(instructions))
+	for _, ins := range instructions {
+		id, err := uuid.NewV7()
+		if err != nil {
+			return nil, fmt.Errorf("new instruction id: %w", err)
+		}
+		newIDs[ins.ID] = id
+	}
+
+	copies := make([]*domain.RecipeInstruction, 0, len(instructions))
+	add := func(ins *domain.RecipeInstruction, parentID *uuid.UUID) {
+		copy_ := *ins
+		detachInstruction(&copy_)
+		copy_.ID = newIDs[ins.ID]
+		copy_.RecipeID, copy_.Recipe, copy_.ParentID = uuid.Nil, nil, nil
+		if parentID != nil {
+			copy_.ParentID = new(newIDs[*parentID])
+		}
+		copies = append(copies, &copy_)
+	}
+
+	added := make(map[uuid.UUID]bool, len(instructions))
+	for pending := instructions; len(pending) > 0; {
+		var waiting []*domain.RecipeInstruction
+		for _, ins := range pending {
+			if ins.ParentID != nil && !added[*ins.ParentID] {
+				waiting = append(waiting, ins)
+				continue
+			}
+			add(ins, ins.ParentID)
+			added[ins.ID] = true
+		}
+		if len(waiting) == len(pending) {
+			// A parent outside the recipe, or a loop: keep the rest as top-level steps.
+			for _, ins := range waiting {
+				add(ins, nil)
+			}
+			break
+		}
+		pending = waiting
+	}
+	return copies, nil
+}
+
+// clonePreload lists the associations a household clone copies; images are shared via the parent, not copied.
+var clonePreload = types.Preload("ingredients", "instructions", "equipment", "taxonomies", "nutrition")
+
+// cloneToHousehold clones a global recipe, with its ingredients, instructions and other associations, into the given household.
+func (s *recipeService) cloneToHousehold(globalID, userID, householdID uuid.UUID) (*domain.Recipe, error) {
+	global, err := s.repo.ByIDPreload(globalID, userID, householdID, clonePreload)
+	if err != nil {
+		return nil, fmt.Errorf("fetch global recipe: %w", err)
+	}
+
 	clone := *global
 	clone.ID = uuid.Nil // BeforeCreate hook will assign a new UUID
 	clone.HouseholdID = &householdID
@@ -156,25 +330,21 @@ func (s *recipeService) cloneToHousehold(global *domain.Recipe, userID, househol
 		copy_.ID = uuid.Nil
 		copy_.RecipeID = uuid.Nil // will be set by GORM after Create
 		copy_.Recipe = nil
-		copy_.Food = ing.Food
-		copy_.Unit = ing.Unit
+		copy_.Food, copy_.Unit = nil, nil // linked by FoodID/UnitID; GORM would otherwise insert them again
 		clone.Ingredients[i] = &copy_
 	}
-	clone.Instructions = make([]*domain.RecipeInstruction, len(global.Instructions))
-	for i, ins := range global.Instructions {
-		copy_ := *ins
-		copy_.ID = uuid.Nil
-		copy_.RecipeID = uuid.Nil
-		copy_.Recipe = nil
-		copy_.ParentID = nil // instruction parent is within same recipe
-		copy_.Parent = nil
-		clone.Instructions[i] = &copy_
+	if clone.Instructions, err = cloneInstructions(global.Instructions); err != nil {
+		return nil, err
 	}
 
 	clone.Equipment = global.Equipment // GORM re-creates junction rows for the new recipeID
+	if global.Nutrition != nil {
+		nutrition := *global.Nutrition
+		clone.Nutrition = &nutrition
+	}
 
 	var newRecipe *domain.Recipe
-	err := s.repo.Transaction(func(txRepo domain.RecipeRepository) error {
+	err = s.repo.Transaction(func(txRepo domain.RecipeRepository) error {
 		if err := txRepo.Create(&clone); err != nil {
 			return err
 		}
@@ -236,9 +406,12 @@ func (s *recipeService) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error {
 	return nil
 }
 
-func (s *recipeService) CreateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+func (s *recipeService) CreateIngredient(ctx context.Context, ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return fmt.Errorf("create ingredient (auth check): %w", err)
+	}
+	if err := s.canonicalizeIngredients(ctx, ingredient); err != nil {
+		return fmt.Errorf("create ingredient: %w", err)
 	}
 	if err := s.repo.CreateIngredient(ingredient); err != nil {
 		return fmt.Errorf("create ingredient (persist): %w", err)
@@ -246,9 +419,12 @@ func (s *recipeService) CreateIngredient(ingredient *domain.RecipeIngredient, ho
 	return nil
 }
 
-func (s *recipeService) UpdateIngredient(ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
+func (s *recipeService) UpdateIngredient(ctx context.Context, ingredient *domain.RecipeIngredient, householdID uuid.UUID) error {
 	if _, err := s.ByID(ingredient.RecipeID, householdID); err != nil {
 		return fmt.Errorf("update ingredient (auth check): %w", err)
+	}
+	if err := s.canonicalizeIngredients(ctx, ingredient); err != nil {
+		return fmt.Errorf("update ingredient: %w", err)
 	}
 	if err := s.repo.UpdateIngredient(ingredient); err != nil {
 		return fmt.Errorf("update ingredient (persist): %w", err)
@@ -290,6 +466,10 @@ func (s *recipeService) CreateInstruction(instruction *domain.RecipeInstruction,
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return fmt.Errorf("create instruction (auth check): %w", err)
 	}
+	detachInstruction(instruction)
+	if err := s.checkParentInstruction(instruction); err != nil {
+		return fmt.Errorf("create instruction: %w", err)
+	}
 	if err := s.repo.CreateInstruction(instruction); err != nil {
 		return fmt.Errorf("create instruction (persist): %w", err)
 	}
@@ -300,8 +480,34 @@ func (s *recipeService) UpdateInstruction(instruction *domain.RecipeInstruction,
 	if _, err := s.ByID(instruction.RecipeID, householdID); err != nil {
 		return fmt.Errorf("update instruction (auth check): %w", err)
 	}
+	if err := s.checkParentInstruction(instruction); err != nil {
+		return fmt.Errorf("update instruction: %w", err)
+	}
 	if err := s.repo.UpdateInstruction(instruction); err != nil {
 		return fmt.Errorf("update instruction (persist): %w", err)
+	}
+	return nil
+}
+
+// checkParentInstruction rejects a parent_id that is not another instruction of the same recipe,
+// or that would make the instruction its own ancestor.
+func (s *recipeService) checkParentInstruction(instruction *domain.RecipeInstruction) error {
+	if instruction.ParentID == nil {
+		return nil
+	}
+	parents, err := s.repo.InstructionParents(instruction.RecipeID)
+	if err != nil {
+		return fmt.Errorf("fetch instruction parents: %w", err)
+	}
+	if _, ok := parents[*instruction.ParentID]; !ok {
+		return sentinels.BadRequest("parent instruction must be another instruction of the same recipe")
+	}
+	seen := make(map[uuid.UUID]bool)
+	for id := instruction.ParentID; id != nil && !seen[*id]; id = parents[*id] {
+		if *id == instruction.ID {
+			return sentinels.BadRequest("an instruction cannot be nested under itself")
+		}
+		seen[*id] = true
 	}
 	return nil
 }
@@ -356,6 +562,16 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 		return nil, fmt.Errorf("estimate price (fetch food conversions): %w", err)
 	}
 
+	// Ingredient and price units are preloaded; only conversion units may need a query.
+	converter := s.unitService.NewConverter()
+	converter.Expect(conversionUnitIDs(conversions)...)
+	for _, price := range latestPrices {
+		converter.Add(price.Unit)
+	}
+	for _, ing := range recipe.Ingredients {
+		converter.Add(ing.Unit)
+	}
+
 	estimate := &domain.RecipeCostEstimate{
 		Items: make([]*domain.RecipeIngredientCost, 0, len(recipe.Ingredients)),
 	}
@@ -365,8 +581,8 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 			IngredientID: ing.ID,
 		}
 
-		// Unquantified ingredients (no amount/unit/food) are skipped from cost calculation
-		if ing.FoodID == nil || ing.Amount == nil || ing.UnitID == nil {
+		// Unquantified ingredients (no amount/food) are skipped; a missing unit means pieces
+		if ing.FoodID == nil || ing.Amount == nil {
 			continue
 		}
 
@@ -384,12 +600,15 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 			continue
 		}
 
-		convertedAmount, convErr := s.unitService.ConvertWithConversions(*ing.Amount, *ing.UnitID, foodPrice.UnitID, conversions[*ing.FoodID])
-		if convErr != nil {
-			// Incompatible units (e.g. price in kg, ingredient in pieces): treat as unpriced.
+		convertedAmount, convErr := converter.Convert(*ing.Amount, ing.UnitID, &foodPrice.UnitID, conversions[*ing.FoodID])
+		if errors.Is(convErr, sentinels.ErrUnitConversion) {
+			// No conversion path (e.g. price in kg, ingredient in ml, no food conversion): treat as unpriced.
 			ingCost.Status = "incompatible_unit"
 			estimate.Items = append(estimate.Items, ingCost)
 			continue
+		}
+		if convErr != nil {
+			return nil, fmt.Errorf("estimate price (convert units): %w", convErr)
 		}
 
 		cost := (convertedAmount / foodPrice.Amount) * foodPrice.Price

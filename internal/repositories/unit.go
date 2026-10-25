@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -23,6 +24,38 @@ func (r *unitRepository) ByID(id uuid.UUID) (*domain.Unit, error) {
 	var unit domain.Unit
 	if err := r.db.First(&unit, id).Error; err != nil {
 		return nil, fmt.Errorf("unit by id %s: %w", id, mapErr(err))
+	}
+	if err := r.resolveAlias(&unit); err != nil {
+		return nil, err
+	}
+	return &unit, nil
+}
+
+func (r *unitRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Unit, error) {
+	result, err := byIDsResolved(r.db, ids,
+		func(u *domain.Unit) uuid.UUID { return u.ID },
+		func(u *domain.Unit) *uuid.UUID { return u.CanonicalUnitID })
+	if err != nil {
+		return nil, fmt.Errorf("units by ids: %w", err)
+	}
+	return result, nil
+}
+
+func (r *unitRepository) CanonicalIDs(ids []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	result, err := canonicalIDs(r.db, &domain.Unit{}, "canonical_unit_id", ids)
+	if err != nil {
+		return nil, fmt.Errorf("canonical unit ids: %w", err)
+	}
+	return result, nil
+}
+
+func (r *unitRepository) BySlug(slug string) (*domain.Unit, error) {
+	var unit domain.Unit
+	if err := r.db.First(&unit, "slug = ?", slug).Error; err != nil {
+		return nil, fmt.Errorf("unit by slug %s: %w", slug, mapErr(err))
+	}
+	if err := r.resolveAlias(&unit); err != nil {
+		return nil, err
 	}
 	return &unit, nil
 }
@@ -98,6 +131,12 @@ func (r *unitRepository) Merge(keepID, mergeID uuid.UUID) error {
 		if err := tx.Scopes(IsCanonicalUnit).First(&merge, mergeID).Error; err != nil {
 			return fmt.Errorf("merge unit: %w", mapErr(err))
 		}
+		if merge.IsPiece() {
+			return sentinels.Forbidden("the piece unit is built in and cannot be merged into another unit")
+		}
+		if keep.IsPiece() && (merge.Convertible() || merge.BaseUnitID != nil) {
+			return sentinels.Unprocessable("only count units can be merged into the piece unit")
+		}
 
 		if err := tx.Model(&domain.RecipeIngredient{}).Where("unit_id = ?", mergeID).Update("unit_id", keepID).Error; err != nil {
 			return fmt.Errorf("reassign ingredients: %w", mapErr(err))
@@ -110,6 +149,9 @@ func (r *unitRepository) Merge(keepID, mergeID uuid.UUID) error {
 		}
 		if err := tx.Model(&domain.Food{}).Where("default_unit_id = ?", mergeID).Update("default_unit_id", keepID).Error; err != nil {
 			return fmt.Errorf("reassign food default units: %w", mapErr(err))
+		}
+		if err := mergeUnitConversions(tx, keepID, mergeID); err != nil {
+			return err
 		}
 		// Re-parent derived units that used mergeID as their base, excluding keepID itself.
 		if err := tx.Model(&domain.Unit{}).Where("base_unit_id = ? AND id != ?", mergeID, keepID).Update("base_unit_id", keepID).Error; err != nil {
@@ -133,11 +175,27 @@ func (r *unitRepository) Merge(keepID, mergeID uuid.UUID) error {
 			}
 		}
 
-		if err := tx.Model(&domain.Unit{}).Where("id = ?", mergeID).Update("canonical_unit_id", keepID).Error; err != nil {
-			return fmt.Errorf("set unit alias: %w", mapErr(err))
+		if err := makeAlias(tx, &domain.Unit{}, "canonical_unit_id", keepID, mergeID); err != nil {
+			return fmt.Errorf("set unit alias: %w", err)
 		}
 		return nil
 	})
+}
+
+// mergeUnitConversions moves food conversions from mergeID to keepID, dropping those between the two units.
+func mergeUnitConversions(tx *gorm.DB, keepID, mergeID uuid.UUID) error {
+	if err := tx.Where("(unit_id = ? AND target_unit_id = ?) OR (unit_id = ? AND target_unit_id = ?)", mergeID, keepID, keepID, mergeID).
+		Delete(&domain.FoodUnitConversion{}).Error; err != nil {
+		return fmt.Errorf("delete identity conversions: %w", mapErr(err))
+	}
+
+	if err := moveConversions(tx, "unit_id", mergeID, keepID); err != nil {
+		return err
+	}
+	if err := tx.Model(&domain.FoodUnitConversion{}).Where("target_unit_id = ?", mergeID).Update("target_unit_id", keepID).Error; err != nil {
+		return fmt.Errorf("reassign conversion target units: %w", mapErr(err))
+	}
+	return nil
 }
 
 func (r *unitRepository) Update(unit *domain.Unit) error {

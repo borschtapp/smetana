@@ -1407,7 +1407,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update name, description, default unit, or pantry status of a food. Only provided fields are changed.",
+                "description": "Update name, description, default unit, or pantry status of a food. Only provided fields are changed. An ID of a merged-away food updates the food it was merged into.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1703,7 +1703,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Reassigns all ingredients, shopping items, and prices from the food at {id} to merge_into, then marks {id} as an alias so future imports resolve correctly.",
+                "description": "Reassigns all ingredients, shopping items, and prices from the food at {id} to merge_into, then marks {id} as an alias so future imports resolve correctly. IDs of merged-away foods stand for the food they were merged into; if both resolve to the same food, nothing happens.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2904,7 +2904,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Create a new recipe from JSON body. The recipe is automatically saved for the creator.",
+                "description": "Create a new recipe from JSON body. The recipe is automatically saved for the creator. Nested rows are always created as new, nested foods and units without an ID are matched by name, and collections are ignored.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3114,7 +3114,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update an existing recipe. Allows users to correct details.",
+                "description": "Update an existing recipe's own fields. Nested ingredients, instructions, equipment and taxonomies are ignored; use their dedicated endpoints.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4063,6 +4063,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
+                    },
+                    "422": {
+                        "description": "Amount unit cannot be combined with the unit already on the list",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
                     }
                 }
             }
@@ -4326,7 +4332,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update the name of a unit.",
+                "description": "Update the name of a unit. An ID of a merged-away unit updates the unit it was merged into.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4390,7 +4396,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias.",
+                "description": "Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias. IDs of merged-away units stand for the unit they were merged into; if both resolve to the same unit, nothing happens. The built-in piece unit cannot be merged away, and only count units can be merged into it.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4435,8 +4441,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/sentinels.Error"
                         }
                     },
+                    "403": {
+                        "description": "The built-in piece unit cannot be merged into another unit",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "422": {
+                        "description": "Only count units can be merged into the piece unit",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }

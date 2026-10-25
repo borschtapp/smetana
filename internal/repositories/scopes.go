@@ -3,6 +3,7 @@ package repositories
 import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // HouseholdOwned restricts a query to rows belonging to the given household via household_id.
@@ -55,6 +56,11 @@ func IsCanonicalUnit(db *gorm.DB) *gorm.DB {
 	return db.Where("canonical_unit_id IS NULL")
 }
 
+// WithPreloadItemAssociations eagerly loads a shopping item's Unit and Food relations.
+func WithPreloadItemAssociations(db *gorm.DB) *gorm.DB {
+	return db.Preload("Unit").Preload("Food")
+}
+
 // WithPreloadIngredients eagerly loads a recipe's Ingredients relation, joining Food and Unit.
 func WithPreloadIngredients(db *gorm.DB) *gorm.DB {
 	return db.Preload("Ingredients", func(db *gorm.DB) *gorm.DB {
@@ -65,6 +71,7 @@ func WithPreloadIngredients(db *gorm.DB) *gorm.DB {
 // WithPreloadInstructions eagerly loads a recipe's Instructions relation, ordered by step index.
 func WithPreloadInstructions(db *gorm.DB) *gorm.DB {
 	return db.Preload("Instructions", func(db *gorm.DB) *gorm.DB {
-		return db.Order("recipe_instructions.order ASC")
+		// "order" is a reserved word: build the column so the dialect quotes it.
+		return db.Order(clause.OrderByColumn{Column: clause.Column{Table: "recipe_instructions", Name: "order"}})
 	})
 }

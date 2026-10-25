@@ -145,6 +145,7 @@ type ShoppingItemForm struct {
 // @Success 201 {object} domain.ShoppingItem
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
+// @Failure 422 {object} sentinels.Error "Amount unit cannot be combined with the unit already on the list"
 // @Security ApiKeyAuth
 // @Router /api/v1/shoppinglists/{id}/items [post]
 func (h *ShoppingListHandler) AddShoppingItem(c fiber.Ctx) error {

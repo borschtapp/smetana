@@ -58,7 +58,7 @@ type updateUnitRequest struct {
 
 // UpdateUnit godoc
 // @Summary Update a unit
-// @Description Update the name of a unit.
+// @Description Update the name of a unit. An ID of a merged-away unit updates the unit it was merged into.
 // @Tags units
 // @Accept json
 // @Produce json
@@ -98,7 +98,7 @@ func (h *UnitHandler) UpdateUnit(c fiber.Ctx) error {
 
 // MergeUnit godoc
 // @Summary Merge two units
-// @Description Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias.
+// @Description Reassigns all ingredients, shopping items, prices, food defaults, and derived units from {id} to merge_into, then marks {id} as an alias. IDs of merged-away units stand for the unit they were merged into; if both resolve to the same unit, nothing happens. The built-in piece unit cannot be merged away, and only count units can be merged into it.
 // @Tags units
 // @Accept json
 // @Produce json
@@ -107,7 +107,9 @@ func (h *UnitHandler) UpdateUnit(c fiber.Ctx) error {
 // @Success 204
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error "The built-in piece unit cannot be merged into another unit"
 // @Failure 404 {object} sentinels.Error
+// @Failure 422 {object} sentinels.Error "Only count units can be merged into the piece unit"
 // @Router /api/v1/units/{id}/merge [post]
 // @Security ApiKeyAuth
 func (h *UnitHandler) MergeUnit(c fiber.Ctx) error {

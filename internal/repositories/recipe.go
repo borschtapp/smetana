@@ -303,8 +303,11 @@ func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 	})
 }
 
+// Update writes the recipe's own fields. Associations are left alone: GORM's upsert of nested rows
+// only rewrites their foreign key, which would move other recipes' ingredients into this one.
+// Ingredients, instructions, equipment and taxonomies have their own endpoints.
 func (r *recipeRepository) Update(recipe *domain.Recipe) error {
-	if err := r.db.Model(recipe).Updates(recipe).Error; err != nil {
+	if err := r.db.Model(recipe).Omit(clause.Associations).Updates(recipe).Error; err != nil {
 		return fmt.Errorf("update recipe %s: %w", recipe.ID, mapErr(err))
 	}
 	return nil
@@ -349,15 +352,16 @@ func (r *recipeRepository) UserUnsave(recipeID uuid.UUID, userID uuid.UUID) erro
 	return nil
 }
 
+// CreateIngredient, UpdateIngredient and UpdateInstruction leave associations alone, like Update.
 func (r *recipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient) error {
-	if err := r.db.Create(ingredient).Error; err != nil {
+	if err := r.db.Omit(clause.Associations).Create(ingredient).Error; err != nil {
 		return fmt.Errorf("create ingredient: %w", mapErr(err))
 	}
 	return nil
 }
 
 func (r *recipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
-	if err := r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Updates(ingredient).Error; err != nil {
+	if err := r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Omit(clause.Associations).Updates(ingredient).Error; err != nil {
 		return fmt.Errorf("update ingredient %s: %w", ingredient.ID, mapErr(err))
 	}
 	return nil
@@ -392,7 +396,7 @@ func (r *recipeRepository) CreateInstruction(instruction *domain.RecipeInstructi
 }
 
 func (r *recipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
-	if err := r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Updates(instruction).Error; err != nil {
+	if err := r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Omit(clause.Associations).Updates(instruction).Error; err != nil {
 		return fmt.Errorf("update instruction %s: %w", instruction.ID, mapErr(err))
 	}
 	return nil
@@ -403,6 +407,21 @@ func (r *recipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) e
 		return fmt.Errorf("delete instruction %s: %w", id, mapErr(err))
 	}
 	return nil
+}
+
+func (r *recipeRepository) InstructionParents(recipeID uuid.UUID) (map[uuid.UUID]*uuid.UUID, error) {
+	var rows []struct {
+		ID       uuid.UUID
+		ParentID *uuid.UUID
+	}
+	if err := r.db.Model(&domain.RecipeInstruction{}).Select("id, parent_id").Where("recipe_id = ?", recipeID).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("instruction parents of recipe %s: %w", recipeID, mapErr(err))
+	}
+	parents := make(map[uuid.UUID]*uuid.UUID, len(rows))
+	for _, row := range rows {
+		parents[row.ID] = row.ParentID
+	}
+	return parents, nil
 }
 
 func (r *recipeRepository) Transaction(fn func(txRepo domain.RecipeRepository) error) error {

@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
@@ -64,10 +66,48 @@ func (s *foodService) Merge(keepID, mergeID uuid.UUID) error {
 	if keepID == mergeID {
 		return sentinels.BadRequest("cannot merge a food into itself")
 	}
-	if err := s.repo.Merge(keepID, mergeID); err != nil {
+	// A merged-away ID stands for the food it was merged into; if both resolve to one food, nothing is left to do.
+	if err := s.Canonicalize(&keepID, &mergeID); err != nil {
+		return fmt.Errorf("merge: %w", err)
+	}
+	if keepID == mergeID {
+		return nil
+	}
+	combine, err := s.shoppingItemCombiner(keepID, mergeID)
+	if err != nil {
+		return fmt.Errorf("merge: %w", err)
+	}
+	if err := s.repo.Merge(keepID, mergeID, combine); err != nil {
 		return fmt.Errorf("merge: %w", err)
 	}
 	return nil
+}
+
+// shoppingItemCombiner combines a list's items for the two foods the way AddItems does, converting units
+// with either food's conversions. Only open items with unconvertible units stay apart.
+func (s *foodService) shoppingItemCombiner(keepID, mergeID uuid.UUID) (domain.ShoppingItemCombiner, error) {
+	byFood, err := s.repo.ConversionsByFoodIDs([]uuid.UUID{keepID, mergeID})
+	if err != nil {
+		return nil, err
+	}
+	conversions := slices.Concat(byFood[keepID], byFood[mergeID])
+	converter := s.unitService.NewConverter()
+	converter.Expect(conversionUnitIDs(byFood)...)
+
+	return func(target, incoming *domain.ShoppingItem) (bool, error) {
+		switch {
+		case incoming.IsBought:
+			return true, nil // already bought: nothing left to add
+		case target.IsBought:
+			reopenWith(target, incoming)
+			return true, nil
+		}
+		err := accumulateAmount(target, incoming, conversions, converter)
+		if errors.Is(err, sentinels.ErrUnitConversion) {
+			return false, nil
+		}
+		return err == nil, err
+	}, nil
 }
 
 func (s *foodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) error {
@@ -77,7 +117,17 @@ func (s *foodService) AddTaxonomy(foodID uuid.UUID, taxonomy *domain.Taxonomy) e
 	return nil
 }
 
+func (s *foodService) Canonicalize(foodIDs ...*uuid.UUID) error {
+	if err := canonicalize(s.repo.CanonicalIDs, foodIDs); err != nil {
+		return fmt.Errorf("canonicalize foods: %w", err)
+	}
+	return nil
+}
+
 func (s *foodService) Update(food *domain.Food) error {
+	if err := s.unitService.Canonicalize(food.DefaultUnitID); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
 	if err := s.repo.Update(food); err != nil {
 		return fmt.Errorf("update: %w", err)
 	}
@@ -86,9 +136,12 @@ func (s *foodService) Update(food *domain.Food) error {
 
 func (s *foodService) RecordPrice(householdID uuid.UUID, price *domain.FoodPrice) error {
 	price.HouseholdID = householdID
-
 	food, err := s.repo.ByID(price.FoodID)
 	if err != nil {
+		return fmt.Errorf("record price: %w", err)
+	}
+	price.FoodID = food.ID
+	if err := s.unitService.Canonicalize(&price.UnitID); err != nil {
 		return fmt.Errorf("record price: %w", err)
 	}
 
@@ -116,6 +169,9 @@ func (s *foodService) LatestPrices(householdID uuid.UUID, foodIDs []uuid.UUID) (
 }
 
 func (s *foodService) ListPrices(householdID, foodID uuid.UUID, opts types.Pagination) ([]domain.FoodPrice, int64, error) {
+	if err := s.Canonicalize(&foodID); err != nil {
+		return nil, 0, fmt.Errorf("list prices: %w", err)
+	}
 	prices, total, err := s.repo.ListPrices(householdID, foodID, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list prices: %w", err)
@@ -130,16 +186,19 @@ func (s *foodService) DeletePrice(householdID, id uuid.UUID) error {
 	return nil
 }
 
+// validateConversion checks both units and rewrites them to their canonical IDs.
 func (s *foodService) validateConversion(c *domain.FoodUnitConversion) error {
-	if c.UnitID == c.TargetUnitID {
-		return sentinels.BadRequest("source and target units cannot be the same")
-	}
-	if _, err := s.unitService.ByID(c.UnitID); err != nil {
+	sourceUnit, err := s.unitService.ByID(c.UnitID)
+	if err != nil {
 		return sentinels.BadRequest("invalid source unit")
 	}
 	targetUnit, err := s.unitService.ByID(c.TargetUnitID)
 	if err != nil {
 		return sentinels.BadRequest("invalid target unit")
+	}
+	c.UnitID, c.TargetUnitID = sourceUnit.ID, targetUnit.ID
+	if c.UnitID == c.TargetUnitID {
+		return sentinels.BadRequest("source and target units cannot be the same")
 	}
 	if !targetUnit.Convertible() {
 		return sentinels.BadRequest("target unit must be a convertible unit (e.g. grams, ml)")
@@ -148,6 +207,9 @@ func (s *foodService) validateConversion(c *domain.FoodUnitConversion) error {
 }
 
 func (s *foodService) CreateConversion(c *domain.FoodUnitConversion) error {
+	if err := s.Canonicalize(&c.FoodID); err != nil {
+		return fmt.Errorf("create conversion: %w", err)
+	}
 	if err := s.validateConversion(c); err != nil {
 		return err
 	}
@@ -158,16 +220,24 @@ func (s *foodService) CreateConversion(c *domain.FoodUnitConversion) error {
 }
 
 func (s *foodService) ListConversions(foodID uuid.UUID) ([]domain.FoodUnitConversion, error) {
+	if err := s.Canonicalize(&foodID); err != nil {
+		return nil, fmt.Errorf("list conversions: %w", err)
+	}
 	return s.repo.ListConversions(foodID)
 }
 
 func (s *foodService) UpdateConversion(c *domain.FoodUnitConversion) error {
-	targetUnit, err := s.unitService.ByID(c.TargetUnitID)
-	if err != nil {
-		return sentinels.BadRequest("invalid target unit")
+	if err := s.Canonicalize(&c.FoodID); err != nil {
+		return fmt.Errorf("update conversion: %w", err)
 	}
-	if !targetUnit.Convertible() {
-		return sentinels.BadRequest("target unit must be a convertible unit (e.g. grams, ml)")
+	existing, err := s.repo.ConversionByID(c.FoodID, c.ID)
+	if err != nil {
+		return fmt.Errorf("update conversion (fetch): %w", err)
+	}
+	// The source unit is immutable; validate the new target against the stored one.
+	c.UnitID = existing.UnitID
+	if err := s.validateConversion(c); err != nil {
+		return err
 	}
 	if err := s.repo.UpdateConversion(c); err != nil {
 		return fmt.Errorf("update conversion: %w", err)
@@ -176,6 +246,9 @@ func (s *foodService) UpdateConversion(c *domain.FoodUnitConversion) error {
 }
 
 func (s *foodService) DeleteConversion(foodID, id uuid.UUID) error {
+	if err := s.Canonicalize(&foodID); err != nil {
+		return fmt.Errorf("delete conversion: %w", err)
+	}
 	return s.repo.DeleteConversion(foodID, id)
 }
 

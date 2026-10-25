@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"borscht.app/smetana/internal/storage"
@@ -103,6 +104,7 @@ type RecipeRepository interface {
 	CreateInstruction(instruction *RecipeInstruction) error
 	UpdateInstruction(instruction *RecipeInstruction) error
 	DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error
+	InstructionParents(recipeID uuid.UUID) (map[uuid.UUID]*uuid.UUID, error) // instruction ID -> parent ID
 
 	Transaction(fn func(txRepo RecipeRepository) error) error
 	ReplaceRecipePointers(oldRecipeID, newRecipeID, householdID uuid.UUID) error
@@ -129,7 +131,7 @@ type RecipeService interface {
 	ByUrl(url string, householdID uuid.UUID) (*Recipe, error)
 	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]Recipe, error)
 	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
-	Create(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
+	Create(ctx context.Context, recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
 	Import(recipe *Recipe) error
 	SetFeedID(recipeID, feedID uuid.UUID) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
@@ -138,8 +140,8 @@ type RecipeService interface {
 	UserSave(recipeID uuid.UUID, userID uuid.UUID, householdID uuid.UUID) error
 	UserUnsave(recipeID uuid.UUID, userID uuid.UUID) error
 
-	CreateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
-	UpdateIngredient(ingredient *RecipeIngredient, householdID uuid.UUID) error
+	CreateIngredient(ctx context.Context, ingredient *RecipeIngredient, householdID uuid.UUID) error
+	UpdateIngredient(ctx context.Context, ingredient *RecipeIngredient, householdID uuid.UUID) error
 	DeleteIngredient(id uuid.UUID, recipeID uuid.UUID, householdID uuid.UUID) error
 
 	AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUID, householdID uuid.UUID) error

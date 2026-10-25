@@ -41,12 +41,17 @@ func (f *Food) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
+// ShoppingItemCombiner folds incoming into target. On true, target is saved and incoming deleted; on false both stay.
+type ShoppingItemCombiner func(target, incoming *ShoppingItem) (bool, error)
+
 type FoodRepository interface {
-	ByID(id uuid.UUID) (*Food, error)
-	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)
+	ByID(id uuid.UUID) (*Food, error)                              // resolves aliases to their canonical food
+	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)            // like ByID, keyed by the requested ID
+	CanonicalIDs(ids []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) // maps each alias among ids to its canonical food
 	FindOrCreate(food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
-	Merge(keepID, mergeID uuid.UUID) error
+	// Merge makes mergeID an alias of keepID. Where a list holds both foods, combine decides; nil never combines.
+	Merge(keepID, mergeID uuid.UUID, combine ShoppingItemCombiner) error
 	AddTaxonomy(foodID uuid.UUID, taxonomy *Taxonomy) error
 	Update(food *Food) error
 
@@ -57,14 +62,17 @@ type FoodRepository interface {
 
 	CreateConversion(c *FoodUnitConversion) error
 	ListConversions(foodID uuid.UUID) ([]FoodUnitConversion, error)
+	ConversionByID(foodID, id uuid.UUID) (*FoodUnitConversion, error)
 	UpdateConversion(c *FoodUnitConversion) error
 	DeleteConversion(foodID, id uuid.UUID) error
 	ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUID][]FoodUnitConversion, error)
 }
 
 type FoodService interface {
-	ByID(id uuid.UUID) (*Food, error)
+	ByID(id uuid.UUID) (*Food, error) // resolves aliases to their canonical food
 	ByIDs(ids []uuid.UUID) (map[uuid.UUID]*Food, error)
+	// Canonicalize replaces alias food IDs in place with their canonical IDs. Nil pointers are skipped.
+	Canonicalize(foodIDs ...*uuid.UUID) error
 	FindOrCreate(ctx context.Context, food *Food) error
 	Search(query string, offset, limit int) ([]Food, int64, error)
 	Merge(keepID, mergeID uuid.UUID) error

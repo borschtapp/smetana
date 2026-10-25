@@ -73,6 +73,9 @@ func main() {
 		if err := database.Migrate(db); err != nil {
 			log.Fatalw("database migration error", "error", err.Error())
 		}
+		if err := database.FlattenAliases(db); err != nil {
+			log.Fatalw("alias flatten error", "error", err.Error())
+		}
 		if err := database.SeedUnits(db); err != nil {
 			log.Fatalw("unit seed error", "error", err.Error())
 		}

@@ -88,7 +88,7 @@ func (h *RecipeHandler) GetRecipe(c fiber.Ctx) error {
 
 // CreateRecipe godoc
 // @Summary Create a new recipe.
-// @Description Create a new recipe from JSON body. The recipe is automatically saved for the creator.
+// @Description Create a new recipe from JSON body. The recipe is automatically saved for the creator. Nested rows are always created as new, nested foods and units without an ID are matched by name, and collections are ignored.
 // @Tags recipes
 // @Accept json
 // @Produce json
@@ -105,7 +105,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.recipeService.Create(recipe, tokenData.ID, tokenData.HouseholdID); err != nil {
+	if err := h.recipeService.Create(c.Context(), recipe, tokenData.ID, tokenData.HouseholdID); err != nil {
 		return err
 	}
 
@@ -114,7 +114,7 @@ func (h *RecipeHandler) CreateRecipe(c fiber.Ctx) error {
 
 // UpdateRecipe godoc
 // @Summary Update a recipe.
-// @Description Update an existing recipe. Allows users to correct details.
+// @Description Update an existing recipe's own fields. Nested ingredients, instructions, equipment and taxonomies are ignored; use their dedicated endpoints.
 // @Tags recipes
 // @Accept json
 // @Produce json
@@ -255,7 +255,7 @@ func (h *RecipeHandler) CreateIngredient(c fiber.Ctx) error {
 	}
 	ingredient.RecipeID = id
 
-	if err := h.recipeService.CreateIngredient(ingredient, tokenData.HouseholdID); err != nil {
+	if err := h.recipeService.CreateIngredient(c.Context(), ingredient, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(ingredient)
@@ -291,7 +291,7 @@ func (h *RecipeHandler) UpdateIngredient(c fiber.Ctx) error {
 	ingredient.ID = ingredientID
 	ingredient.RecipeID = id
 
-	if err := h.recipeService.UpdateIngredient(ingredient, tokenData.HouseholdID); err != nil {
+	if err := h.recipeService.UpdateIngredient(c.Context(), ingredient, tokenData.HouseholdID); err != nil {
 		return err
 	}
 	return c.JSON(ingredient)

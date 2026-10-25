@@ -6,8 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/repositories"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/storage"
@@ -90,7 +92,7 @@ func TestFoodRepository_Merge_SetsCanonicalFoodID(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var alias domain.Food
 	require.NoError(t, db.First(&alias, "id = ?", merge.ID).Error)
@@ -106,7 +108,7 @@ func TestFoodRepository_Merge_FindOrCreate_ResolvesAlias(t *testing.T) {
 	merge := &domain.Food{Name: "Eggplant", Slug: "eggplant"}
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	lookup := &domain.Food{Name: "Eggplant"}
 	require.NoError(t, repo.FindOrCreate(lookup))
@@ -122,7 +124,7 @@ func TestFoodRepository_Merge_Search_ExcludesAliases(t *testing.T) {
 	alias := &domain.Food{Name: "Courgette", Slug: "courgette"}
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(alias).Error)
-	require.NoError(t, repo.Merge(keep.ID, alias.ID))
+	require.NoError(t, repo.Merge(keep.ID, alias.ID, nil))
 
 	foods, total, err := repo.Search("", 0, 20)
 	require.NoError(t, err)
@@ -145,7 +147,7 @@ func TestFoodRepository_Merge_ReassignsFoodPrices(t *testing.T) {
 		HouseholdID: hid, FoodID: merge.ID, UnitID: unit.ID, Price: 5.0, Amount: 1,
 	}).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var kept []domain.FoodPrice
 	require.NoError(t, db.Where("food_id = ?", keep.ID).Find(&kept).Error)
@@ -166,9 +168,9 @@ func TestFoodRepository_Merge_KeepIsAlias_ReturnsNotFound(t *testing.T) {
 	require.NoError(t, db.Create(canonical).Error)
 	require.NoError(t, db.Create(alias).Error)
 	require.NoError(t, db.Create(other).Error)
-	require.NoError(t, repo.Merge(canonical.ID, alias.ID))
+	require.NoError(t, repo.Merge(canonical.ID, alias.ID, nil))
 
-	err := repo.Merge(alias.ID, other.ID)
+	err := repo.Merge(alias.ID, other.ID, nil)
 	require.ErrorIs(t, err, sentinels.ErrNotFound, "alias cannot be used as the keep target")
 }
 
@@ -182,9 +184,9 @@ func TestFoodRepository_Merge_MergeTargetIsAlias_ReturnsNotFound(t *testing.T) {
 	require.NoError(t, db.Create(canonical).Error)
 	require.NoError(t, db.Create(alias).Error)
 	require.NoError(t, db.Create(other).Error)
-	require.NoError(t, repo.Merge(canonical.ID, alias.ID))
+	require.NoError(t, repo.Merge(canonical.ID, alias.ID, nil))
 
-	err := repo.Merge(other.ID, alias.ID)
+	err := repo.Merge(other.ID, alias.ID, nil)
 	require.ErrorIs(t, err, sentinels.ErrNotFound, "alias cannot be used as the merge source")
 }
 
@@ -198,7 +200,7 @@ func TestFoodRepository_Merge_InheritsImageFromMerged(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -217,7 +219,7 @@ func TestFoodRepository_Merge_DoesNotOverwriteExistingImage(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -237,7 +239,7 @@ func TestFoodRepository_Merge_InheritsDefaultUnitFromMerged(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -259,7 +261,7 @@ func TestFoodRepository_Merge_DoesNotOverwriteExistingDefaultUnit(t *testing.T) 
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -276,7 +278,7 @@ func TestFoodRepository_Merge_InheritsPantryFromMerged(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -292,7 +294,7 @@ func TestFoodRepository_Merge_KeepsPantryTrue(t *testing.T) {
 	require.NoError(t, db.Create(keep).Error)
 	require.NoError(t, db.Create(merge).Error)
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	var result domain.Food
 	require.NoError(t, db.First(&result, "id = ?", keep.ID).Error)
@@ -391,7 +393,7 @@ func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {
 		FoodID: merge.ID, UnitID: unit2.ID, TargetAmount: 200, TargetUnitID: unitG.ID,
 	}))
 
-	require.NoError(t, repo.Merge(keep.ID, merge.ID))
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
 
 	conversions, err := repo.ListConversions(keep.ID)
 	require.NoError(t, err)
@@ -410,4 +412,178 @@ func TestFoodRepository_Merge_MovesConversionsAndDeduplicates(t *testing.T) {
 	var remaining []domain.FoodUnitConversion
 	require.NoError(t, db.Where("food_id = ?", merge.ID).Find(&remaining).Error)
 	assert.Empty(t, remaining)
+}
+
+func TestFoodRepository_UpdateConversion_OtherFood_ReturnsNotFound(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	milk := &domain.Food{Name: "Milk", Slug: "milk"}
+	egg := &domain.Food{Name: "Egg", Slug: "egg"}
+	require.NoError(t, db.Create(milk).Error)
+	require.NoError(t, db.Create(egg).Error)
+
+	unitCup := &domain.Unit{Name: "cup", Slug: "cup", BaseFactor: 250}
+	unitG := &domain.Unit{Name: "g", Slug: "g", BaseFactor: 1}
+	require.NoError(t, db.Create(unitCup).Error)
+	require.NoError(t, db.Create(unitG).Error)
+
+	conv := &domain.FoodUnitConversion{FoodID: milk.ID, UnitID: unitCup.ID, TargetAmount: 240, TargetUnitID: unitG.ID}
+	require.NoError(t, repo.CreateConversion(conv))
+
+	err := repo.UpdateConversion(&domain.FoodUnitConversion{
+		ID: conv.ID, FoodID: egg.ID, TargetAmount: 1, TargetUnitID: unitG.ID,
+	})
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
+
+	stored, err := repo.ConversionByID(milk.ID, conv.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 240.0, stored.TargetAmount, "conversion of another food must not be modified")
+}
+
+func TestFoodRepository_Merge_RepointsExistingAliases(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	keep := &domain.Food{Name: "Tomato", Slug: "tomato"}
+	merge := &domain.Food{Name: "Tomatoes", Slug: "tomatoes"}
+	alias := &domain.Food{Name: "Tomatos", Slug: "tomatos"}
+	for _, f := range []*domain.Food{keep, merge, alias} {
+		require.NoError(t, db.Create(f).Error)
+	}
+	require.NoError(t, repo.Merge(merge.ID, alias.ID, nil)) // tomatos -> tomatoes
+
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil)) // tomatoes -> tomato
+
+	var stored domain.Food
+	require.NoError(t, db.First(&stored, "id = ?", alias.ID).Error)
+	require.NotNil(t, stored.CanonicalFoodID)
+	assert.Equal(t, keep.ID, *stored.CanonicalFoodID, "an alias of the merged food must point at the kept food directly")
+
+	found := &domain.Food{Name: "Tomatos", Slug: "tomatos"}
+	require.NoError(t, repo.FindOrCreate(found))
+	assert.Equal(t, keep.ID, found.ID)
+}
+
+func TestFoodRepository_CanonicalIDs_MapsOnlyAliases(t *testing.T) {
+	repo, keep, merge := seedFoodAlias(t)
+
+	got, err := repo.CanonicalIDs([]uuid.UUID{keep.ID, merge.ID, uuid.New()})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[uuid.UUID]uuid.UUID{merge.ID: keep.ID}, got)
+}
+
+func TestFoodRepository_ByID_ResolvesAlias(t *testing.T) {
+	repo, keep, merge := seedFoodAlias(t)
+
+	got, err := repo.ByID(merge.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, keep.ID, got.ID, "ByID on an alias must return the canonical food")
+}
+
+func TestFoodRepository_DeleteConversion_Missing_ReturnsNotFound(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	err := repo.DeleteConversion(uuid.New(), uuid.New())
+
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
+}
+
+// seedFoodAlias creates "tomato" and "tomatoes" and merges tomatoes into tomato, so merge is an alias of keep.
+func seedFoodAlias(t *testing.T) (repo domain.FoodRepository, keep, merge *domain.Food) {
+	t.Helper()
+	db := openPrivateTestDB(t)
+	repo = repositories.NewFoodRepository(db)
+	keep = &domain.Food{Name: "Tomato", Slug: "tomato"}
+	merge = &domain.Food{Name: "Tomatoes", Slug: "tomatoes"}
+	require.NoError(t, db.Create(keep).Error)
+	require.NoError(t, db.Create(merge).Error)
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, nil))
+	return repo, keep, merge
+}
+
+func TestFoodRepository_ByIDs_ResolvesAliasesLikeByID(t *testing.T) {
+	repo, keep, merge := seedFoodAlias(t)
+
+	got, err := repo.ByIDs([]uuid.UUID{merge.ID})
+
+	require.NoError(t, err)
+	require.Contains(t, got, merge.ID)
+	assert.Equal(t, keep.ID, got[merge.ID].ID, "an alias ID maps to its canonical food, loaded on demand")
+}
+
+func TestFoodRepository_Merge_ListHoldsBothFoods_CombinesItems(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	keep := &domain.Food{Name: "Tomato", Slug: "tomato"}
+	merge := &domain.Food{Name: "Tomatoes", Slug: "tomatoes"}
+	g := &domain.Unit{Name: "gram", Slug: "g", BaseFactor: 1}
+	ml := &domain.Unit{Name: "millilitre", Slug: "ml", BaseFactor: 1}
+	for _, v := range []any{keep, merge, g, ml} {
+		require.NoError(t, db.Create(v).Error)
+	}
+	sameUnitList, otherUnitList, mergeOnlyList := seedShoppingList(t, db), seedShoppingList(t, db), seedShoppingList(t, db)
+
+	kept := &domain.ShoppingItem{ShoppingListID: sameUnitList, FoodID: &keep.ID, UnitID: &g.ID, Amount: new(200.0), Text: "tomato", IsBought: true}
+	summed := &domain.ShoppingItem{ShoppingListID: sameUnitList, FoodID: &merge.ID, UnitID: &g.ID, Amount: new(300.0), Text: "tomatoes"}
+	otherKept := &domain.ShoppingItem{ShoppingListID: otherUnitList, FoodID: &keep.ID, UnitID: &g.ID, Amount: new(200.0), Text: "tomato"}
+	unlinked := &domain.ShoppingItem{ShoppingListID: otherUnitList, FoodID: &merge.ID, UnitID: &ml.ID, Amount: new(50.0), Text: "tomato juice"}
+	moved := &domain.ShoppingItem{ShoppingListID: mergeOnlyList, FoodID: &merge.ID, Text: "tomatoes"}
+	for _, item := range []*domain.ShoppingItem{kept, summed, otherKept, unlinked, moved} {
+		require.NoError(t, db.Create(item).Error)
+	}
+
+	sumSameUnit := func(target, incoming *domain.ShoppingItem) (bool, error) {
+		if *target.UnitID != *incoming.UnitID {
+			return false, nil
+		}
+		target.Amount = new(*target.Amount + *incoming.Amount)
+		target.IsBought, target.Text = false, incoming.Text
+		return true, nil
+	}
+	require.NoError(t, repo.Merge(keep.ID, merge.ID, sumSameUnit), "a list holding both foods must merge")
+
+	var keptStored, unlinkedStored, movedStored domain.ShoppingItem
+	require.NoError(t, db.First(&keptStored, "id = ?", kept.ID).Error)
+	assert.InDelta(t, 500.0, *keptStored.Amount, 1e-9, "a combined amount is stored on the kept item")
+	assert.False(t, keptStored.IsBought, "the combined bought state is stored")
+	assert.Equal(t, "tomatoes", keptStored.Text)
+	assert.ErrorIs(t, db.First(&domain.ShoppingItem{}, "id = ?", summed.ID).Error, gorm.ErrRecordNotFound)
+
+	require.NoError(t, db.First(&unlinkedStored, "id = ?", unlinked.ID).Error)
+	assert.Nil(t, unlinkedStored.FoodID, "an item that cannot be combined loses its food link")
+	assert.Equal(t, "tomato juice", unlinkedStored.Text)
+
+	require.NoError(t, db.First(&movedStored, "id = ?", moved.ID).Error)
+	assert.Equal(t, keep.ID, *movedStored.FoodID)
+}
+
+func TestFlattenAliases_RepointsLegacyChains(t *testing.T) {
+	db := openPrivateTestDB(t)
+
+	root := &domain.Food{Name: "Tomato", Slug: "tomato"}
+	mid := &domain.Food{Name: "Tomatoes", Slug: "tomatoes"}
+	leaf := &domain.Food{Name: "Tomatos", Slug: "tomatos"}
+	for _, f := range []*domain.Food{root, mid, leaf} {
+		require.NoError(t, db.Create(f).Error)
+	}
+	// What the old Merge left behind: tomatos -> tomatoes -> tomato.
+	require.NoError(t, db.Model(mid).Update("canonical_food_id", root.ID).Error)
+	require.NoError(t, db.Model(leaf).Update("canonical_food_id", mid.ID).Error)
+
+	require.NoError(t, database.FlattenAliases(db))
+
+	var leafStored, midStored domain.Food
+	require.NoError(t, db.First(&leafStored, "id = ?", leaf.ID).Error)
+	assert.Equal(t, root.ID, *leafStored.CanonicalFoodID, "a chained alias must point at the root")
+	require.NoError(t, db.First(&midStored, "id = ?", mid.ID).Error)
+	assert.Equal(t, root.ID, *midStored.CanonicalFoodID)
+
+	got, err := repositories.NewFoodRepository(db).CanonicalIDs([]uuid.UUID{leaf.ID})
+	require.NoError(t, err)
+	assert.Equal(t, root.ID, got[leaf.ID])
 }

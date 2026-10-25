@@ -103,6 +103,8 @@ type stubRecipeRepo struct {
 	createIngredientFn        func(*domain.RecipeIngredient) error
 	addEquipmentFn            func(uuid.UUID, uuid.UUID) error
 	removeEquipmentFn         func(uuid.UUID, uuid.UUID) error
+	createInstructionFn       func(*domain.RecipeInstruction) error
+	instructionParentsFn      func(uuid.UUID) (map[uuid.UUID]*uuid.UUID, error)
 	updateInstructionFn       func(*domain.RecipeInstruction) error
 	transactionFn             func(func(domain.RecipeRepository) error) error
 	replaceRecipePointersFn   func(uuid.UUID, uuid.UUID, uuid.UUID) error
@@ -151,6 +153,12 @@ func (s *stubRecipeRepo) RemoveEquipment(recipeID, equipmentID uuid.UUID) error 
 		return s.removeEquipmentFn(recipeID, equipmentID)
 	}
 	return nil
+}
+func (s *stubRecipeRepo) CreateInstruction(i *domain.RecipeInstruction) error {
+	return s.createInstructionFn(i)
+}
+func (s *stubRecipeRepo) InstructionParents(recipeID uuid.UUID) (map[uuid.UUID]*uuid.UUID, error) {
+	return s.instructionParentsFn(recipeID)
 }
 func (s *stubRecipeRepo) UpdateInstruction(i *domain.RecipeInstruction) error {
 	return s.updateInstructionFn(i)
@@ -343,10 +351,31 @@ type stubFoodService struct {
 	domain.FoodService
 
 	findOrCreateFn       func(context.Context, *domain.Food) error
+	aliases              map[uuid.UUID]uuid.UUID // alias -> canonical, applied by Canonicalize
 	updateFn             func(*domain.Food) error
 	byIDsFn              func([]uuid.UUID) (map[uuid.UUID]*domain.Food, error)
 	latestPricesFn       func(uuid.UUID, []uuid.UUID) (map[uuid.UUID]*domain.FoodPrice, error)
 	conversionsByFoodIDs func([]uuid.UUID) (map[uuid.UUID][]domain.FoodUnitConversion, error)
+}
+
+func (s *stubFoodService) Canonicalize(foodIDs ...*uuid.UUID) error {
+	fakeCanonicalize(s.aliases, nil, foodIDs)
+	return nil
+}
+
+// fakeCanonicalize rewrites the IDs listed in aliases, recording the non-nil IDs it is given in seen if set.
+func fakeCanonicalize(aliases map[uuid.UUID]uuid.UUID, seen *[]uuid.UUID, ids []*uuid.UUID) {
+	for _, id := range ids {
+		if id == nil {
+			continue
+		}
+		if seen != nil {
+			*seen = append(*seen, *id)
+		}
+		if c, ok := aliases[*id]; ok {
+			*id = c
+		}
+	}
 }
 
 func (s *stubFoodService) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
@@ -393,17 +422,21 @@ func (s *stubFoodService) DeleteConversion(_, _ uuid.UUID) error               {
 type stubUnitService struct {
 	domain.UnitService
 
-	findOrCreateFn           func(*domain.Unit) error
-	convertFn                func(float64, uuid.UUID, uuid.UUID) (float64, error)
-	convertWithConversionsFn func(float64, uuid.UUID, uuid.UUID, []domain.FoodUnitConversion) (float64, error)
-	byIDFn                   func(uuid.UUID) (*domain.Unit, error)
+	findOrCreateFn func(*domain.Unit) error
+	convertFn      func(float64, *uuid.UUID, *uuid.UUID, []domain.FoodUnitConversion) (float64, error)
+	aliases        map[uuid.UUID]uuid.UUID // alias -> canonical, applied by ByID and Canonicalize
+	canonicalized  []uuid.UUID             // IDs passed to Canonicalize
 }
 
 func (s *stubUnitService) ByID(id uuid.UUID) (*domain.Unit, error) {
-	if s.byIDFn != nil {
-		return s.byIDFn(id)
+	if c, ok := s.aliases[id]; ok {
+		id = c
 	}
-	return &domain.Unit{BaseFactor: 1}, nil
+	return &domain.Unit{ID: id, BaseFactor: 1}, nil
+}
+func (s *stubUnitService) Canonicalize(unitIDs ...*uuid.UUID) error {
+	fakeCanonicalize(s.aliases, &s.canonicalized, unitIDs)
+	return nil
 }
 func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
 	if s.findOrCreateFn != nil {
@@ -411,17 +444,16 @@ func (s *stubUnitService) FindOrCreate(u *domain.Unit) error {
 	}
 	return nil
 }
-func (s *stubUnitService) Convert(amount float64, from, to uuid.UUID) (float64, error) {
+
+// NewConverter returns the stub itself, so convertFn also stubs UnitConverter.Convert.
+func (s *stubUnitService) NewConverter() domain.UnitConverter { return s }
+func (s *stubUnitService) Add(...*domain.Unit)                {}
+func (s *stubUnitService) Expect(...uuid.UUID)                {}
+func (s *stubUnitService) Convert(amount float64, from, to *uuid.UUID, conversions []domain.FoodUnitConversion) (float64, error) {
 	if s.convertFn != nil {
-		return s.convertFn(amount, from, to)
+		return s.convertFn(amount, from, to, conversions)
 	}
 	return amount, nil
-}
-func (s *stubUnitService) ConvertWithConversions(amount float64, from, to uuid.UUID, conversions []domain.FoodUnitConversion) (float64, error) {
-	if s.convertWithConversionsFn != nil {
-		return s.convertWithConversionsFn(amount, from, to, conversions)
-	}
-	return s.Convert(amount, from, to)
 }
 
 type stubEquipmentService struct {

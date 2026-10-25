@@ -15,7 +15,7 @@ func SeedUnits(db *gorm.DB) error {
 		{Slug: "cm", Name: "centimeter", Imperial: false, BaseFactor: 1},
 
 		{Slug: "can", Name: "can", Imperial: false},
-		{Slug: "pc", Name: "piece", Imperial: false},
+		{Slug: domain.PieceUnitSlug, Name: "piece", Imperial: false},
 		{Slug: "pkg", Name: "package", Imperial: false},
 		{Slug: "bunch", Name: "bunch", Imperial: false},
 		{Slug: "pinch", Name: "pinch", Imperial: false},
@@ -33,7 +33,7 @@ func SeedUnits(db *gorm.DB) error {
 
 	// Re-fetch base IDs in case rows existed before this run.
 	var existing []domain.Unit
-	if err := db.Select("id, slug").Where("slug IN ?", []string{"g", "ml", "cm", "pc"}).Find(&existing).Error; err != nil {
+	if err := db.Select("id, slug").Where("slug IN ?", []string{"g", "ml", "cm", domain.PieceUnitSlug}).Find(&existing).Error; err != nil {
 		return err
 	}
 	idx := make(map[string]uuid.UUID, len(existing))

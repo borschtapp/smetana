@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,4 +41,34 @@ func TestOptional_UnmarshalJSON_WrongType(t *testing.T) {
 		Amount types.Optional[float64] `json:"amount"`
 	}
 	assert.Error(t, json.Unmarshal([]byte(`{"amount": "two"}`), &f))
+}
+
+func TestOptional_Validate_UsesInnerValue(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	type form struct {
+		Amount types.Optional[float64] `validate:"omitnil,gt=0"`
+		Note   types.Optional[string]  `validate:"omitnil,max=3"`
+	}
+
+	tests := []struct {
+		name    string
+		form    form
+		wantErr bool
+	}{
+		{name: "absent", form: form{}},
+		{name: "null", form: form{Amount: types.Optional[float64]{Set: true}}},
+		{name: "valid", form: form{Amount: types.Optional[float64]{Set: true, Value: new(2.0)}, Note: types.Optional[string]{Set: true, Value: new("ok")}}},
+		{name: "invalid number", form: form{Amount: types.Optional[float64]{Set: true, Value: new(-1.0)}}, wantErr: true},
+		{name: "invalid string", form: form{Note: types.Optional[string]{Set: true, Value: new("too long")}}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.form)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

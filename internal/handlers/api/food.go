@@ -56,7 +56,7 @@ type updateFoodRequest struct {
 
 // UpdateFood godoc
 // @Summary Update a food
-// @Description Update name, description, default unit, or pantry status of a food. Only provided fields are changed.
+// @Description Update name, description, default unit, or pantry status of a food. Only provided fields are changed. An ID of a merged-away food updates the food it was merged into.
 // @Tags food
 // @Accept json
 // @Produce json
@@ -105,7 +105,7 @@ func (h *FoodHandler) UpdateFood(c fiber.Ctx) error {
 
 // MergeFood godoc
 // @Summary Merge two food items
-// @Description Reassigns all ingredients, shopping items, and prices from the food at {id} to merge_into, then marks {id} as an alias so future imports resolve correctly.
+// @Description Reassigns all ingredients, shopping items, and prices from the food at {id} to merge_into, then marks {id} as an alias so future imports resolve correctly. IDs of merged-away foods stand for the food they were merged into; if both resolve to the same food, nothing happens.
 // @Tags food
 // @Accept json
 // @Produce json

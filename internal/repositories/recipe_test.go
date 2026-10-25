@@ -770,3 +770,60 @@ func TestRecipeRepository_Import_UpsertsData(t *testing.T) {
 	require.Len(t, got.Ingredients, 1)
 	assert.Equal(t, "new ingredient", got.Ingredients[0].RawText)
 }
+
+func TestRecipeRepository_Update_IgnoresNestedIngredients(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	other := &domain.Recipe{Name: new("other"), Ingredients: []*domain.RecipeIngredient{{RawText: "1 egg"}}}
+	mine := &domain.Recipe{Name: new("mine")}
+	require.NoError(t, db.Create(other).Error)
+	require.NoError(t, db.Create(mine).Error)
+	foreignID := other.Ingredients[0].ID
+
+	patch := &domain.Recipe{ID: mine.ID, Name: new("mine, renamed"), Ingredients: []*domain.RecipeIngredient{{ID: foreignID, RawText: "2 eggs"}}}
+	require.NoError(t, repo.Update(patch))
+
+	var ing domain.RecipeIngredient
+	require.NoError(t, db.First(&ing, "id = ?", foreignID).Error)
+	assert.Equal(t, other.ID, ing.RecipeID, "a PATCH must not move another recipe's ingredient into this one")
+	var stored domain.Recipe
+	require.NoError(t, db.First(&stored, "id = ?", mine.ID).Error)
+	assert.Equal(t, "mine, renamed", *stored.Name, "the recipe's own fields are still updated")
+}
+
+func TestRecipeRepository_ByIDPreload_Instructions_OrderedByOrder(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	r := &domain.Recipe{Name: new("Soup")}
+	seedRecipe(t, db, r)
+	for _, ins := range []*domain.RecipeInstruction{{RecipeID: r.ID, Order: 1, Text: "second"}, {RecipeID: r.ID, Order: 0, Text: "first"}} {
+		require.NoError(t, db.Create(ins).Error)
+	}
+
+	got, err := repo.ByIDPreload(r.ID, uuid.Nil, uuid.Nil, types.Preload("instructions"))
+
+	require.NoError(t, err, "the reserved column name order must be quoted")
+	require.Len(t, got.Instructions, 2)
+	assert.Equal(t, "first", got.Instructions[0].Text)
+}
+
+func TestRecipeRepository_InstructionParents_ListsOnlyThisRecipe(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	r, other := &domain.Recipe{Name: new("Soup")}, &domain.Recipe{Name: new("Stew")}
+	seedRecipe(t, db, r)
+	seedRecipe(t, db, other)
+	parent := &domain.RecipeInstruction{RecipeID: r.ID, Text: "step"}
+	require.NoError(t, db.Create(parent).Error)
+	child := &domain.RecipeInstruction{RecipeID: r.ID, ParentID: &parent.ID, Text: "sub-step"}
+	require.NoError(t, db.Create(child).Error)
+	require.NoError(t, db.Create(&domain.RecipeInstruction{RecipeID: other.ID, Text: "elsewhere"}).Error)
+
+	got, err := repo.InstructionParents(r.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, map[uuid.UUID]*uuid.UUID{parent.ID: nil, child.ID: &parent.ID}, got)
+}

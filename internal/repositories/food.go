@@ -26,22 +26,26 @@ func (r *foodRepository) ByID(id uuid.UUID) (*domain.Food, error) {
 	if err := r.db.First(&food, id).Error; err != nil {
 		return nil, fmt.Errorf("food by id %s: %w", id, mapErr(err))
 	}
+	if err := r.resolveAlias(&food); err != nil {
+		return nil, err
+	}
 	return &food, nil
 }
 
 func (r *foodRepository) ByIDs(ids []uuid.UUID) (map[uuid.UUID]*domain.Food, error) {
-	if len(ids) == 0 {
-		return make(map[uuid.UUID]*domain.Food), nil
+	result, err := byIDsResolved(r.db, ids,
+		func(f *domain.Food) uuid.UUID { return f.ID },
+		func(f *domain.Food) *uuid.UUID { return f.CanonicalFoodID })
+	if err != nil {
+		return nil, fmt.Errorf("foods by ids: %w", err)
 	}
+	return result, nil
+}
 
-	var foods []domain.Food
-	if err := r.db.Where("id IN ?", ids).Find(&foods).Error; err != nil {
-		return nil, fmt.Errorf("foods by ids: %w", mapErr(err))
-	}
-
-	result := make(map[uuid.UUID]*domain.Food, len(foods))
-	for i := range foods {
-		result[foods[i].ID] = &foods[i]
+func (r *foodRepository) CanonicalIDs(ids []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	result, err := canonicalIDs(r.db, &domain.Food{}, "canonical_food_id", ids)
+	if err != nil {
+		return nil, fmt.Errorf("canonical food ids: %w", err)
 	}
 	return result, nil
 }
@@ -105,7 +109,7 @@ func (r *foodRepository) Search(query string, offset, limit int) ([]domain.Food,
 	return foods, total, nil
 }
 
-func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
+func (r *foodRepository) Merge(keepID, mergeID uuid.UUID, combine domain.ShoppingItemCombiner) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var keep, merge domain.Food
 		if err := tx.Scopes(IsCanonicalFood).First(&keep, keepID).Error; err != nil {
@@ -118,43 +122,15 @@ func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
 		if err := tx.Model(&domain.RecipeIngredient{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
 			return fmt.Errorf("reassign ingredients: %w", mapErr(err))
 		}
-		if err := tx.Model(&domain.ShoppingItem{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
-			return fmt.Errorf("reassign shopping items: %w", mapErr(err))
+		if err := moveShoppingItems(tx, mergeID, keepID, combine); err != nil {
+			return err
 		}
 		if err := tx.Model(&domain.FoodPrice{}).Where("food_id = ?", mergeID).Update("food_id", keepID).Error; err != nil {
 			return fmt.Errorf("reassign food prices: %w", mapErr(err))
 		}
 
-		var existingKeep []domain.FoodUnitConversion
-		if err := tx.Where("food_id = ?", keepID).Find(&existingKeep).Error; err != nil {
-			return fmt.Errorf("fetch keep conversions: %w", mapErr(err))
-		}
-		keepUnitIDs := make(map[uuid.UUID]bool)
-		for _, c := range existingKeep {
-			keepUnitIDs[c.UnitID] = true
-		}
-
-		var mergeConversions []domain.FoodUnitConversion
-		if err := tx.Where("food_id = ?", mergeID).Find(&mergeConversions).Error; err != nil {
-			return fmt.Errorf("fetch merge conversions: %w", mapErr(err))
-		}
-		var deleteIDs, reassignIDs []uuid.UUID
-		for _, c := range mergeConversions {
-			if keepUnitIDs[c.UnitID] {
-				deleteIDs = append(deleteIDs, c.ID)
-			} else {
-				reassignIDs = append(reassignIDs, c.ID)
-			}
-		}
-		if len(deleteIDs) > 0 {
-			if err := tx.Delete(&domain.FoodUnitConversion{}, "id IN ?", deleteIDs).Error; err != nil {
-				return fmt.Errorf("delete duplicate conversions: %w", mapErr(err))
-			}
-		}
-		if len(reassignIDs) > 0 {
-			if err := tx.Model(&domain.FoodUnitConversion{}).Where("id IN ?", reassignIDs).Update("food_id", keepID).Error; err != nil {
-				return fmt.Errorf("reassign conversions: %w", mapErr(err))
-			}
+		if err := moveConversions(tx, "food_id", mergeID, keepID); err != nil {
+			return err
 		}
 
 		// Preserve fields from the discarded food if the kept food lacks them.
@@ -174,8 +150,8 @@ func (r *foodRepository) Merge(keepID, mergeID uuid.UUID) error {
 			}
 		}
 
-		if err := tx.Model(&domain.Food{}).Where("id = ?", mergeID).Update("canonical_food_id", keepID).Error; err != nil {
-			return fmt.Errorf("set food alias: %w", mapErr(err))
+		if err := makeAlias(tx, &domain.Food{}, "canonical_food_id", keepID, mergeID); err != nil {
+			return fmt.Errorf("set food alias: %w", err)
 		}
 		return nil
 	})
@@ -276,8 +252,19 @@ func (r *foodRepository) ListConversions(foodID uuid.UUID) ([]domain.FoodUnitCon
 	return list, nil
 }
 
+func (r *foodRepository) ConversionByID(foodID, id uuid.UUID) (*domain.FoodUnitConversion, error) {
+	var c domain.FoodUnitConversion
+	if err := r.db.Where("id = ? AND food_id = ?", id, foodID).First(&c).Error; err != nil {
+		return nil, fmt.Errorf("conversion %s: %w", id, mapErr(err))
+	}
+	return &c, nil
+}
+
 func (r *foodRepository) UpdateConversion(c *domain.FoodUnitConversion) error {
-	result := r.db.Model(c).Select("target_amount", "target_unit_id").Updates(c)
+	result := r.db.Model(&domain.FoodUnitConversion{}).
+		Where("id = ? AND food_id = ?", c.ID, c.FoodID).
+		Select("target_amount", "target_unit_id").
+		Updates(c)
 	if result.Error != nil {
 		return fmt.Errorf("update conversion: %w", mapErr(result.Error))
 	}
@@ -288,8 +275,12 @@ func (r *foodRepository) UpdateConversion(c *domain.FoodUnitConversion) error {
 }
 
 func (r *foodRepository) DeleteConversion(foodID, id uuid.UUID) error {
-	if err := r.db.Delete(&domain.FoodUnitConversion{}, "id = ? AND food_id = ?", id, foodID).Error; err != nil {
-		return fmt.Errorf("delete conversion: %w", mapErr(err))
+	result := r.db.Delete(&domain.FoodUnitConversion{}, "id = ? AND food_id = ?", id, foodID)
+	if result.Error != nil {
+		return fmt.Errorf("delete conversion: %w", mapErr(result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return sentinels.ErrNotFound
 	}
 	return nil
 }
@@ -309,4 +300,99 @@ func (r *foodRepository) ConversionsByFoodIDs(foodIDs []uuid.UUID) (map[uuid.UUI
 		result[fid] = append(result[fid], list[i])
 	}
 	return result, nil
+}
+
+// moveShoppingItems moves shopping items from fromID to toID. A list holds one item per food, so where a list
+// has both, combine merges the moved item into the existing one; otherwise the moved item loses its food link.
+func moveShoppingItems(tx *gorm.DB, fromID, toID uuid.UUID, combine domain.ShoppingItemCombiner) error {
+	if err := combineCollidingItems(tx, fromID, toID, combine); err != nil {
+		return err
+	}
+	if err := tx.Model(&domain.ShoppingItem{}).Where("food_id = ?", fromID).Update("food_id", toID).Error; err != nil {
+		return fmt.Errorf("reassign shopping items: %w", mapErr(err))
+	}
+	return nil
+}
+
+func combineCollidingItems(tx *gorm.DB, fromID, toID uuid.UUID, combine domain.ShoppingItemCombiner) error {
+	var moving []domain.ShoppingItem
+	listsWithTo := tx.Model(&domain.ShoppingItem{}).Select("shopping_list_id").Where("food_id = ?", toID)
+	if err := tx.Where("food_id = ? AND shopping_list_id IN (?)", fromID, listsWithTo).Find(&moving).Error; err != nil {
+		return fmt.Errorf("fetch colliding shopping items: %w", mapErr(err))
+	}
+	if len(moving) == 0 {
+		return nil
+	}
+
+	listIDs := make([]uuid.UUID, len(moving))
+	for i := range moving {
+		listIDs[i] = moving[i].ShoppingListID
+	}
+	var existing []domain.ShoppingItem
+	if err := tx.Where("food_id = ? AND shopping_list_id IN ?", toID, listIDs).Find(&existing).Error; err != nil {
+		return fmt.Errorf("fetch existing shopping items: %w", mapErr(err))
+	}
+	byList := make(map[uuid.UUID]*domain.ShoppingItem, len(existing))
+	for i := range existing {
+		byList[existing[i].ShoppingListID] = &existing[i]
+	}
+
+	var combined, unlinked []uuid.UUID
+	for i := range moving {
+		item, target := &moving[i], byList[moving[i].ShoppingListID]
+		ok := false
+		if combine != nil {
+			var err error
+			if ok, err = combine(target, item); err != nil {
+				return fmt.Errorf("combine shopping items: %w", err)
+			}
+		}
+		if !ok {
+			unlinked = append(unlinked, item.ID)
+			continue
+		}
+		if err := tx.Model(target).Select("amount", "unit_id", "is_bought", "text").Updates(target).Error; err != nil {
+			return fmt.Errorf("update combined shopping item: %w", mapErr(err))
+		}
+		combined = append(combined, item.ID)
+	}
+
+	if len(unlinked) > 0 {
+		if err := tx.Model(&domain.ShoppingItem{}).Where("id IN ?", unlinked).Update("food_id", nil).Error; err != nil {
+			return fmt.Errorf("unlink colliding shopping items: %w", mapErr(err))
+		}
+	}
+	if len(combined) > 0 {
+		if err := tx.Delete(&domain.ShoppingItem{}, "id IN ?", combined).Error; err != nil {
+			return fmt.Errorf("delete combined shopping items: %w", mapErr(err))
+		}
+	}
+	return nil
+}
+
+// moveConversions moves conversions with column = fromID to toID, where column is food_id or unit_id.
+// Rows that would duplicate an existing (food_id, unit_id) pair are deleted; the existing row wins.
+func moveConversions(tx *gorm.DB, column string, fromID, toID uuid.UUID) error {
+	other := "unit_id"
+	if column == "unit_id" {
+		other = "food_id"
+	}
+
+	// Collect collisions first: MySQL cannot delete from a table it selects from in the same statement.
+	var taken []uuid.UUID
+	fromOthers := tx.Model(&domain.FoodUnitConversion{}).Select(other).Where(column+" = ?", fromID)
+	if err := tx.Model(&domain.FoodUnitConversion{}).Where(column+" = ? AND "+other+" IN (?)", toID, fromOthers).
+		Pluck(other, &taken).Error; err != nil {
+		return fmt.Errorf("fetch colliding conversions: %w", mapErr(err))
+	}
+	if len(taken) > 0 {
+		if err := tx.Where(column+" = ? AND "+other+" IN ?", fromID, taken).Delete(&domain.FoodUnitConversion{}).Error; err != nil {
+			return fmt.Errorf("delete colliding conversions: %w", mapErr(err))
+		}
+	}
+
+	if err := tx.Model(&domain.FoodUnitConversion{}).Where(column+" = ?", fromID).Update(column, toID).Error; err != nil {
+		return fmt.Errorf("reassign conversions: %w", mapErr(err))
+	}
+	return nil
 }
