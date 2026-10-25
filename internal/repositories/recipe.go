@@ -361,15 +361,15 @@ func (r *recipeRepository) CreateIngredient(ingredient *domain.RecipeIngredient)
 }
 
 func (r *recipeRepository) UpdateIngredient(ingredient *domain.RecipeIngredient) error {
-	if err := r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Omit(clause.Associations).Updates(ingredient).Error; err != nil {
-		return fmt.Errorf("update ingredient %s: %w", ingredient.ID, mapErr(err))
+	if err := mapAffected(r.db.Model(ingredient).Where("recipe_id = ?", ingredient.RecipeID).Omit(clause.Associations).Updates(ingredient)); err != nil {
+		return fmt.Errorf("update ingredient %s: %w", ingredient.ID, err)
 	}
 	return nil
 }
 
 func (r *recipeRepository) DeleteIngredient(id uuid.UUID, recipeID uuid.UUID) error {
-	if err := r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID).Error; err != nil {
-		return fmt.Errorf("delete ingredient %s: %w", id, mapErr(err))
+	if err := mapAffected(r.db.Delete(&domain.RecipeIngredient{}, "id = ? AND recipe_id = ?", id, recipeID)); err != nil {
+		return fmt.Errorf("delete ingredient %s: %w", id, err)
 	}
 	return nil
 }
@@ -382,8 +382,9 @@ func (r *recipeRepository) AddEquipment(recipeID uuid.UUID, equipmentID uuid.UUI
 }
 
 func (r *recipeRepository) RemoveEquipment(recipeID uuid.UUID, equipmentID uuid.UUID) error {
-	if err := r.db.Model(&domain.Recipe{ID: recipeID}).Association("Equipment").Delete(&domain.Equipment{ID: equipmentID}); err != nil {
-		return fmt.Errorf("remove equipment %s from recipe %s: %w", equipmentID, recipeID, mapErr(err))
+	// Raw delete, as Association().Delete doesn't report whether the link existed.
+	if err := mapAffected(r.db.Exec("DELETE FROM recipe_equipment WHERE recipe_id = ? AND equipment_id = ?", recipeID, equipmentID)); err != nil {
+		return fmt.Errorf("remove equipment %s from recipe %s: %w", equipmentID, recipeID, err)
 	}
 	return nil
 }
@@ -396,15 +397,15 @@ func (r *recipeRepository) CreateInstruction(instruction *domain.RecipeInstructi
 }
 
 func (r *recipeRepository) UpdateInstruction(instruction *domain.RecipeInstruction) error {
-	if err := r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Omit(clause.Associations).Updates(instruction).Error; err != nil {
-		return fmt.Errorf("update instruction %s: %w", instruction.ID, mapErr(err))
+	if err := mapAffected(r.db.Model(instruction).Where("recipe_id = ?", instruction.RecipeID).Omit(clause.Associations).Updates(instruction)); err != nil {
+		return fmt.Errorf("update instruction %s: %w", instruction.ID, err)
 	}
 	return nil
 }
 
 func (r *recipeRepository) DeleteInstruction(id uuid.UUID, recipeID uuid.UUID) error {
-	if err := r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID).Error; err != nil {
-		return fmt.Errorf("delete instruction %s: %w", id, mapErr(err))
+	if err := mapAffected(r.db.Delete(&domain.RecipeInstruction{}, "id = ? AND recipe_id = ?", id, recipeID)); err != nil {
+		return fmt.Errorf("delete instruction %s: %w", id, err)
 	}
 	return nil
 }

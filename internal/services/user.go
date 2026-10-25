@@ -41,7 +41,7 @@ func (s *userService) Update(id uuid.UUID, requesterID uuid.UUID, name, email, c
 	credentialChange := email != nil || newPassword != nil
 	if credentialChange {
 		if currentPassword == nil || !utils.ValidatePassword(user.Password, *currentPassword) {
-			return nil, sentinels.ErrUnauthorized
+			return nil, sentinels.UnprocessableField("current_password", "Current password is incorrect")
 		}
 	}
 	if email != nil {

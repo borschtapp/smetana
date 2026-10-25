@@ -59,6 +59,9 @@ func TestMySQLDSN(t *testing.T) {
 				t.Errorf("mysqlDSN(%+v) = %q, parsed as addr=%q user=%q password=%q db=%q",
 					tc.cfg, dsn, parsed.Addr, parsed.User, parsed.Passwd, parsed.DBName)
 			}
+			if !parsed.ClientFoundRows {
+				t.Errorf("mysqlDSN(%+v) = %q, want clientFoundRows=true", tc.cfg, dsn)
+			}
 			if !parsed.ParseTime || parsed.Loc != time.Local {
 				t.Errorf("mysqlDSN(%+v) = %q, want parseTime=true and loc=Local", tc.cfg, dsn)
 			}

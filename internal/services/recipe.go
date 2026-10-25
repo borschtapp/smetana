@@ -599,6 +599,7 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 			estimate.Items = append(estimate.Items, ingCost)
 			continue
 		}
+		ingCost.FoodPrice = foodPrice // also reported on incompatible_unit, so clients can show which price didn't fit
 
 		convertedAmount, convErr := converter.Convert(*ing.Amount, ing.UnitID, &foodPrice.UnitID, conversions[*ing.FoodID])
 		if errors.Is(convErr, sentinels.ErrUnitConversion) {
@@ -614,7 +615,6 @@ func (s *recipeService) EstimatePrice(recipeID uuid.UUID, householdID uuid.UUID)
 		cost := (convertedAmount / foodPrice.Amount) * foodPrice.Price
 
 		ingCost.Cost = &cost
-		ingCost.FoodPrice = foodPrice
 		ingCost.Status = "calculated"
 
 		estimate.Total += cost

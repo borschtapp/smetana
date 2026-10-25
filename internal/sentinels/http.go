@@ -40,6 +40,14 @@ func Unprocessable(m string) *Error {
 	return &Error{Status: fiber.StatusUnprocessableEntity, Message: m}
 }
 
+func UnprocessableField(field string, reason string) *Error {
+	return &Error{Status: fiber.StatusUnprocessableEntity, Message: reason, Fields: map[string]string{field: reason}}
+}
+
+func Gone(m string) *Error {
+	return &Error{Status: fiber.StatusGone, Message: m}
+}
+
 func Unauthorized(m string) *Error {
 	return &Error{Status: fiber.StatusUnauthorized, Message: m}
 }

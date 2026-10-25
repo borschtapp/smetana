@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -162,7 +163,7 @@ func TestUserService_Update_NameOnly_DoesNotRevokeTokens(t *testing.T) {
 	assert.False(t, revokeCalled, "a name-only update must not require a current password or revoke sessions")
 }
 
-func TestUserService_Update_WrongCurrentPassword_Unauthorized(t *testing.T) {
+func TestUserService_Update_WrongCurrentPassword_Unprocessable(t *testing.T) {
 	userID := uuid.New()
 	hash, err := utils.HashPassword("correct-password")
 	require.NoError(t, err)
@@ -175,7 +176,10 @@ func TestUserService_Update_WrongCurrentPassword_Unauthorized(t *testing.T) {
 	svc := newTestUserService(userRepo, &stubHouseholdRepo{})
 	_, err = svc.Update(userID, userID, nil, nil, new("wrong-password"), new("new-password"), nil)
 
-	require.ErrorIs(t, err, sentinels.ErrUnauthorized)
+	var se *sentinels.Error
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, fiber.StatusUnprocessableEntity, se.Status, "a wrong password must not look like an expired session (401)")
+	assert.Contains(t, se.Fields, "current_password")
 }
 
 func TestUserService_Delete_DifferentRequester_Forbidden(t *testing.T) {

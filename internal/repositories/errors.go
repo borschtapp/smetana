@@ -21,3 +21,14 @@ func mapErr(err error) error {
 		return err
 	}
 }
+
+// mapAffected is mapErr for writes that must hit a row: zero affected rows means the target does not exist
+func mapAffected(result *gorm.DB) error {
+	if result.Error != nil {
+		return mapErr(result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return sentinels.ErrNotFound
+	}
+	return nil
+}

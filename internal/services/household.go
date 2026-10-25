@@ -123,7 +123,7 @@ func (s *householdService) JoinByInvite(joiningUserID uuid.UUID, code string) (*
 		return nil, fmt.Errorf("join by invite (fetch token): %w", err)
 	}
 	if time.Now().After(token.Expires) {
-		return nil, sentinels.Unauthorized("invite code has expired")
+		return nil, sentinels.Gone("invite code has expired")
 	}
 
 	joiningUser, err := s.userRepo.ByID(joiningUserID)
@@ -151,7 +151,7 @@ func (s *householdService) InviteInfo(code string) (*domain.InviteInfo, error) {
 		return nil, fmt.Errorf("invite info (fetch token): %w", err)
 	}
 	if time.Now().After(token.Expires) {
-		return nil, sentinels.Unauthorized("invite code has expired")
+		return nil, sentinels.Gone("invite code has expired")
 	}
 
 	household, err := s.repo.ByID(token.User.HouseholdID)

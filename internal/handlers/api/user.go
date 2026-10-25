@@ -65,6 +65,7 @@ type UpdateUserForm struct {
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
 // @Failure 403 {object} sentinels.Error
+// @Failure 422 {object} sentinels.Error "current_password is incorrect"
 // @Security ApiKeyAuth
 // @Router /api/v1/users/{id} [patch]
 func (h *UserHandler) UpdateUser(c fiber.Ctx) error {

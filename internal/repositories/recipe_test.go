@@ -448,6 +448,39 @@ func TestRecipeRepository_RemoveEquipment_DeletesJunctionRow(t *testing.T) {
 	var count int64
 	db.Model(&recipeEquipment{}).Where("recipe_id = ? AND equipment_id = ?", r.ID, e.ID).Count(&count)
 	assert.EqualValues(t, 0, count, "junction row must be gone after RemoveEquipment")
+
+	require.ErrorIs(t, repo.RemoveEquipment(r.ID, e.ID), sentinels.ErrNotFound, "removing it again must report not found")
+}
+
+func TestRecipeRepository_DeleteInstruction_Missing_ReturnsNotFound(t *testing.T) {
+	repo := repositories.NewRecipeRepository(openTestDB(t))
+
+	require.ErrorIs(t, repo.DeleteInstruction(uuid.New(), uuid.New()), sentinels.ErrNotFound)
+}
+
+func TestRecipeRepository_UpdateIngredient_WrongRecipeID_ReturnsNotFound(t *testing.T) {
+	db := openTestDB(t)
+	r := &domain.Recipe{}
+	seedRecipe(t, db, r)
+
+	ing := &domain.RecipeIngredient{RecipeID: r.ID, RawText: "salt"}
+	require.NoError(t, db.Create(ing).Error)
+
+	repo := repositories.NewRecipeRepository(db)
+	require.NoError(t, repo.UpdateIngredient(&domain.RecipeIngredient{ID: ing.ID, RecipeID: r.ID, RawText: "salt"}), "unchanged values must not look missing")
+	require.ErrorIs(t, repo.UpdateIngredient(&domain.RecipeIngredient{ID: ing.ID, RecipeID: uuid.New(), RawText: "pepper"}), sentinels.ErrNotFound)
+
+	var got domain.RecipeIngredient
+	require.NoError(t, db.First(&got, ing.ID).Error)
+	assert.Equal(t, "salt", got.RawText, "ingredient under another recipe must be untouched")
+}
+
+func TestRecipeRepository_UpdateInstruction_Missing_ReturnsNotFound(t *testing.T) {
+	repo := repositories.NewRecipeRepository(openTestDB(t))
+
+	err := repo.UpdateInstruction(&domain.RecipeInstruction{ID: uuid.New(), RecipeID: uuid.New(), Text: "stir"})
+
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
 func TestRecipeRepository_CreateIngredient_PersistsRow(t *testing.T) {
@@ -494,7 +527,7 @@ func TestRecipeRepository_DeleteIngredient_WrongRecipeID_DoesNotDelete(t *testin
 	require.NoError(t, db.Create(ing).Error)
 
 	repo := repositories.NewRecipeRepository(db)
-	require.NoError(t, repo.DeleteIngredient(ing.ID, uuid.New()))
+	require.ErrorIs(t, repo.DeleteIngredient(ing.ID, uuid.New()), sentinels.ErrNotFound)
 
 	var count int64
 	db.Model(&domain.RecipeIngredient{}).Where("id = ?", ing.ID).Count(&count)

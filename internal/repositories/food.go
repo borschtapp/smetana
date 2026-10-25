@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
-	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/utils"
 )
 
@@ -231,8 +230,8 @@ func (r *foodRepository) ListPrices(householdID, foodID uuid.UUID, opts types.Pa
 }
 
 func (r *foodRepository) DeletePrice(householdID, id uuid.UUID) error {
-	if err := r.db.Delete(&domain.FoodPrice{}, "id = ? AND household_id = ?", id, householdID).Error; err != nil {
-		return fmt.Errorf("delete food price %s: %w", id, mapErr(err))
+	if err := mapAffected(r.db.Delete(&domain.FoodPrice{}, "id = ? AND household_id = ?", id, householdID)); err != nil {
+		return fmt.Errorf("delete food price %s: %w", id, err)
 	}
 	return nil
 }
@@ -265,22 +264,15 @@ func (r *foodRepository) UpdateConversion(c *domain.FoodUnitConversion) error {
 		Where("id = ? AND food_id = ?", c.ID, c.FoodID).
 		Select("target_amount", "target_unit_id").
 		Updates(c)
-	if result.Error != nil {
-		return fmt.Errorf("update conversion: %w", mapErr(result.Error))
-	}
-	if result.RowsAffected == 0 {
-		return sentinels.ErrNotFound
+	if err := mapAffected(result); err != nil {
+		return fmt.Errorf("update conversion: %w", err)
 	}
 	return nil
 }
 
 func (r *foodRepository) DeleteConversion(foodID, id uuid.UUID) error {
-	result := r.db.Delete(&domain.FoodUnitConversion{}, "id = ? AND food_id = ?", id, foodID)
-	if result.Error != nil {
-		return fmt.Errorf("delete conversion: %w", mapErr(result.Error))
-	}
-	if result.RowsAffected == 0 {
-		return sentinels.ErrNotFound
+	if err := mapAffected(r.db.Delete(&domain.FoodUnitConversion{}, "id = ? AND food_id = ?", id, foodID)); err != nil {
+		return fmt.Errorf("delete conversion: %w", err)
 	}
 	return nil
 }

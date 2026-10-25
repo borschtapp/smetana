@@ -113,7 +113,7 @@ type RecipeRepository interface {
 // RecipeIngredientCost is a
 type RecipeIngredientCost struct {
 	IngredientID uuid.UUID  `json:"ingredient_id"`        // references Recipe.Ingredients[].ID
-	FoodPrice    *FoodPrice `json:"food_price,omitempty"` // the price used (nil if not calculated)
+	FoodPrice    *FoodPrice `json:"food_price,omitempty"` // the price used or tried (nil for pantry/missing_price)
 	Cost         *float64   `json:"cost,omitempty"`       // cost for this ingredient in the recipe (nil if not calculated)
 	Status       string     `json:"status"`               // "calculated" | "pantry" | "missing_price" | "incompatible_unit"
 }

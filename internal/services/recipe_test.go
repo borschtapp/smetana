@@ -448,6 +448,9 @@ func TestRecipeService_EstimatePrice_ConversionErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, estimate.Items, 1)
 		assert.Equal(t, "incompatible_unit", estimate.Items[0].Status)
+		assert.Nil(t, estimate.Items[0].Cost)
+		require.NotNil(t, estimate.Items[0].FoodPrice, "the price that didn't fit must be reported")
+		assert.Equal(t, g, estimate.Items[0].FoodPrice.UnitID)
 	})
 
 	t.Run("a lookup failure is returned, not reported as a unit mismatch", func(t *testing.T) {

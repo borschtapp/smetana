@@ -1983,6 +1983,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
+                    },
+                    "410": {
+                        "description": "invite code has expired",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
                     }
                 }
             }
@@ -2032,6 +2038,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
+                    },
+                    "410": {
+                        "description": "invite code has expired",
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
@@ -4667,6 +4679,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/sentinels.Error"
                         }
+                    },
+                    "422": {
+                        "description": "current_password is incorrect",
+                        "schema": {
+                            "$ref": "#/definitions/sentinels.Error"
+                        }
                     }
                 }
             }
@@ -5788,7 +5806,7 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "food_price": {
-                    "description": "the price used (nil if not calculated)",
+                    "description": "the price used or tried (nil for pantry/missing_price)",
                     "allOf": [
                         {
                             "$ref": "#/definitions/domain.FoodPrice"

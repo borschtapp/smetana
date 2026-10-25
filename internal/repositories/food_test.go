@@ -492,6 +492,15 @@ func TestFoodRepository_DeleteConversion_Missing_ReturnsNotFound(t *testing.T) {
 	require.ErrorIs(t, err, sentinels.ErrNotFound)
 }
 
+func TestFoodRepository_DeletePrice_Missing_ReturnsNotFound(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFoodRepository(db)
+
+	err := repo.DeletePrice(uuid.New(), uuid.New())
+
+	require.ErrorIs(t, err, sentinels.ErrNotFound)
+}
+
 // seedFoodAlias creates "tomato" and "tomatoes" and merges tomatoes into tomato, so merge is an alias of keep.
 func seedFoodAlias(t *testing.T) (repo domain.FoodRepository, keep, merge *domain.Food) {
 	t.Helper()

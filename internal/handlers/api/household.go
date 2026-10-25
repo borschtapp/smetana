@@ -228,6 +228,7 @@ func (h *HouseholdHandler) RemoveHouseholdMember(c fiber.Ctx) error {
 // @Failure 400 {object} sentinels.Error
 // @Failure 401 {object} sentinels.Error
 // @Failure 404 {object} sentinels.Error
+// @Failure 410 {object} sentinels.Error "invite code has expired"
 // @Security ApiKeyAuth
 // @Router /api/v1/households/invites/{code}/join [post]
 func (h *HouseholdHandler) JoinHousehold(c fiber.Ctx) error {
@@ -279,6 +280,7 @@ func (h *HouseholdHandler) LeaveHousehold(c fiber.Ctx) error {
 // @Param code path string true "Invite code"
 // @Success 200 {object} domain.InviteInfo
 // @Failure 404 {object} sentinels.Error
+// @Failure 410 {object} sentinels.Error "invite code has expired"
 // @Router /api/v1/households/invites/{code}/info [get]
 func (h *HouseholdHandler) GetInviteInfo(c fiber.Ctx) error {
 	code := c.Params("code")

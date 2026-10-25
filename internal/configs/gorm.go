@@ -43,6 +43,7 @@ func mysqlDSN(cfg databaseEnvVars) string {
 	dsn.DBName = cfg.Name
 	dsn.ParseTime = true
 	dsn.Loc = time.Local
+	dsn.ClientFoundRows = true // report matched, not changed, rows like SQLite/Postgres; a no-op UPDATE isn't "not found"
 	_ = dsn.Apply(gomysql.Charset("utf8mb4", ""))
 	return dsn.FormatDSN()
 }
