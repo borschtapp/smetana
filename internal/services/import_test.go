@@ -2,8 +2,13 @@ package services_test
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
+	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +16,7 @@ import (
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/services"
+	"borscht.app/smetana/internal/types"
 )
 
 type importServiceDeps struct {
@@ -301,4 +307,175 @@ func TestImportService_DetectAndImport_ForceUpdate(t *testing.T) {
 	require.NotNil(t, res.Recipe)
 	assert.Equal(t, 1, scrapeCallCount, "URL must be scraped even if it exists when forceUpdate is true")
 	assert.Equal(t, 1, importCallCount, "recipe must be imported even if it exists when forceUpdate is true")
+}
+
+func TestImportService_RefreshRecipe_Success(t *testing.T) {
+	rid := uuid.New()
+	uid := uuid.New()
+	hid := uuid.New()
+	sourceURL := "https://example.com/recipe/borsch"
+
+	existing := &domain.Recipe{
+		ID:        rid,
+		SourceUrl: &sourceURL,
+	}
+
+	canonicalURL := "https://example.com/recipes/borsch-classic"
+	scrapedRecipe := &domain.Recipe{
+		SourceUrl:    &canonicalURL,
+		Name:         new("Freshly Scraped"),
+		Ingredients:  []*domain.RecipeIngredient{{}},
+		Instructions: []*domain.RecipeInstruction{{Text: "Simmer"}},
+	}
+
+	preloadedRecipe := &domain.Recipe{ID: rid}
+
+	scrapeCalled := false
+	scraper := &stubScraperService{
+		scrapeRecipeFn: func(_ context.Context, u string) (*domain.Recipe, error) {
+			scrapeCalled = true
+			assert.Equal(t, sourceURL, u)
+			return scrapedRecipe, nil
+		},
+	}
+
+	ingestCalled := false
+	recipeIngest := &stubRecipeIngestService{
+		importRecipeFn: func(_ context.Context, r *domain.Recipe) (*domain.Recipe, error) {
+			ingestCalled = true
+			assert.Equal(t, rid, r.ID, "scraped recipe must carry the known recipe ID directly into ingest")
+			assert.Equal(t, sourceURL, *r.SourceUrl, "refresh must keep the stored source URL, not the scraped canonical one")
+			return r, nil
+		},
+	}
+
+	recipeSvc := &stubRecipeService{
+		byIDFn: func(id, h uuid.UUID) (*domain.Recipe, error) {
+			assert.Equal(t, rid, id)
+			assert.Equal(t, hid, h)
+			return existing, nil
+		},
+		byIDPreloadFn: func(id, u, h uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
+			assert.Equal(t, rid, id)
+			return preloadedRecipe, nil
+		},
+	}
+
+	svc := newTestImportService(importServiceDeps{
+		recipeService: recipeSvc,
+		recipeIngest:  recipeIngest,
+		scraper:       scraper,
+	})
+
+	refreshed, err := svc.RefreshRecipe(context.Background(), rid, uid, hid)
+	require.NoError(t, err)
+	require.NotNil(t, refreshed)
+	assert.True(t, scrapeCalled)
+	assert.True(t, ingestCalled)
+	assert.Same(t, preloadedRecipe, refreshed, "refresh must return the reloaded recipe")
+}
+
+func TestImportService_RefreshRecipe_Rejects(t *testing.T) {
+	hid := uuid.New()
+	sourceURL := "https://example.com/recipe/borsch"
+
+	tests := []struct {
+		name       string
+		byID       *domain.Recipe
+		byIDErr    error
+		wantStatus int
+	}{
+		{name: "no source url", byID: &domain.Recipe{}, wantStatus: fiber.StatusBadRequest},
+		{name: "customized recipe", byID: &domain.Recipe{HouseholdID: &hid, SourceUrl: &sourceURL}, wantStatus: fiber.StatusBadRequest},
+		{name: "not found", byIDErr: sentinels.ErrNotFound, wantStatus: fiber.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			recipeSvc := &stubRecipeService{
+				byIDFn: func(id, h uuid.UUID) (*domain.Recipe, error) {
+					return tt.byID, tt.byIDErr
+				},
+			}
+			svc := newTestImportService(importServiceDeps{recipeService: recipeSvc})
+
+			refreshed, err := svc.RefreshRecipe(context.Background(), uuid.New(), uuid.New(), hid)
+			assert.Nil(t, refreshed)
+			var se *sentinels.Error
+			require.ErrorAs(t, err, &se)
+			assert.Equal(t, tt.wantStatus, se.Status)
+		})
+	}
+}
+
+func TestImportService_RefreshRecipe_CollapsesConcurrentCalls(t *testing.T) {
+	// synctest only advances the clock once all goroutines block, so the second caller joins
+	// the refresh before the scrape returns.
+	synctest.Test(t, func(t *testing.T) {
+		rid := uuid.New()
+		uid := uuid.New()
+		hid := uuid.New()
+		sourceURL := "https://example.com/recipe/concurrent"
+
+		existing := &domain.Recipe{
+			ID:        rid,
+			SourceUrl: &sourceURL,
+		}
+
+		scrapedRecipe := &domain.Recipe{
+			SourceUrl:    &sourceURL,
+			Name:         new("Concurrent Recipe"),
+			Ingredients:  []*domain.RecipeIngredient{{}},
+			Instructions: []*domain.RecipeInstruction{{Text: "Stir"}},
+		}
+
+		var scrapeCallCount atomic.Int32
+		scraper := &stubScraperService{
+			scrapeRecipeFn: func(_ context.Context, u string) (*domain.Recipe, error) {
+				scrapeCallCount.Add(1)
+				time.Sleep(50 * time.Millisecond)
+				return scrapedRecipe, nil
+			},
+		}
+
+		var ingestCallCount atomic.Int32
+		recipeIngest := &stubRecipeIngestService{
+			importRecipeFn: func(_ context.Context, r *domain.Recipe) (*domain.Recipe, error) {
+				ingestCallCount.Add(1)
+				return r, nil
+			},
+		}
+
+		recipeSvc := &stubRecipeService{
+			byIDFn: func(id, h uuid.UUID) (*domain.Recipe, error) {
+				return existing, nil
+			},
+			byIDPreloadFn: func(id, u, h uuid.UUID, _ types.PreloadOptions) (*domain.Recipe, error) {
+				return scrapedRecipe, nil
+			},
+		}
+
+		svc := newTestImportService(importServiceDeps{
+			recipeService: recipeSvc,
+			recipeIngest:  recipeIngest,
+			scraper:       scraper,
+		})
+
+		var wg sync.WaitGroup
+		var errs [2]error
+		var results [2]*domain.Recipe
+		for i := range results {
+			wg.Go(func() {
+				results[i], errs[i] = svc.RefreshRecipe(context.Background(), rid, uid, hid)
+			})
+		}
+		wg.Wait()
+
+		for i := range results {
+			require.NoError(t, errs[i])
+			assert.NotNil(t, results[i])
+		}
+		assert.EqualValues(t, 1, scrapeCallCount.Load(), "concurrent refresh calls for the same recipe must only scrape once")
+		assert.EqualValues(t, 1, ingestCallCount.Load(), "concurrent refresh calls for the same recipe must only ingest once")
+	})
 }

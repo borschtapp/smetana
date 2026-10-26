@@ -23,6 +23,8 @@ type ImportService interface {
 	ImportFromURL(ctx context.Context, url string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 	// DetectAndImport scrapes the URL and auto-detects whether it is a recipe or a feed, importing accordingly.
 	DetectAndImport(ctx context.Context, url string, requestedType string, forceUpdate bool, userID uuid.UUID, householdID uuid.UUID) (*ImportResult, error)
+	// RefreshRecipe re-scrapes an imported recipe from its source URL and updates it.
+	RefreshRecipe(ctx context.Context, id uuid.UUID, userID uuid.UUID, householdID uuid.UUID) (*Recipe, error)
 }
 
 type RecipeIngestService interface {

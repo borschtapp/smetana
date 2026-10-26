@@ -15,6 +15,7 @@ import (
 	"borscht.app/smetana/internal/database"
 	"borscht.app/smetana/internal/repositories"
 	"borscht.app/smetana/internal/sentinels"
+	"borscht.app/smetana/internal/storage"
 	"borscht.app/smetana/internal/types"
 )
 
@@ -44,6 +45,13 @@ func seedRecipe(t *testing.T, db *gorm.DB, r *domain.Recipe) {
 		r.ID, _ = uuid.NewV7()
 	}
 	require.NoError(t, db.Create(r).Error)
+}
+
+// withContent adds an ingredient and an instruction so updates pass the incomplete-scrape guard.
+func withContent(r *domain.Recipe) *domain.Recipe {
+	r.Ingredients = []*domain.RecipeIngredient{{RawText: "1 egg"}}
+	r.Instructions = []*domain.RecipeInstruction{{Text: "Whisk"}}
+	return r
 }
 
 // seedHousehold creates a Household row and returns its ID.
@@ -563,7 +571,7 @@ func TestRecipeRepository_Import_ForceUpdateReusesExistingRowBySourceURL(t *test
 	firstID := first.ID
 
 	// Simulate a forced reimport: a fresh scrape with no ID assigned yet, same source URL.
-	second := &domain.Recipe{SourceUrl: &url, Name: new("Updated Name")}
+	second := withContent(&domain.Recipe{SourceUrl: &url, Name: new("Updated Name")})
 	require.NoError(t, repo.Import(second))
 
 	assert.Equal(t, firstID, second.ID, "reimporting the same source URL must reuse the existing row's ID")
@@ -598,7 +606,7 @@ func TestRecipeRepository_Import_ClearsAssociationsAbsentFromReimport(t *testing
 	require.EqualValues(t, 1, equipmentCount)
 
 	// Reimport the same URL where the source no longer yields nutrition or equipment data.
-	second := &domain.Recipe{SourceUrl: &url}
+	second := withContent(&domain.Recipe{SourceUrl: &url})
 	require.NoError(t, repo.Import(second))
 	assert.Equal(t, first.ID, second.ID)
 
@@ -770,11 +778,116 @@ func TestRecipeRepository_Import_ReusesIDBySourceUrl(t *testing.T) {
 	seedRecipe(t, db, existing)
 
 	// Import a new recipe object with the same SourceUrl but no ID
-	imported := &domain.Recipe{SourceUrl: &testURL}
+	imported := withContent(&domain.Recipe{SourceUrl: &testURL})
 	err := repo.Import(imported)
 
 	require.NoError(t, err)
 	assert.Equal(t, existing.ID, imported.ID, "Import must reuse the ID of an existing global recipe with the same SourceUrl")
+}
+
+func TestRecipeRepository_Import_EmptyUpdateKeepsContent(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	url := "https://example.com/paywalled"
+	first := &domain.Recipe{SourceUrl: &url, Name: new("Borscht"), Ingredients: []*domain.RecipeIngredient{{RawText: "2 beets"}}, Instructions: []*domain.RecipeInstruction{{Text: "Boil"}}}
+	require.NoError(t, repo.Import(first))
+
+	// A forced re-import whose scrape lost its instructions must not wipe the stored recipe.
+	second := &domain.Recipe{SourceUrl: &url, Name: new("Subscribe to read"), Ingredients: []*domain.RecipeIngredient{{RawText: "2 beets"}}}
+	err := repo.Import(second)
+
+	require.ErrorIs(t, err, sentinels.ErrIncompleteScrape)
+
+	got, err := repo.ByIDPreload(first.ID, uuid.Nil, uuid.Nil, types.Preload("ingredients"))
+	require.NoError(t, err)
+	assert.Equal(t, "Borscht", *got.Name, "the rejected update must not touch the stored row")
+	require.Len(t, got.Ingredients, 1)
+
+	// A brand-new recipe may still be imported without content.
+	thin := "https://example.com/thin"
+	require.NoError(t, repo.Import(&domain.Recipe{SourceUrl: &thin}))
+}
+
+// A recipe stored without instructions can still be updated.
+func TestRecipeRepository_Import_UpdatesRecipeStoredWithoutInstructions(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	url := "https://example.com/assembly"
+	first := &domain.Recipe{SourceUrl: &url, Name: new("Sandwich"), Ingredients: []*domain.RecipeIngredient{{RawText: "1 bun"}}}
+	require.NoError(t, repo.Import(first))
+
+	second := &domain.Recipe{SourceUrl: &url, Name: new("Better Sandwich"), Ingredients: []*domain.RecipeIngredient{{RawText: "2 buns"}}}
+	require.NoError(t, repo.Import(second))
+	assert.Equal(t, first.ID, second.ID)
+
+	got, err := repo.ByID(first.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Better Sandwich", *got.Name)
+}
+
+// Dropped fields are cleared; unscraped columns (image, feed, created) are kept.
+func TestRecipeRepository_Import_UpdateClearsDroppedFields(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	feedID := uuid.New()
+	image := storage.Path("recipes/old.jpg")
+	url := "https://example.com/clears"
+	first := &domain.Recipe{
+		SourceUrl: &url, Name: new("Borscht"), Description: new("Old description"), Yield: new(4),
+		ImagePath: &image, FeedID: &feedID,
+		Ingredients: []*domain.RecipeIngredient{{RawText: "2 beets"}}, Instructions: []*domain.RecipeInstruction{{Text: "Boil"}},
+	}
+	require.NoError(t, repo.Import(first))
+	longAgo := time.Now().Add(-time.Hour)
+	require.NoError(t, db.Model(&domain.Recipe{}).Where("id = ?", first.ID).UpdateColumn("updated", longAgo).Error)
+	stored, err := repo.ByID(first.ID)
+	require.NoError(t, err)
+
+	// The source dropped its description and yield.
+	second := &domain.Recipe{
+		SourceUrl: &url, Name: new("Borscht"),
+		Ingredients: []*domain.RecipeIngredient{{RawText: "2 beets"}}, Instructions: []*domain.RecipeInstruction{{Text: "Boil"}},
+	}
+	require.NoError(t, repo.Import(second))
+
+	got, err := repo.ByID(first.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.Description, "a description the source dropped must be cleared")
+	assert.Nil(t, got.Yield, "a yield the source dropped must be cleared")
+	require.NotNil(t, got.ImagePath, "image_path is owned by SetDefault, not the import update")
+	assert.Equal(t, image, *got.ImagePath)
+	require.NotNil(t, got.FeedID, "the feed link is not scraped and must survive")
+	assert.Equal(t, feedID, *got.FeedID)
+	assert.Equal(t, stored.Created.Unix(), got.Created.Unix())
+	assert.True(t, got.Updated.After(longAgo.Add(time.Minute)), "an update must bump Updated even with an explicit column list")
+}
+
+func TestRecipeRepository_ImportTarget(t *testing.T) {
+	db := openTestDB(t)
+	repo := repositories.NewRecipeRepository(db)
+
+	url := "https://example.com/target"
+	byURL := &domain.Recipe{SourceUrl: &url, Ingredients: []*domain.RecipeIngredient{{RawText: "2 beets"}}}
+	require.NoError(t, repo.Import(byURL))
+	pinned := &domain.Recipe{Name: new("Pinned")}
+	require.NoError(t, repo.Import(pinned))
+	householdID := uuid.New()
+	seedRecipe(t, db, &domain.Recipe{ID: uuid.New(), HouseholdID: &householdID, SourceUrl: new("https://example.com/copy")})
+
+	got, err := repo.ImportTarget(uuid.Nil, &url)
+	require.NoError(t, err)
+	assert.Equal(t, byURL.ID, got.ID)
+	assert.Len(t, got.Ingredients, 1, "ingredient IDs must be loaded for DropsContentOf")
+
+	got, err = repo.ImportTarget(pinned.ID, &url)
+	require.NoError(t, err)
+	assert.Equal(t, pinned.ID, got.ID, "an ID match wins over a source URL match")
+
+	_, err = repo.ImportTarget(uuid.Nil, new("https://example.com/copy"))
+	require.ErrorIs(t, err, sentinels.ErrNotFound, "household copies are never import targets")
 }
 
 func TestRecipeRepository_Import_UpsertsData(t *testing.T) {
@@ -794,6 +907,7 @@ func TestRecipeRepository_Import_UpsertsData(t *testing.T) {
 		Ingredients: []*domain.RecipeIngredient{
 			{RawText: "new ingredient"},
 		},
+		Instructions: []*domain.RecipeInstruction{{Text: "Cook"}},
 	}
 	err := repo.Import(updated)
 

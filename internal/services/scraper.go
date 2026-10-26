@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,12 +18,14 @@ import (
 type scraperService struct {
 	provider ScraperProvider
 	mapper   *scraperMapper
+	timeout  time.Duration
 }
 
 func NewScraperService(provider ScraperProvider, parser IngredientParser) domain.ScraperService {
 	return &scraperService{
 		provider: provider,
 		mapper:   newScraperMapper(parser),
+		timeout:  utils.GetenvDuration("SCRAPE_TIMEOUT", 30*time.Second),
 	}
 }
 
@@ -33,8 +36,18 @@ func defaultRequestOptions(ctx context.Context) krip.RequestOptions {
 	}
 }
 
+// scrapeErr maps a scrape timeout to 504 and wraps other errors with op. It lives here rather than in
+// the error handler so other timeouts (DB, OIDC) still surface as logged 500s.
+func scrapeErr(op string, err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		log.Infow("scrape timed out", "op", op, "error", err.Error())
+		return sentinels.GatewayTimeout("timed out fetching the source page")
+	}
+	return fmt.Errorf("%s: %w", op, err)
+}
+
 func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedType string) (*domain.ScrapeResult, error) {
-	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	scrapeCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	options := krip.FeedOptions{
@@ -45,7 +58,7 @@ func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedTyp
 
 	data, err := s.provider.UrlInput(url, options.ScrapeOptions)
 	if err != nil {
-		return nil, fmt.Errorf("scrape url (fetch input): %w", err)
+		return nil, scrapeErr("scrape url (fetch input)", err)
 	}
 
 	kripRecipe := &krip.Recipe{}
@@ -61,7 +74,7 @@ func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedTyp
 			return &domain.ScrapeResult{Type: domain.PageTypeRecipe, Recipe: s.mapper.toRecipe(kripRecipe)}, nil
 		}
 		if recipeErr != nil {
-			return nil, fmt.Errorf("scrape url (explicit recipe): %w", recipeErr)
+			return nil, scrapeErr("scrape url (explicit recipe)", recipeErr)
 		}
 		return nil, sentinels.BadRequest("recipe: no valid recipe found at URL")
 	}
@@ -71,7 +84,7 @@ func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedTyp
 		if err := s.provider.ScrapeFeed(data, kripFeed, options); err == nil && len(kripFeed.Entries) > 0 {
 			return &domain.ScrapeResult{Type: domain.PageTypeFeed, Feed: s.mapper.toFeed(kripFeed)}, nil
 		} else if err != nil {
-			return nil, fmt.Errorf("scrape url (explicit feed): %w", err)
+			return nil, scrapeErr("scrape url (explicit feed)", err)
 		}
 		return nil, sentinels.BadRequest("feed: no valid feed found at URL")
 	}
@@ -93,14 +106,14 @@ func (s *scraperService) ScrapeUrl(ctx context.Context, url string, requestedTyp
 }
 
 func (s *scraperService) ScrapeRecipe(ctx context.Context, url string) (*domain.Recipe, error) {
-	scrapeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	scrapeCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	kripRecipe, err := s.provider.ScrapeUrl(url, krip.ScrapeOptions{
 		RequestOptions: defaultRequestOptions(scrapeCtx),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("scrape recipe: %w", err)
+		return nil, scrapeErr("scrape recipe", err)
 	}
 	return s.mapper.toRecipe(kripRecipe), nil
 }
@@ -112,7 +125,7 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts
 	opts.RequestOptions = defaultRequestOptions(scrapeCtx)
 	scrapedFeed, err := s.provider.ScrapeFeedUrl(feed.Url, opts)
 	if err != nil {
-		return nil, fmt.Errorf("scrape feed: %w", err)
+		return nil, scrapeErr("scrape feed", err)
 	}
 
 	recipes := make([]*domain.Recipe, 0, len(scrapedFeed.Entries))

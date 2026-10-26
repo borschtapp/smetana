@@ -159,6 +159,7 @@ func RegisterApiRoutes(appCtx context.Context, router fiber.Router, fileStorage 
 	recipesGroup.Get("/:id", recipeHandler.GetRecipe)
 	recipesGroup.Patch("/:id", recipeHandler.UpdateRecipe)
 	recipesGroup.Delete("/:id", recipeHandler.DeleteRecipe)
+	recipesGroup.Post("/:id/refresh", importHandler.RefreshRecipe)
 	recipesGroup.Post("/:id/favorite", recipeHandler.SaveRecipe)
 	recipesGroup.Delete("/:id/favorite", recipeHandler.UnsaveRecipe)
 	recipesGroup.Get("/:id/cost", recipeHandler.GetRecipeCost)

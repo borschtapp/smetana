@@ -103,6 +103,10 @@ func (s *recipeService) Create(ctx context.Context, recipe *domain.Recipe, userI
 	return nil
 }
 
+func (s *recipeService) ImportTarget(id uuid.UUID, sourceUrl *string) (*domain.Recipe, error) {
+	return s.repo.ImportTarget(id, sourceUrl)
+}
+
 func (s *recipeService) Import(recipe *domain.Recipe) error {
 	if err := s.repo.Import(recipe); err != nil {
 		return fmt.Errorf("import: %w", err)
@@ -233,24 +237,22 @@ func (s *recipeService) canonicalizeIngredients(ctx context.Context, ingredients
 	return s.foodService.Canonicalize(foodIDs...)
 }
 
-// byNameOnce wraps findOrCreate so each slug is looked up once per call site; a missing name is a bad request.
+// byNameOnce wraps findOrCreate so each key is looked up once per call site; a missing name is a bad request.
 func byNameOnce(kind string, findOrCreate func(name, slug string) (uuid.UUID, error)) func(name, slug string) (uuid.UUID, error) {
 	found := make(map[string]uuid.UUID)
 	return func(name, slug string) (uuid.UUID, error) {
 		if name == "" {
 			return uuid.Nil, sentinels.BadRequest("ingredient " + kind + " needs an id or a name")
 		}
-		if slug == "" {
-			slug = utils.CreateTag(name)
-		}
-		if id, ok := found[slug]; ok {
+		key := resolveKey(slug, name)
+		if id, ok := found[key]; ok {
 			return id, nil
 		}
 		id, err := findOrCreate(name, slug)
 		if err != nil {
 			return uuid.Nil, err
 		}
-		found[slug] = id
+		found[key] = id
 		return id, nil
 	}
 }

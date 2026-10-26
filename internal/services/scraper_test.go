@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/borschtapp/kapusta"
 	"github.com/borschtapp/krip"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 )
 
 type mockScraperProvider struct {
@@ -114,4 +118,18 @@ func TestScraperService_ScrapeUrl_Feed(t *testing.T) {
 	assert.Equal(t, domain.PageTypeFeed, res.Type)
 	assert.Equal(t, "Test Feed", res.Feed.Name)
 	mockProvider.AssertExpectations(t)
+}
+
+// A scrape timeout is the source's fault, so it is a 504, not a logged 500.
+func TestScraperService_ScrapeRecipe_TimeoutIsGatewayTimeout(t *testing.T) {
+	service, mockProvider := newTestScraperService(t)
+
+	url := "https://example.com/slow-recipe"
+	mockProvider.On("ScrapeUrl", url, mock.Anything).
+		Return(nil, fmt.Errorf("could not send request: %w", context.DeadlineExceeded))
+
+	_, err := service.ScrapeRecipe(context.Background(), url)
+	var se *sentinels.Error
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, fiber.StatusGatewayTimeout, se.Status)
 }

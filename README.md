@@ -100,6 +100,7 @@ All configuration is managed through environment variables or `.env`. Only `JWT_
 | `FETCH_CONCURRENCY`               | `5`                  | Max parallel fetches per feed sync run or recipe import  |
 | `FEED_SYNC_CONCURRENCY`           | `2`                  | Concurrency limit for subscription sync                  |
 | `DOWNLOAD_TIMEOUT`                | `30s`                | Image download timeout                                   |
+| `SCRAPE_TIMEOUT`                  | `30s`                | Recipe page scrape timeout (504 when exceeded)           |
 | `USER_AGENT`                      | Browser UA           | User-Agent header for image downloads                    |
 | `ENABLE_LIMITER`                  | `false`              | Enable global rate limiting (auth routes always limited) |
 | `ENABLE_COMPRESS`                 | `false`              | Enable gzip/brotli response compression                  |

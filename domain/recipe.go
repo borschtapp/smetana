@@ -73,6 +73,13 @@ func (r *Recipe) BeforeCreate(_ *gorm.DB) error {
 	return nil
 }
 
+// DropsContentOf reports whether r is missing ingredients or instructions that stored has,
+// which usually means the scrape was incomplete (paywall, layout change).
+func (r *Recipe) DropsContentOf(stored *Recipe) bool {
+	return (len(stored.Ingredients) > 0 && len(r.Ingredients) == 0) ||
+		(len(stored.Instructions) > 0 && len(r.Instructions) == 0)
+}
+
 type RecipeSearchOptions struct {
 	types.SearchOptions
 
@@ -87,6 +94,8 @@ type RecipeRepository interface {
 	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]Recipe, error)
 	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(recipe *Recipe) error
+	// ImportTarget returns the global recipe an import would overwrite, matched by id, then by source URL.
+	ImportTarget(id uuid.UUID, sourceUrl *string) (*Recipe, error)
 	Import(recipe *Recipe) error
 	Update(recipe *Recipe) error
 	Delete(id uuid.UUID) error
@@ -132,6 +141,7 @@ type RecipeService interface {
 	ByParentIDsAndHousehold(parentIDs []uuid.UUID, householdID uuid.UUID, preload types.PreloadOptions) ([]Recipe, error)
 	Search(userID uuid.UUID, householdID uuid.UUID, opts RecipeSearchOptions) ([]Recipe, int64, error)
 	Create(ctx context.Context, recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error
+	ImportTarget(id uuid.UUID, sourceUrl *string) (*Recipe, error)
 	Import(recipe *Recipe) error
 	SetFeedID(recipeID, feedID uuid.UUID) error
 	Update(recipe *Recipe, userID uuid.UUID, householdID uuid.UUID) error

@@ -15,10 +15,12 @@ type stubRecipeService struct {
 	domain.RecipeService
 
 	byIDFn                    func(uuid.UUID, uuid.UUID) (*domain.Recipe, error)
+	byIDPreloadFn             func(uuid.UUID, uuid.UUID, uuid.UUID, types.PreloadOptions) (*domain.Recipe, error)
 	byUrlFn                   func(string, uuid.UUID) (*domain.Recipe, error)
 	byParentIDsAndHouseholdFn func([]uuid.UUID, uuid.UUID, types.PreloadOptions) ([]domain.Recipe, error)
 	searchFn                  func(uuid.UUID, uuid.UUID, domain.RecipeSearchOptions) ([]domain.Recipe, int64, error)
 	userSaveFn                func(uuid.UUID, uuid.UUID, uuid.UUID) error
+	importTargetFn            func(uuid.UUID, *string) (*domain.Recipe, error)
 	importFn                  func(*domain.Recipe) error
 	setFeedIDFn               func(uuid.UUID, uuid.UUID) error
 }
@@ -26,6 +28,13 @@ type stubRecipeService struct {
 func (s *stubRecipeService) ByID(id, householdID uuid.UUID) (*domain.Recipe, error) {
 	if s.byIDFn != nil {
 		return s.byIDFn(id, householdID)
+	}
+	return nil, nil
+}
+
+func (s *stubRecipeService) ByIDPreload(id, userID, householdID uuid.UUID, preload types.PreloadOptions) (*domain.Recipe, error) {
+	if s.byIDPreloadFn != nil {
+		return s.byIDPreloadFn(id, userID, householdID, preload)
 	}
 	return nil, nil
 }
@@ -56,6 +65,14 @@ func (s *stubRecipeService) UserSave(recipeID, userID, householdID uuid.UUID) er
 		return s.userSaveFn(recipeID, userID, householdID)
 	}
 	return nil
+}
+
+// ImportTarget defaults to not found, so every import is new.
+func (s *stubRecipeService) ImportTarget(id uuid.UUID, sourceUrl *string) (*domain.Recipe, error) {
+	if s.importTargetFn != nil {
+		return s.importTargetFn(id, sourceUrl)
+	}
+	return nil, sentinels.ErrNotFound
 }
 
 func (s *stubRecipeService) Import(recipe *domain.Recipe) error {

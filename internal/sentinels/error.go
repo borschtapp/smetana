@@ -29,3 +29,4 @@ var ErrForbidden = &Error{Status: fiber.StatusForbidden, Message: "Access denied
 var ErrNotFound = &Error{Status: fiber.StatusNotFound, Message: "The requested entity does not exist"}
 var ErrAlreadyExists = &Error{Status: fiber.StatusConflict, Message: "The entity already exists"}
 var ErrUnitConversion = &Error{Status: fiber.StatusUnprocessableEntity, Message: "Unit conversion failed"}
+var ErrIncompleteScrape = &Error{Status: fiber.StatusBadGateway, Message: "Source returned an incomplete recipe; the stored recipe was not updated"}

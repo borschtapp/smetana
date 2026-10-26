@@ -5,6 +5,7 @@ import (
 
 	"borscht.app/smetana/domain"
 	"borscht.app/smetana/internal/tokens"
+	"borscht.app/smetana/internal/types"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -53,4 +54,34 @@ func (h *ImportHandler) DetectAndImport(c fiber.Ctx) error {
 		status = http.StatusCreated
 	}
 	return c.Status(status).JSON(result)
+}
+
+// RefreshRecipe godoc
+// @Summary Refresh a recipe from its source URL.
+// @Description Re-scrapes an imported recipe from its source URL. Returns 502 if the scrape is missing ingredients or instructions the recipe has.
+// @Tags recipes
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Success 200 {object} domain.Recipe
+// @Failure 400 {object} sentinels.Error
+// @Failure 401 {object} sentinels.Error
+// @Failure 403 {object} sentinels.Error
+// @Failure 404 {object} sentinels.Error
+// @Failure 502 {object} sentinels.Error
+// @Failure 504 {object} sentinels.Error
+// @Security ApiKeyAuth
+// @Router /api/v1/recipes/{id}/refresh [post]
+func (h *ImportHandler) RefreshRecipe(c fiber.Ctx) error {
+	id, err := types.UuidParam(c, "id")
+	if err != nil {
+		return err
+	}
+
+	tokenData := tokens.MustClaims(c)
+	recipe, err := h.importService.RefreshRecipe(c.Context(), id, tokenData.ID, tokenData.HouseholdID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(recipe)
 }

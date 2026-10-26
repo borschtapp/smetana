@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"borscht.app/smetana/domain"
+	"borscht.app/smetana/internal/sentinels"
 	"borscht.app/smetana/internal/types"
 )
 
@@ -231,21 +233,55 @@ func (r *recipeRepository) Create(recipe *domain.Recipe) error {
 	return nil
 }
 
+func (r *recipeRepository) ImportTarget(id uuid.UUID, sourceUrl *string) (*domain.Recipe, error) {
+	return importTarget(r.db, id, sourceUrl)
+}
+
+// importTarget finds the global recipe an import overwrites, by id, then by source URL.
+// Preloads are limited to one row, which is enough for DropsContentOf since only one recipe is loaded.
+func importTarget(db *gorm.DB, id uuid.UUID, sourceUrl *string) (*domain.Recipe, error) {
+	idsOnly := func(db *gorm.DB) *gorm.DB { return db.Select("id", "recipe_id").Limit(1) }
+	var recipe domain.Recipe
+	find := func(query string, arg any) error {
+		return db.Select("id").Where("household_id IS NULL").
+			Preload("Ingredients", idsOnly).Preload("Instructions", idsOnly).
+			First(&recipe, query, arg).Error
+	}
+
+	err := gorm.ErrRecordNotFound
+	if id != uuid.Nil {
+		err = find("id = ?", id)
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) && sourceUrl != nil {
+		err = find("source_url = ?", *sourceUrl)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("import target: %w", mapErr(err))
+	}
+	return &recipe, nil
+}
+
+// importColumns are the scraped columns an import update writes. Naming them makes Updates clear dropped
+// values instead of skipping zero values. image_path is set by ImageService.SetDefault.
+var importColumns = []string{"source_url", "name", "description", "language", "text", "author_id",
+	"publisher_id", "prep_time", "cook_time", "total_time", "difficulty", "method", "yield",
+	"rating_reviews", "rating_count", "rating_value", "video", "published", "updated"}
+
 func (r *recipeRepository) Import(recipe *domain.Recipe) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if recipe.SourceUrl != nil {
-			var urlExisting domain.Recipe
-			if err := tx.Where("source_url = ? AND household_id IS NULL", *recipe.SourceUrl).First(&urlExisting).Error; err == nil {
-				recipe.ID = urlExisting.ID
-			}
+		existing, err := importTarget(tx, recipe.ID, recipe.SourceUrl)
+		if err != nil && !errors.Is(err, sentinels.ErrNotFound) {
+			return err
 		}
-
-		var existing domain.Recipe
-		err := tx.First(&existing, "id = ?", recipe.ID).Error
-		isUpdate := err == nil
-
+		isUpdate := existing != nil
 		if isUpdate {
-			if err := tx.Omit(clause.Associations).Updates(recipe).Error; err != nil {
+			// Ingredients and instructions are replaced below, so refuse a scrape that would wipe them.
+			// RecipeIngestService checks this too, before downloading images.
+			if recipe.DropsContentOf(existing) {
+				return sentinels.ErrIncompleteScrape
+			}
+			recipe.ID = existing.ID
+			if err := tx.Model(recipe).Select(importColumns).Omit(clause.Associations).Updates(recipe).Error; err != nil {
 				return fmt.Errorf("import update: %w", mapErr(err))
 			}
 			// Clean up associations that will be re-added

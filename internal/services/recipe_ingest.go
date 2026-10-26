@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/google/uuid"
@@ -61,8 +63,21 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 		return nil, sentinels.BadRequest("recipe is nil")
 	}
 
-	if recipe.ID == uuid.Nil {
-		recipe.ID, _ = uuid.NewV7()
+	// Resolve the target first: images are stored under recipe.ID, and a rejected update must not
+	// download any.
+	existing, err := s.recipeService.ImportTarget(recipe.ID, recipe.SourceUrl)
+	switch {
+	case err == nil:
+		if recipe.DropsContentOf(existing) {
+			return nil, sentinels.ErrIncompleteScrape
+		}
+		recipe.ID = existing.ID
+	case errors.Is(err, sentinels.ErrNotFound):
+		if recipe.ID == uuid.Nil {
+			recipe.ID, _ = uuid.NewV7()
+		}
+	default:
+		return nil, fmt.Errorf("import recipe (lookup existing): %w", err)
 	}
 
 	for _, inst := range recipe.Instructions {
@@ -103,7 +118,6 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 
 	// 4. Resolve taxonomies
 	for _, t := range recipe.Taxonomies {
-		t := t
 		g.Go(func() error {
 			if err := s.taxonomyService.FindOrCreate(t); err != nil {
 				log.Warnw("failed to resolve taxonomy", "taxonomy", t, "error", err.Error())
@@ -114,7 +128,6 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 
 	// 5. Resolve equipment
 	for _, e := range recipe.Equipment {
-		e := e
 		g.Go(func() error {
 			if err := s.equipmentService.FindOrCreate(resCtx, e); err != nil {
 				log.Warnw("failed to resolve equipment", "equipment", e, "error", err.Error())
@@ -123,16 +136,20 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 		})
 	}
 
-	// 6. Resolve food and units for ingredients
+	// 6. Resolve food and units for ingredients. Duplicates share one pointer, so whatever
+	// FindOrCreate writes into it (e.g. alias → canonical) reaches every ingredient.
 	uniqueFoods := make(map[string]*domain.Food)
+	uniqueUnits := make(map[string]*domain.Unit)
 	for _, ing := range recipe.Ingredients {
 		if ing.Food != nil {
-			uniqueFoods[ing.Food.Slug] = ing.Food
+			ing.Food = shareByKey(uniqueFoods, resolveKey(ing.Food.Slug, ing.Food.Name), ing.Food)
+		}
+		if ing.Unit != nil {
+			ing.Unit = shareByKey(uniqueUnits, resolveKey(ing.Unit.Slug, ing.Unit.Name), ing.Unit)
 		}
 	}
 
 	for _, food := range uniqueFoods {
-		food := food
 		g.Go(func() error {
 			if err := s.foodService.FindOrCreate(resCtx, food); err != nil {
 				log.Warnw("error creating food", "food", food.Name, "error", err.Error())
@@ -143,16 +160,10 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 		})
 	}
 
-	for _, ing := range recipe.Ingredients {
-		ing := ing
+	for _, unit := range uniqueUnits {
 		g.Go(func() error {
-			if ing.Unit != nil {
-				if err := s.unitService.FindOrCreate(ing.Unit); err != nil {
-					log.Warnw("error creating unit", "unit", ing.Unit, "error", err.Error())
-					ing.Unit = nil
-				} else {
-					ing.UnitID = new(ing.Unit.ID)
-				}
+			if err := s.unitService.FindOrCreate(unit); err != nil {
+				log.Warnw("error creating unit", "unit", unit.Name, "error", err.Error())
 			}
 			return nil
 		})
@@ -162,13 +173,20 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 		log.Warnw("recipe resolution completed with errors", "recipeID", recipe.ID, "error", err.Error())
 	}
 
-	// Link resolved foods to ingredients
+	// Link resolved foods and units to ingredients
 	for _, ing := range recipe.Ingredients {
 		if ing.Food != nil {
-			if food, ok := uniqueFoods[ing.Food.Slug]; ok && food.ID != uuid.Nil {
-				ing.FoodID = new(food.ID)
+			if ing.Food.ID != uuid.Nil {
+				ing.FoodID = new(ing.Food.ID)
 			} else {
 				ing.Food = nil
+			}
+		}
+		if ing.Unit != nil {
+			if ing.Unit.ID != uuid.Nil {
+				ing.UnitID = new(ing.Unit.ID)
+			} else {
+				ing.Unit = nil
 			}
 		}
 	}
@@ -208,6 +226,27 @@ func (s *recipeIngestService) ImportRecipe(ctx context.Context, recipe *domain.R
 	}
 
 	return recipe, nil
+}
+
+// resolveKey is the dedup key for a unit or food: its slug, else the slug derived from its name,
+// else the lowercased name, since symbol-only names like "%" slugify to "".
+func resolveKey(slug, name string) string {
+	if slug != "" {
+		return slug
+	}
+	if tag := utils.CreateTag(name); tag != "" {
+		return tag
+	}
+	return "name:" + strings.ToLower(name)
+}
+
+// shareByKey returns the first pointer registered under key, registering p if the key is new.
+func shareByKey[T any](seen map[string]*T, key string, p *T) *T {
+	if first, ok := seen[key]; ok {
+		return first
+	}
+	seen[key] = p
+	return p
 }
 
 func (s *recipeIngestService) processRecipeImages(ctx context.Context, recipe *domain.Recipe) {
