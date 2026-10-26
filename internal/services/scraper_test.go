@@ -133,3 +133,19 @@ func TestScraperService_ScrapeRecipe_TimeoutIsGatewayTimeout(t *testing.T) {
 	require.ErrorAs(t, err, &se)
 	assert.Equal(t, fiber.StatusGatewayTimeout, se.Status)
 }
+
+// A feed whose recipe pages all failed to fetch must fail the sync, so it is retried rather than
+// treated as empty and deactivated.
+func TestScraperService_ScrapeFeed_OnlyPending_ReturnsError(t *testing.T) {
+	service, mockProvider := newTestScraperService(t)
+
+	url := "https://example.com/feed"
+	feed := &krip.Feed{Url: url, Pending: []*krip.Recipe{{Url: "https://example.com/stub", Name: "Stub"}}}
+	mockProvider.On("ScrapeFeedUrl", url, mock.Anything).Return(feed, nil)
+
+	_, err := service.ScrapeFeed(context.Background(), &domain.Feed{Url: url}, krip.FeedOptions{})
+
+	var se *sentinels.Error
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, fiber.StatusBadGateway, se.Status)
+}

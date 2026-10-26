@@ -336,6 +336,36 @@ func TestFeedService_Subscribe_NoRecipesButHasName_Succeeds(t *testing.T) {
 	assert.Empty(t, feed.Recipes)
 }
 
+func TestFeedService_Subscribe_ShallowEntries_NotReturned(t *testing.T) {
+	feedRepo := &stubFeedRepo{
+		byUrlFn: func(_ string) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		byIDForHouseholdFn: func(_, _ uuid.UUID) (*domain.Feed, error) {
+			return nil, sentinels.ErrNotFound
+		},
+		createFn: func(f *domain.Feed) error {
+			f.ID = uuid.New()
+			return nil
+		},
+	}
+	scraper := &stubScraperService{
+		scrapeFeedFn: func(_ context.Context, _ *domain.Feed, _ krip.FeedOptions) ([]*domain.Recipe, error) {
+			return []*domain.Recipe{{SourceUrl: new("https://example.com/feed/1")}}, nil
+		},
+	}
+
+	recipeSvc := &stubRecipeService{
+		byUrlFn: func(_ string, _ uuid.UUID) (*domain.Recipe, error) { return nil, sentinels.ErrNotFound },
+	}
+
+	svc := newTestFeedService(feedRepo, &stubPublisherService{}, recipeSvc, &stubRecipeIngestService{}, scraper)
+	feed, err := svc.Subscribe(context.Background(), uuid.New(), "https://example.com/feed", nil)
+
+	require.NoError(t, err)
+	assert.Nil(t, feed.Recipes, "unpersisted shallow entries must not be returned with zero IDs")
+}
+
 func TestFeedService_Subscribe_NoRecipesNoName_Fails(t *testing.T) {
 	householdID := uuid.New()
 	url := "https://example.com/not-a-feed"

@@ -21,6 +21,22 @@ func seedFeedSubscription(t *testing.T, db *gorm.DB, householdID, feedID uuid.UU
 	}).Error)
 }
 
+func TestFeedRepository_Create_DoesNotPersistRecipes(t *testing.T) {
+	db := openPrivateTestDB(t)
+	repo := repositories.NewFeedRepository(db)
+
+	feed := &domain.Feed{
+		Url:     "https://feed.example.com/stubs",
+		Name:    "Stub Feed",
+		Recipes: []*domain.Recipe{{SourceUrl: new("https://feed.example.com/stubs/1"), Name: new("Stub")}},
+	}
+	require.NoError(t, repo.Create(feed))
+
+	var count int64
+	require.NoError(t, db.Model(&domain.Recipe{}).Count(&count).Error)
+	assert.Zero(t, count, "shallow feed entries must be imported by FetchFeed, not saved with the feed")
+}
+
 func TestFeedRepository_ByIDForHousehold_ReturnsSubscribedFeed(t *testing.T) {
 	db := openPrivateTestDB(t)
 	repo := repositories.NewFeedRepository(db)

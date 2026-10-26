@@ -142,7 +142,8 @@ func (r *feedRepository) DeleteFeed(householdID uuid.UUID, feedID uuid.UUID) err
 }
 
 func (r *feedRepository) Create(feed *domain.Feed) error {
-	if err := r.db.Create(feed).Error; err != nil {
+	// Recipes are shallow feed entries; FeedService.FetchFeed imports them through RecipeIngestService.
+	if err := r.db.Omit("Recipes").Create(feed).Error; err != nil {
 		return fmt.Errorf("create feed: %w", mapErr(err))
 	}
 	return nil

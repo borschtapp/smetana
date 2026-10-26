@@ -56,6 +56,10 @@ func NotImplemented(m string) *Error {
 	return &Error{Status: fiber.StatusNotImplemented, Message: m}
 }
 
+func BadGateway(m string) *Error {
+	return &Error{Status: fiber.StatusBadGateway, Message: m}
+}
+
 func GatewayTimeout(m string) *Error {
 	return &Error{Status: fiber.StatusGatewayTimeout, Message: m}
 }

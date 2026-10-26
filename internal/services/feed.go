@@ -100,6 +100,8 @@ func (s *feedService) Subscribe(ctx context.Context, householdID uuid.UUID, url 
 	if len(feed.Recipes) == 0 && feed.Name == "" {
 		return nil, sentinels.Unprocessable("feed has no importable recipes")
 	}
+	// Shallow-scraped entries are never persisted (FetchFeed imports them), so they have no IDs to return.
+	feed.Recipes = nil
 
 	if err := s.repo.AddFeed(householdID, feed); err != nil {
 		return nil, fmt.Errorf("subscribe (persist subscription): %w", err)

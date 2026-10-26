@@ -150,5 +150,11 @@ func (s *scraperService) ScrapeFeed(ctx context.Context, feed *domain.Feed, opts
 		feed.Discovered = scrapedFeed.Discovered
 	}
 
+	// Only pending entries means no recipe page could be fetched (rate limit, slow site); report a
+	// failure so callers retry instead of treating the feed as having no recipes.
+	if len(scrapedFeed.Entries) == 0 && len(scrapedFeed.Pending) > 0 {
+		return nil, sentinels.BadGateway("feed: none of the feed's recipe pages could be fetched")
+	}
+
 	return recipes, nil
 }
