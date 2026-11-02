@@ -14,7 +14,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.5
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gofiber/contrib/v3/jwt v1.2.7
-	github.com/gofiber/contrib/v3/swaggo v1.0.14
+	github.com/gofiber/contrib/v3/swaggo v1.0.15
 	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/gofiber/storage/s3/v2 v2.7.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -75,7 +75,7 @@ require (
 	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
 	github.com/go-playground/locales v0.14.2 // indirect
 	github.com/go-playground/universal-translator v0.18.2 // indirect
-	github.com/gofiber/schema v1.9.0 // indirect
+	github.com/gofiber/schema v1.9.1 // indirect
 	github.com/gofiber/utils/v2 v2.6.3 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/valyala/fasthttp v1.77.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.42.0 // indirect
-	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
 )
